@@ -1,0 +1,6 @@
+{
+  "name": "CapitalTrust Portal",
+  "description": "Institutional fund management, loan status, and capital collection platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

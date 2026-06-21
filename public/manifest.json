@@ -1,0 +1,28 @@
+{
+  "name": "CapitalTrust Corporate Portal",
+  "short_name": "CapitalTrust",
+  "description": "Secure institutional credit facilities, active cash balance, and contribution health tracking.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f7f9fb",
+  "theme_color": "#090d16",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
