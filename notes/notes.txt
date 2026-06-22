@@ -1,0 +1,17 @@
+ssh root@147.93.31.194
+Ftns@ker8332
+
+cd /var/www/dryzen_in_usr/data/www/dryzen.in
+
+pm2 restart dryzen -- restart node
+
+Config change
+*************
+nano /etc/nginx/fastpanel2-sites/dryzen_in_usr/dryzen.in.conf
+
+proxy_pass http://127.0.0.1:3002;
+proxy_redirect off;
+
+location @fallback {
+    proxy_pass http://127.0.0.1:3002;
+}

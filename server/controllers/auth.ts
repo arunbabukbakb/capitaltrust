@@ -130,7 +130,7 @@ export const me = async (req: Request, res: Response) => {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await db.get("SELECT id, fullName, email, username, role, status, phoneNumber FROM users WHERE id = ?", [payload.id]);
+    const user = await db.get("SELECT id, fullName, email, username, role, status, phoneNumber, profileImage FROM users WHERE id = ?", [payload.id]);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -204,6 +204,84 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Password has been reset successfully." });
   } catch (error) {
     console.error("Reset password error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  const db = getDatabase();
+  const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+  if (!token) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { id: string };
+    const { fullName, email, phoneNumber, profileImage } = req.body;
+
+    if (!fullName || !email) {
+      return res.status(400).json({ error: "Full name and email are required" });
+    }
+
+    await db.run(
+      "UPDATE users SET fullName = ?, email = ?, phoneNumber = ?, profileImage = ? WHERE id = ?",
+      [fullName, email.toLowerCase(), phoneNumber || null, profileImage || null, payload.id]
+    );
+
+    const user = await db.get("SELECT id, fullName, email, username, role, status, phoneNumber, profileImage FROM users WHERE id = ?", [payload.id]);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const userRoles = await db.all(`
+      SELECT r.id, r.roleName, r.roleType FROM roles r
+      JOIN user_roles ur ON r.id = ur.roleId
+      WHERE ur.userId = ?
+    `, [payload.id]);
+    (user as any).assignedRoles = userRoles;
+
+    res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    console.error("Update profile error", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+  const db = getDatabase();
+  const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+  if (!token) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { id: string };
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+
+    const user = await db.get("SELECT password FROM users WHERE id = ?", [payload.id]);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Verify current password match
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(400).json({ error: "Incorrect current password" });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    await db.run("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.id]);
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Change password error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, me, logout, forgotPassword, resetPassword } from '../controllers/auth';
+import { register, login, me, logout, forgotPassword, resetPassword, updateProfile, changePassword } from '../controllers/auth';
 
 const router = Router();
 
@@ -151,5 +151,7 @@ router.post('/forgot-password', forgotPassword);
  *         description: Invalid or expired token
  */
 router.post('/reset-password', resetPassword);
+router.put('/profile', updateProfile);
+router.put('/change-password', changePassword);
 
 export default router;

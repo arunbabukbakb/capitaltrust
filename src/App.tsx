@@ -20,6 +20,7 @@ import CollectionAuditSummary from './pages/CollectionAuditSummary';
 import MenusPage from './pages/MenusPage';
 import PermissionsPage from './pages/PermissionsPage';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import { 
   PlusCircle, 
   Settings as SettingsIcon, 
@@ -132,7 +133,8 @@ export default function App() {
             <Route path="/loan-repayments" element={hasPermission('loan-repayments') ? <LoanRepaymentList /> : <Navigate to="/dashboard" replace />} />
             <Route path="/collection-types" element={hasPermission('collection-types') ? <CollectionTypeMaster /> : <Navigate to="/dashboard" replace />} />
             <Route path="/fund-collection-audit" element={hasPermission('fund-collection-audit') ? <CollectionAuditSummary /> : <Navigate to="/dashboard" replace />} />
-             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

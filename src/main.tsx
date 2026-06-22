@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App.tsx';
 import './index.css';
+import { ThemeProvider } from './components/ThemeContext.tsx';
 
 // Override global fetch to automatically inject the JWT token from localStorage
 const originalFetch = window.fetch;
@@ -41,9 +42,11 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Provider store={store}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
     </Provider>
   </StrictMode>,
 );

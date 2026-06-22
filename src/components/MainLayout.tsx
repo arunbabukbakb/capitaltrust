@@ -27,7 +27,7 @@ export default function MainLayout({ user, onLogout, onNewTransaction }: MainLay
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] selection:bg-slate-900 selection:text-white antialiased">
+    <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 antialiased transition-colors duration-200">
       {!isOnline && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0f172a] text-white px-5 py-3 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2.5 border border-slate-800 animate-bounce">
           <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />

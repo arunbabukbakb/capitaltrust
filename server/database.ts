@@ -32,6 +32,7 @@ export async function initDatabase(): Promise<Database> {
         status INTEGER NOT NULL DEFAULT 0,
         phoneNumber TEXT,
         roleId INTEGER,
+        profileImage TEXT,
         FOREIGN KEY(roleId) REFERENCES roles(id)
       );
 
@@ -219,6 +220,11 @@ export async function initDatabase(): Promise<Database> {
     }
     if (!memberCols.some((col: any) => col.name === 'Status')) {
       await db.exec("ALTER TABLE LoanMember ADD COLUMN Status TEXT NOT NULL DEFAULT 'Active'");
+    }
+
+    const userCols = await db.all("PRAGMA table_info(users)");
+    if (!userCols.some((col: any) => col.name === 'profileImage')) {
+      await db.exec("ALTER TABLE users ADD COLUMN profileImage TEXT");
     }
 
     // If LoanPayment has legacy schema, drop and recreate it
