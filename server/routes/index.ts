@@ -12,6 +12,7 @@ import memberCollectionsRoutes from './memberCollections';
 import menusRoutes from './menus';
 import permissionsRoutes from './permissions';
 import settingsRoutes from './settings';
+import tenantsRoutes from './tenants';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/fund-collections', memberCollectionsRoutes);
 router.use('/menus', menusRoutes);
 router.use('/permissions', permissionsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/tenants', tenantsRoutes);
 
 export default router;

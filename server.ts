@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { initDatabase } from './server/database';
 import { runSeeders } from './server/seeders';
 import { createApp } from './server/app';

@@ -9,7 +9,7 @@ export const getPayments = async (req: Request, res: Response) => {
     if (loanId) {
       const lpPayments = await db.all(`
         SELECT 
-          'TRX-' || lp.Id as id,
+          CONCAT('TRX-', lp.Id) as id,
           lp.PaymentDate as date,
           lp.Amount as amount,
           'Manual Collection' as type,
@@ -27,7 +27,7 @@ export const getPayments = async (req: Request, res: Response) => {
 
     const lpPayments = await db.all(`
       SELECT 
-        'TRX-' || lp.Id as id,
+        CONCAT('TRX-', lp.Id) as id,
         lp.PaymentDate as date,
         lp.Amount as amount,
         'Manual Collection' as type,

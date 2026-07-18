@@ -1,9 +1,7 @@
-import { Database } from 'sqlite';
+import { Database } from '../database';
 import bcrypt from 'bcrypt';
 
-const initialUsers = [
-  { id: "CT-00001", fullName: "Admin User", email: "admin@capitaltrust.com", username: "admin", role: "admin", phoneNumber: "+1 (555) 555-5555" },
-];
+const initialUsers: any[] = [];
 
 
 const initialRoles = [
@@ -45,7 +43,7 @@ export async function runSeeders(db: Database) {
       const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
       for (const r of allRoles) {
         await db.run(
-          "INSERT OR IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
+          "INSERT IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
           [user.id, r.id]
         );
       }
@@ -53,7 +51,7 @@ export async function runSeeders(db: Database) {
       const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ?", [user.role]);
       if (role) {
         await db.run(
-          "INSERT OR IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
+          "INSERT IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
           [user.id, role.id]
         );
       }
@@ -101,7 +99,7 @@ export async function runSeeders(db: Database) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
         if (menu) {
           await db.run(
-            "INSERT OR IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
             [memberRole.id, menu.id]
           );
         }
@@ -119,7 +117,7 @@ export async function runSeeders(db: Database) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
         if (menu) {
           await db.run(
-            "INSERT OR IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
             [managerRole.id, menu.id]
           );
         }

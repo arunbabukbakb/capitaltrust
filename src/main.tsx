@@ -6,6 +6,26 @@ import { store } from './store';
 import App from './App.tsx';
 import './index.css';
 import { ThemeProvider } from './components/ThemeContext.tsx';
+import { logOut } from './authSlice';
+
+export function getSubdomain(): string | null {
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  
+  // If running on localhost: e.g. "tenant.localhost"
+  if (parts.length === 2 && parts[1] === 'localhost') {
+    return parts[0];
+  }
+  
+  // If running on a standard domain: e.g. "tenant.capitaltrust.com"
+  if (parts.length > 2) {
+    if (parts[0] !== 'www') {
+      return parts[0];
+    }
+  }
+  
+  return null;
+}
 
 // Override global fetch to automatically inject the JWT token from localStorage
 const originalFetch = window.fetch;
@@ -18,8 +38,29 @@ window.fetch = async (input, init) => {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const subdomain = getSubdomain();
+  if (subdomain) {
+    headers.set('X-Tenant-Id', subdomain);
+  }
+
   newInit.headers = headers;
-  return originalFetch(input, newInit);
+
+  try {
+    const response = await originalFetch(input, newInit);
+    if (response.status === 401) {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (storedToken || storedUser) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('activeRole');
+        store.dispatch(logOut());
+      }
+    }
+    return response;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Global listener for PWA install prompt

@@ -19,6 +19,20 @@ function getUserIdAndRoleFromRequest(req: Request): { id: string; role: string }
 export const getCompanySettings = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
+    const tenantId = req.headers['x-tenant-id'] as string || null;
+    if (tenantId) {
+      const tenant = await db.get("SELECT name, adminEmail FROM tenants WHERE subdomain = ?", [tenantId]);
+      if (!tenant) {
+        return res.status(404).json({ error: "tenant_not_found" });
+      }
+      return res.json({
+        companyName: tenant.name,
+        companyLogo: '',
+        supportEmail: tenant.adminEmail,
+        supportPhone: '+1 (555) 555-5555'
+      });
+    }
+
     let settings = await db.get("SELECT companyName, companyLogo, supportEmail, supportPhone FROM company_settings LIMIT 1");
     if (!settings) {
       settings = {
@@ -46,6 +60,15 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
     const { companyName, companyLogo, supportEmail, supportPhone } = req.body;
     if (!companyName) {
       return res.status(400).json({ error: "Company name is required" });
+    }
+
+    const tenantId = req.headers['x-tenant-id'] as string || null;
+    if (tenantId) {
+      await db.run(
+        "UPDATE tenants SET name = ?, adminEmail = ? WHERE subdomain = ?",
+        [companyName, supportEmail || '', tenantId]
+      );
+      return res.json({ message: "Company settings updated successfully" });
     }
 
     const existing = await db.get("SELECT id FROM company_settings LIMIT 1");

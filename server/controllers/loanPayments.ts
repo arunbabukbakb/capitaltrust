@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
+import { LoanModel } from '../models/Loan';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -31,10 +32,7 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
     const m = parseInt(`${yyyy}${mm}`);
 
     // Check if LoanDue record exists
-    let dueRecord = await db.get(
-      "SELECT * FROM LoanDue WHERE LoanMemberId = ? AND DueMonth = ?",
-      [member.Id, m]
-    );
+    let dueRecord = await LoanModel.findDueByMemberAndMonth(member.Id, m);
 
     if (!dueRecord) {
       // Determine Opening Principal
@@ -57,6 +55,7 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
       const totalDue = principalDue + interestDue + carryForwardInterest;
 
       dueRecord = {
+        Id: 0,
         LoanMemberId: member.Id,
         DueMonth: m,
         OpeningPrincipal: openingPrincipal,
@@ -72,29 +71,23 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
       };
 
       if (saveToDb) {
-        // Insert record into LoanDue
-        const result = await db.run(
-          `INSERT INTO LoanDue (
-            LoanMemberId, DueMonth, OpeningPrincipal, PrincipalDue, InterestDue, CarryForwardInterest, TotalDue, PaidAmount, InterestPaid, PrincipalPaid, ClosingPrincipal, Status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            dueRecord.LoanMemberId,
-            dueRecord.DueMonth,
-            dueRecord.OpeningPrincipal,
-            dueRecord.PrincipalDue,
-            dueRecord.InterestDue,
-            dueRecord.CarryForwardInterest,
-            dueRecord.TotalDue,
-            dueRecord.PaidAmount,
-            dueRecord.InterestPaid,
-            dueRecord.PrincipalPaid,
-            dueRecord.ClosingPrincipal,
-            dueRecord.Status
-          ]
-        );
-        dueRecord.Id = result.lastID;
+        const result = await LoanModel.createDueSchedule({
+          LoanMemberId: dueRecord.LoanMemberId,
+          DueMonth: dueRecord.DueMonth,
+          OpeningPrincipal: dueRecord.OpeningPrincipal,
+          PrincipalDue: dueRecord.PrincipalDue,
+          InterestDue: dueRecord.InterestDue,
+          CarryForwardInterest: dueRecord.CarryForwardInterest,
+          TotalDue: dueRecord.TotalDue,
+          PaidAmount: dueRecord.PaidAmount,
+          InterestPaid: dueRecord.InterestPaid,
+          PrincipalPaid: dueRecord.PrincipalPaid,
+          ClosingPrincipal: dueRecord.ClosingPrincipal,
+          Status: dueRecord.Status as any
+        });
+        dueRecord.Id = result.lastID ? Number(result.lastID) : 0;
       } else {
-        dueRecord.Id = null;
+        dueRecord.Id = 0;
       }
     }
 
@@ -106,7 +99,6 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
 }
 
 export const getLoanPaymentsList = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { loanId, type, month } = req.query;
     const currentMonth = month ? parseInt(month as string) : parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
@@ -129,39 +121,22 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
     const queryType = userRole === 'user' ? 'my' : type;
 
     if (loanId) {
-      const l = await db.get("SELECT * FROM Loan WHERE Id = ?", [loanId]);
+      const l = await LoanModel.findById(loanId as string);
       if (l) loans.push(l);
     } else if (queryType === 'single') {
-      loans = await db.all(`
-        SELECT DISTINCT l.* FROM Loan l
-        LEFT JOIN LoanMember lm ON l.Id = lm.LoanId
-        LEFT JOIN LoanPayment lp ON lm.Id = lp.LoanMemberId AND lp.DueMonth = ?
-        WHERE l.LoanType = 'Single' AND (l.Status = 'Active' OR (l.Status = 'Closed' AND lp.Id IS NOT NULL))
-      `, [currentMonth]);
+      loans = await LoanModel.listSingleLoansByMonth(currentMonth);
     } else if (queryType === 'my') {
       if (!decodedUserId) {
         return res.status(401).json({ error: "Authentication required" });
       }
-      loans = await db.all(
-        `SELECT l.* FROM Loan l 
-         JOIN LoanMember lm ON l.Id = lm.LoanId 
-         WHERE lm.UserId = ? AND l.Status = 'Active'`,
-        [decodedUserId]
-      );
+      loans = await LoanModel.listActiveLoansByUserId(decodedUserId);
     }
 
     const result: any[] = [];
 
     for (const loan of loans) {
-      const members = await db.all(
-        `SELECT lm.*, u.fullName 
-         FROM LoanMember lm 
-         JOIN users u ON lm.UserId = u.id 
-         WHERE lm.LoanId = ?`,
-        [loan.Id]
-      );
-
-      const slabs = await db.all("SELECT * FROM LoanInterestSlab WHERE LoanId = ? ORDER BY FromAmount", [loan.Id]);
+      const members = await LoanModel.listLoanMembers(loan.Id);
+      const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
 
       for (const member of members) {
         if (queryType === 'my' && member.UserId !== decodedUserId) {
@@ -169,26 +144,26 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
         }
 
         // Ensure historical LoanDue records exist up to the current month in-memory
-        const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, false);
+        const dueRecord = await getDuesForMember(null, member, loan, currentMonth, slabs, false);
 
         // Fetch cumulative finalized payments in LoanPayment for this month
-        const approvedPayment = await db.get(
-          "SELECT SUM(Amount) as totalPaid, SUM(InterestPaid) as intPaid, SUM(PrincipalPaid) as prinPaid FROM LoanPayment WHERE LoanMemberId = ? AND DueMonth = ?",
-          [member.Id, currentMonth]
-        );
-        const totalPaid = approvedPayment?.totalPaid || 0;
-        const interestPaid = approvedPayment?.intPaid || 0;
-        const principalPaid = approvedPayment?.prinPaid || 0;
+        const approvedPayment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, currentMonth);
+        const totalPaid = approvedPayment.totalPaid;
+        const interestPaid = approvedPayment.interestPaid;
+        const principalPaid = approvedPayment.principalPaid;
 
         const isApproved = totalPaid > 0 || dueRecord.Status === 'Paid' || dueRecord.Status === 'Partial';
 
         // Find the maximum DueMonth that has a payment for this member to implement last-payment edit constraint
-        const lastPaymentRecord = await db.get(
-          "SELECT MAX(DueMonth) as maxMonth FROM LoanPayment WHERE LoanMemberId = ?",
-          [member.Id]
-        );
-        const lastPaidMonth = lastPaymentRecord?.maxMonth || 0;
+        const lastPaidMonth = await LoanModel.getMaxPaymentMonthByMember(member.Id);
         const canEdit = lastPaidMonth === 0 || currentMonth >= lastPaidMonth;
+
+        let activeRate = loan.InterestRate || 0;
+        if (loan.InterestMode === 'Variable') {
+          const openingPrincipal = dueRecord.OpeningPrincipal;
+          const slab = slabs.find((s: any) => openingPrincipal >= s.FromAmount && openingPrincipal <= s.ToAmount);
+          if (slab) activeRate = slab.InterestRate;
+        }
 
         result.push({
           id: `virtual_${loan.Id}_${member.UserId}_${currentMonth}`,
@@ -197,6 +172,7 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
           userId: member.UserId,
           userName: member.fullName,
           loanAmount: member.LoanShareAmount,
+          outstandingBalance: dueRecord.OpeningPrincipal,
           dueAmount: dueRecord.TotalDue,
           interestDue: dueRecord.InterestDue + dueRecord.CarryForwardInterest,
           principalDue: dueRecord.PrincipalDue,
@@ -209,7 +185,9 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
           requestId: null,
           requestedAmount: 0,
           loanMemberId: member.Id,
-          canEdit: canEdit
+          canEdit: canEdit,
+          interestRate: activeRate,
+          interestMode: loan.InterestMode
         });
       }
     }
@@ -251,13 +229,13 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
     try {
       for (const item of payments) {
         // item: { loanMemberId: number, approved: boolean, amountPaid: number, requestId?: number }
-        const member = await db.get("SELECT * FROM LoanMember WHERE Id = ?", [item.loanMemberId]);
+        const member = await LoanModel.findMemberById(item.loanMemberId);
         if (!member) continue;
 
-        const loan = await db.get("SELECT * FROM Loan WHERE Id = ?", [member.LoanId]);
+        const loan = await LoanModel.findById(member.LoanId);
         if (!loan) continue;
 
-        const slabs = await db.all("SELECT * FROM LoanInterestSlab WHERE LoanId = ? ORDER BY FromAmount", [loan.Id]);
+        const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
 
         // Ensure dues records exist and are saved in DB
         const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, true);
@@ -265,25 +243,22 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
         const amountPaid = Number(item.amountPaid || 0);
 
         // Check if there is already an existing payment for this member and month
-        const existingPayment = await db.get(
-          "SELECT * FROM LoanPayment WHERE LoanMemberId = ? AND DueMonth = ?",
-          [member.Id, currentMonth]
-        );
+        const existingPayment = await LoanModel.findPaymentByMemberAndMonth(member.Id, currentMonth);
 
         if (amountPaid === 0) {
           // If amount is 0, delete the payment if it exists
           if (existingPayment) {
-            await db.run("DELETE FROM LoanPayment WHERE Id = ?", [existingPayment.Id]);
+            await LoanModel.deletePayment(existingPayment.Id);
           }
 
           // Reset the dues record in database to unpaid
-          await db.run(
-            `UPDATE LoanDue SET 
-              PaidAmount = 0, InterestPaid = 0, PrincipalPaid = 0, 
-              ClosingPrincipal = OpeningPrincipal, Status = 'Pending'
-             WHERE Id = ?`,
-            [dueRecord.Id]
-          );
+          await LoanModel.updateLoanDue(dueRecord.Id, {
+            PaidAmount: 0,
+            InterestPaid: 0,
+            PrincipalPaid: 0,
+            ClosingPrincipal: dueRecord.OpeningPrincipal,
+            Status: 'Pending'
+          });
         } else {
           // Reset local dueRecord for new allocation calculation
           dueRecord.PaidAmount = 0;
@@ -300,37 +275,26 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
 
           if (existingPayment) {
             // UPDATE existing LoanPayment record
-            await db.run(
-              `UPDATE LoanPayment SET 
-                Amount = ?, InterestPaid = ?, PrincipalPaid = ?, PaymentDate = ?, ApprovedDate = ?, ApprovedBy = ?
-               WHERE Id = ?`,
-              [
-                amountPaid,
-                interestPaid,
-                principalPaid,
-                currentDate,
-                currentDate,
-                decoded.id,
-                existingPayment.Id
-              ]
-            );
+            await LoanModel.updatePayment(existingPayment.Id, {
+              Amount: amountPaid,
+              InterestPaid: interestPaid,
+              PrincipalPaid: principalPaid,
+              PaymentDate: currentDate,
+              ApprovedDate: currentDate,
+              ApprovedBy: decoded.id
+            });
           } else {
             // INSERT new LoanPayment record
-            await db.run(
-              `INSERT INTO LoanPayment (
-                LoanMemberId, DueMonth, PaymentDate, Amount, InterestPaid, PrincipalPaid, ApprovedBy, ApprovedDate
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [
-                member.Id,
-                currentMonth,
-                currentDate,
-                amountPaid,
-                interestPaid,
-                principalPaid,
-                decoded.id,
-                currentDate
-              ]
-            );
+            await LoanModel.addPayment({
+              LoanMemberId: member.Id,
+              DueMonth: currentMonth,
+              PaymentDate: currentDate,
+              Amount: amountPaid,
+              InterestPaid: interestPaid,
+              PrincipalPaid: principalPaid,
+              ApprovedBy: decoded.id,
+              ApprovedDate: currentDate
+            });
           }
 
           // Update LoanDue record with the totals
@@ -340,34 +304,26 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
           const updatedClosingPrincipal = dueRecord.OpeningPrincipal - updatedPrincipalPaid;
           const updatedStatus = updatedPaidAmount >= dueRecord.TotalDue ? 'Paid' : (updatedPaidAmount > 0 ? 'Partial' : 'Pending');
 
-          await db.run(
-            `UPDATE LoanDue SET 
-              PaidAmount = ?, InterestPaid = ?, PrincipalPaid = ?, ClosingPrincipal = ?, Status = ?
-             WHERE Id = ?`,
-            [updatedPaidAmount, updatedInterestPaid, updatedPrincipalPaid, updatedClosingPrincipal, updatedStatus, dueRecord.Id]
-          );
+          await LoanModel.updateLoanDue(dueRecord.Id, {
+            PaidAmount: updatedPaidAmount,
+            InterestPaid: updatedInterestPaid,
+            PrincipalPaid: updatedPrincipalPaid,
+            ClosingPrincipal: updatedClosingPrincipal,
+            Status: updatedStatus as any
+          });
         }
 
         // Recalculate OutstandingPrincipal of LoanMember
-        const latestDue = await db.get("SELECT ClosingPrincipal FROM LoanDue WHERE LoanMemberId = ? AND DueMonth = ?", [member.Id, currentMonth]);
-        const newOutstanding = latestDue ? latestDue.ClosingPrincipal : member.LoanShareAmount;
-        await db.run(
-          "UPDATE LoanMember SET OutstandingPrincipal = ? WHERE Id = ?",
-          [newOutstanding, member.Id]
-        );
+        const latestClosingPrincipal = await LoanModel.getLatestClosingPrincipal(member.Id, currentMonth);
+        const newOutstanding = latestClosingPrincipal !== null ? latestClosingPrincipal : member.LoanShareAmount;
+        await LoanModel.updateLoanMemberOutstanding(member.Id, newOutstanding);
 
         // Recalculate OutstandingPrincipal of Loan
-        const totalOutstandingResult = await db.get<{ total: number }>(
-          "SELECT SUM(OutstandingPrincipal) as total FROM LoanMember WHERE LoanId = ?",
-          [loan.Id]
-        );
-        const newLoanOutstanding = totalOutstandingResult?.total || 0;
+        const newLoanOutstanding = await LoanModel.getSumOutstandingPrincipalByLoan(loan.Id);
         const newLoanStatus = newLoanOutstanding <= 0 ? 'Closed' : 'Active';
 
-        await db.run(
-          "UPDATE Loan SET OutstandingPrincipal = ?, Status = ? WHERE Id = ?",
-          [newLoanOutstanding, newLoanStatus, loan.Id]
-        );
+        await LoanModel.updateLoanOutstanding(loan.Id, newLoanOutstanding);
+        await LoanModel.updateLoan(loan.Id, { Status: newLoanStatus });
       }
 
       await db.run("COMMIT");
@@ -382,7 +338,6 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
   }
 };
 
-// Legacy single approve endpoint (no-op or success response to prevent routing errors)
 export const approveLoanPayment = async (req: Request, res: Response) => {
   res.status(405).json({ error: "Endpoint deprecated. Use final-submit batch endpoint instead." });
 };

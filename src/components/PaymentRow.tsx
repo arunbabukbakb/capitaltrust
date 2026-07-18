@@ -43,8 +43,12 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
               <span className="font-mono font-bold text-slate-900 tracking-tight text-[9px] bg-slate-100 px-1 py-0.5 rounded">{loanNo || '—'}</span>
               <span className="font-bold text-slate-800 truncate text-[11px]">{userName || '—'}</span>
             </div>
-            <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px]">
+            <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
               <span>Due: <strong className="text-slate-700">₹{Math.round(dueAmount || 0)}</strong></span>
+              <span>•</span>
+              <span>Rate: <strong className="text-indigo-600">{payment.interestRate}% ({payment.interestMode})</strong></span>
+              <span>•</span>
+              <span>Bal: <strong className="text-slate-700">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
             </div>
             <div className="flex gap-2 font-mono text-[9px] text-slate-500">
               <span>Int: <strong className="text-amber-600">₹{calculatedInterest}</strong></span>
@@ -84,8 +88,12 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
       <div className="p-3 flex items-center justify-between gap-2 border-b border-slate-100 hover:bg-slate-50 transition duration-150 text-[10px] text-slate-700">
         <div className="space-y-1 flex-1 min-w-0">
           <h5 className="font-bold text-slate-800 truncate text-[11px]">{userName || '—'}</h5>
-          <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px]">
+          <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
             <span>Due: <strong className="text-slate-700">₹{Math.round(dueAmount || 0)}</strong></span>
+            <span>•</span>
+            <span>Rate: <strong className="text-indigo-600">{payment.interestRate}% ({payment.interestMode})</strong></span>
+            <span>•</span>
+            <span>Bal: <strong className="text-slate-700">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
           </div>
         </div>
 
@@ -128,6 +136,24 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
             <span className="font-semibold text-slate-900">{userName || '—'}</span>
             <span className="text-xs text-slate-400 font-mono">{userId}</span>
           </div>
+        </td>
+        {/* Interest Rate */}
+        <td className="px-4 py-3 text-sm font-semibold text-slate-700 font-mono">
+          {payment.interestRate ? `${payment.interestRate}%` : '—'}
+          {payment.interestMode && (
+            <span className="block text-[10px] text-slate-400 font-medium font-sans">
+              ({payment.interestMode})
+            </span>
+          )}
+        </td>
+        {/* Outstanding Balance */}
+        <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+          ₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}
+          {payment.loanAmount && (
+            <span className="block text-[10px] text-slate-400 font-medium font-sans">
+              of ₹{Math.round(payment.loanAmount).toLocaleString()}
+            </span>
+          )}
         </td>
         {/* Due */}
         <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
@@ -183,6 +209,24 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
           <span className="font-semibold text-slate-900">{userName || '—'}</span>
           <span className="text-xs text-slate-400 font-mono">{userId}</span>
         </div>
+      </td>
+      {/* Interest Rate */}
+      <td className="px-4 py-3 text-sm font-semibold text-slate-700 font-mono">
+        {payment.interestRate ? `${payment.interestRate}%` : '—'}
+        {payment.interestMode && (
+          <span className="block text-[10px] text-slate-400 font-medium font-sans">
+            ({payment.interestMode})
+          </span>
+        )}
+      </td>
+      {/* Outstanding Balance */}
+      <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+        ₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}
+        {payment.loanAmount && (
+          <span className="block text-[10px] text-slate-400 font-medium font-sans">
+            of ₹{Math.round(payment.loanAmount).toLocaleString()}
+          </span>
+        )}
       </td>
       {/* Due */}
       <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">

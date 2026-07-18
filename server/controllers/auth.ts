@@ -2,12 +2,12 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { getDatabase } from '../database';
+import { UserModel } from '../models/User';
+import { RoleModel } from '../models/Role';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
 export const register = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { fullName, email, username, password, phoneNumber } = req.body;
     if (!fullName || !email || !username || !password) {
@@ -15,20 +15,20 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const emailLower = email.toLowerCase();
-    const existing = await db.get("SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?", [emailLower, username.toLowerCase()]);
+    const existing = await UserModel.findByUsernameOrEmail(username, null) || await UserModel.findByUsernameOrEmail(email, null);
     if (existing) {
-      return res.status(400).json({ error: "Account with this email already exists" });
+      return res.status(400).json({ error: "Account with this email/username already exists" });
     }
 
-    const rolesCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM users");
-    const isFirstUser = !rolesCount || rolesCount.count === 0;
+    const usersCount = await UserModel.countAll();
+    const isFirstUser = usersCount === 0;
     const initialRole = isFirstUser ? 'admin' : 'user';
 
-    const countRes = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM users WHERE id LIKE 'CT-%'");
-    const nextIdNumber = 55001 + (countRes?.count || 0);
+    const countPrefix = await UserModel.countByPrefix('CT-');
+    const nextIdNumber = 55001 + countPrefix;
     const userId = `CT-${nextIdNumber}`;
 
-    const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ?", [initialRole]);
+    const role = await RoleModel.findByRoleType(initialRole);
     if (!role) {
       return res.status(500).json({ error: "System role could not be configured" });
     }
@@ -36,17 +36,24 @@ export const register = async (req: Request, res: Response) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    await db.run(
-      "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [userId, fullName, emailLower, username.toLowerCase(), initialRole, hashedPassword, 1, phoneNumber || null, role.id]
-    );
+    const tenantId = req.headers['x-tenant-id'] as string;
 
-    await db.run(
-      "INSERT INTO user_roles (userId, roleId) VALUES (?, ?)",
-      [userId, role.id]
-    );
+    await UserModel.create({
+      id: userId,
+      fullName,
+      email: emailLower,
+      username: username.toLowerCase(),
+      role: initialRole,
+      password: hashedPassword,
+      status: 1,
+      phoneNumber: phoneNumber || undefined,
+      roleId: role.id,
+      tenantId
+    });
 
-    const roleInfo = await db.get<{ roleName: string }>("SELECT roleName FROM roles WHERE id = ?", [role.id]);
+    await UserModel.assignRole(userId, role.id);
+
+    const assignedRoles = await UserModel.getAssignedRoles(userId);
 
     const newUser = {
       id: userId,
@@ -55,7 +62,8 @@ export const register = async (req: Request, res: Response) => {
       username: username.toLowerCase(),
       role: initialRole,
       phoneNumber,
-      assignedRoles: [{ id: role.id, roleName: roleInfo?.roleName || 'Member', roleType: initialRole }]
+      tenantId,
+      assignedRoles
     };
     const token = jwt.sign({ id: userId, role: initialRole }, JWT_SECRET, { expiresIn: '1d' });
 
@@ -73,15 +81,14 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Missing username or password" });
     }
 
-    const loginIdentifier = username.toLowerCase();
-    const user = await db.get("SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?", [loginIdentifier, loginIdentifier]);
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const user = await UserModel.findByUsernameOrEmail(username, tenantId);
     if (!user) {
       return res.status(404).json({ error: "No account found for this username/email" });
     }
@@ -107,11 +114,7 @@ export const login = async (req: Request, res: Response) => {
     });
 
     const { password: _, ...userToSend } = user;
-    const userRoles = await db.all(`
-      SELECT r.id, r.roleName, r.roleType FROM roles r
-      JOIN user_roles ur ON r.id = ur.roleId
-      WHERE ur.userId = ?
-    `, [user.id]);
+    const userRoles = await UserModel.getAssignedRoles(user.id);
     (userToSend as any).assignedRoles = userRoles;
 
     res.json({ message: "Welcome inside CapitalTrust Portal", user: userToSend, token });
@@ -122,7 +125,6 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const me = async (req: Request, res: Response) => {
-  const db = getDatabase();
   const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
   if (!token) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -130,15 +132,11 @@ export const me = async (req: Request, res: Response) => {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { id: string };
-    const user = await db.get("SELECT id, fullName, email, username, role, status, phoneNumber, profileImage FROM users WHERE id = ?", [payload.id]);
+    const user = await UserModel.findById(payload.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    const userRoles = await db.all(`
-      SELECT r.id, r.roleName, r.roleType FROM roles r
-      JOIN user_roles ur ON r.id = ur.roleId
-      WHERE ur.userId = ?
-    `, [payload.id]);
+    const userRoles = await UserModel.getAssignedRoles(payload.id);
     (user as any).assignedRoles = userRoles;
     res.json({ user });
   } catch (error) {
@@ -157,20 +155,15 @@ export const logout = (req: Request, res: Response) => {
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { email } = req.body;
-    const user = await db.get("SELECT id FROM users WHERE email = ?", [email]);
+    const user = await UserModel.findByUsernameOrEmail(email, null);
 
     if (user) {
       const token = crypto.randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 3600000).toISOString(); // ISO String is safer for sqlite
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
 
-      await db.run(
-        "INSERT INTO password_reset_tokens (userId, token, expiresAt) VALUES (?, ?, ?)",
-        [user.id, token, expiresAt]
-      );
-
+      await UserModel.createPasswordResetToken(user.id, token, expiresAt);
       console.log(`Password reset link for ${email}: http://localhost:5173/reset-password?token=${token}`);
     }
 
@@ -182,14 +175,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { token, password } = req.body;
     if (!token || !password) {
       return res.status(400).json({ error: "Token and new password are required." });
     }
 
-    const resetRequest = await db.get("SELECT * FROM password_reset_tokens WHERE token = ?", [token]);
+    const resetRequest = await UserModel.getPasswordResetToken(token);
 
     if (!resetRequest || new Date(resetRequest.expiresAt) < new Date()) {
       return res.status(400).json({ error: "Invalid or expired password reset token." });
@@ -198,8 +190,8 @@ export const resetPassword = async (req: Request, res: Response) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    await db.run("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, resetRequest.userId]);
-    await db.run("DELETE FROM password_reset_tokens WHERE id = ?", [resetRequest.id]);
+    await UserModel.update(resetRequest.userId, { password: hashedPassword });
+    await UserModel.deletePasswordResetToken(resetRequest.id);
 
     res.status(200).json({ message: "Password has been reset successfully." });
   } catch (error) {
@@ -209,7 +201,6 @@ export const resetPassword = async (req: Request, res: Response) => {
 };
 
 export const updateProfile = async (req: Request, res: Response) => {
-  const db = getDatabase();
   const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
   if (!token) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -223,21 +214,19 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Full name and email are required" });
     }
 
-    await db.run(
-      "UPDATE users SET fullName = ?, email = ?, phoneNumber = ?, profileImage = ? WHERE id = ?",
-      [fullName, email.toLowerCase(), phoneNumber || null, profileImage || null, payload.id]
-    );
+    await UserModel.update(payload.id, {
+      fullName,
+      email: email.toLowerCase(),
+      phoneNumber: phoneNumber || null,
+      profileImage: profileImage || null
+    });
 
-    const user = await db.get("SELECT id, fullName, email, username, role, status, phoneNumber, profileImage FROM users WHERE id = ?", [payload.id]);
+    const user = await UserModel.findById(payload.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const userRoles = await db.all(`
-      SELECT r.id, r.roleName, r.roleType FROM roles r
-      JOIN user_roles ur ON r.id = ur.roleId
-      WHERE ur.userId = ?
-    `, [payload.id]);
+    const userRoles = await UserModel.getAssignedRoles(payload.id);
     (user as any).assignedRoles = userRoles;
 
     res.status(200).json({ message: "Profile updated successfully", user });
@@ -248,7 +237,6 @@ export const updateProfile = async (req: Request, res: Response) => {
 };
 
 export const changePassword = async (req: Request, res: Response) => {
-  const db = getDatabase();
   const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
   if (!token) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -262,22 +250,20 @@ export const changePassword = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Current password and new password are required" });
     }
 
-    const user = await db.get("SELECT password FROM users WHERE id = ?", [payload.id]);
+    const user = await UserModel.findById(payload.id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Verify current password match
-    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password || '');
     if (!passwordMatch) {
       return res.status(400).json({ error: "Incorrect current password" });
     }
 
-    // Hash new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    await db.run("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.id]);
+    await UserModel.update(payload.id, { password: hashedPassword });
 
     res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {

@@ -20,4 +20,7 @@ export interface LoanPayment {
   loanMemberId?: number;
   loanNo?: string;
   canEdit?: boolean;
+  interestRate?: number;
+  interestMode?: string;
+  outstandingBalance?: number;
 }

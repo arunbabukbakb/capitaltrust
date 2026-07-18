@@ -8,6 +8,9 @@ import Dashboard from './pages/Dashboard';
 import FundCollection from './pages/FundCollection';
 import LoanRepayment from './pages/LoanRepayment';
 import LoanEntry from './pages/LoanEntry';
+import { getSubdomain } from './main';
+import LandingPage from './pages/LandingPage';
+import TenantRegistration from './pages/TenantRegistration';
 import LoanList from './pages/LoanList';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -39,6 +42,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [tenantError, setTenantError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +64,13 @@ export default function App() {
     const fetchCompanySettings = async () => {
       try {
         const res = await fetch('/api/settings/company');
+        if (res.status === 404) {
+          const data = await res.json();
+          if (data.error === 'tenant_not_found') {
+            setTenantError('not_found');
+            return;
+          }
+        }
         if (!res.ok) throw new Error('Failed to fetch company settings');
         const data = await res.json();
         dispatch(setCompanySettings(data));
@@ -91,6 +102,71 @@ export default function App() {
     return menus.some((m: any) => m.menuId === menuId);
   };
 
+  const subdomain = getSubdomain();
+
+  const getMainDomainUrl = () => {
+    const portStr = window.location.port ? `:${window.location.port}` : '';
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    if (parts.length === 2 && parts[1] === 'localhost') {
+      return `http://localhost${portStr}/register-tenant`;
+    }
+    if (parts.length > 2) {
+      const mainHost = parts.slice(1).join('.');
+      return `http://${mainHost}${portStr}/register-tenant`;
+    }
+    return `http://${hostname}${portStr}/register-tenant`;
+  };
+
+  if (tenantError === 'not_found' && subdomain) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[150px] pointer-events-none" />
+        
+        <div className="max-w-md w-full bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 backdrop-blur-xl shadow-2xl text-center space-y-6 relative z-10">
+          <div className="mx-auto w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-400">
+            <ShieldCheck className="w-10 h-10 text-indigo-400 animate-pulse" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-white font-headline">Workspace Not Registered</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              The organization space <span className="text-indigo-300 font-mono font-bold">"{subdomain}"</span> has not been registered with CapitalTrust.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <a
+              href={getMainDomainUrl()}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all transform hover:-translate-y-0.5 cursor-pointer no-underline"
+            >
+              Register this Organization
+            </a>
+            <a
+              href={`http://${window.location.hostname.split('.').slice(1).join('.') || 'localhost'}${window.location.port ? `:${window.location.port}` : ''}`}
+              className="block w-full text-center text-xs text-slate-400 hover:text-white transition-colors py-2 cursor-pointer no-underline"
+            >
+              Back to CapitalTrust Home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!subdomain) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] selection:bg-indigo-500 selection:text-white antialiased">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/register-tenant" element={<TenantRegistration />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    );
+  }
+
   // Wait until menus are fetched before rendering protected routes to avoid false redirects
   const activeRoleType = activeRole?.roleType || user?.role;
   if (user && activeRoleType !== 'admin' && menus.length === 0) {
@@ -104,6 +180,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f7f9fb] selection:bg-slate-900 selection:text-white antialiased">
       <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         {/* Public Routes without Sidebar/Header */}
         <Route path="/login" element={
           user ? <Navigate to="/dashboard" /> :

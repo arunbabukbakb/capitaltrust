@@ -41,10 +41,13 @@ export default function LoanRepayment() {
   }, []);
 
   // Filter loans that belong to the user
-  const userLoans = loans.filter(l =>
-    l.memberId?.split(',').map((id: string) => id.trim()).includes(user?.id) ||
-    l.members?.some((m: any) => m.userId === user?.id)
-  );
+  const userLoans = loans.filter(l => {
+    const userIdStr = String(user?.id || '');
+    return (
+      l.memberId?.split(',').map((id: string) => String(id).trim()).includes(userIdStr) ||
+      l.members?.some((m: any) => String(m.userId) === userIdStr)
+    );
+  });
 
   const activeUserLoans = userLoans.filter(l => 
     l.status === 'ACTIVE' || l.status === 'Active' || l.status === 'OVERDUE' || l.status === 'Overdue'
@@ -60,12 +63,12 @@ export default function LoanRepayment() {
 
   // Helper functions to get user-specific share and outstanding principal
   const getMemberShare = (loan: any) => {
-    const member = loan.members?.find((m: any) => m.userId === user?.id);
+    const member = loan.members?.find((m: any) => String(m.userId) === String(user?.id || ''));
     return member ? member.loanShareAmount : loan.principal;
   };
 
   const getMemberOutstanding = (loan: any) => {
-    const member = loan.members?.find((m: any) => m.userId === user?.id);
+    const member = loan.members?.find((m: any) => String(m.userId) === String(user?.id || ''));
     return member ? member.outstandingPrincipal : loan.outstandingBalance;
   };
 
@@ -96,7 +99,7 @@ export default function LoanRepayment() {
   const totalSelectedLoanInterest = selectedLoanPayments.reduce((sum, p) => sum + (p.interestPaid || 0), 0);
   const totalSelectedLoanPrincipal = selectedLoanPayments.reduce((sum, p) => sum + (p.principalPaid || 0), 0);
 
-  const selectedMemberInfo = activeFacility?.members?.find((m: any) => m.userId === user?.id);
+  const selectedMemberInfo = activeFacility?.members?.find((m: any) => String(m.userId) === String(user?.id || ''));
   const selectedMemberShare = selectedMemberInfo ? selectedMemberInfo.loanShareAmount : (activeFacility?.principal || 0);
   const selectedMemberOutstanding = selectedMemberInfo ? selectedMemberInfo.outstandingPrincipal : (activeFacility?.outstandingBalance || 0);
 

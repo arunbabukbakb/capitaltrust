@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
-import { getDatabase } from '../database';
+import { RoleModel } from '../models/Role';
 
 export const getRoles = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
-    const roles = await db.all("SELECT * FROM roles ORDER BY id");
+    const roles = await RoleModel.listAll();
     res.json(roles);
   } catch (error) {
     console.error("Get roles error", error);
@@ -13,20 +12,16 @@ export const getRoles = async (req: Request, res: Response) => {
 };
 
 export const createRole = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { roleName, roleType } = req.body;
     if (!roleName || !roleType) {
       return res.status(400).json({ error: "roleName and roleType are required" });
     }
-    const result = await db.run(
-      "INSERT INTO roles (roleName, roleType) VALUES (?, ?)",
-      [roleName, roleType]
-    );
-    const newRole = await db.get("SELECT * FROM roles WHERE id = ?", [result.lastID]);
+    const result = await RoleModel.create(roleName, roleType);
+    const newRole = await RoleModel.findById(Number(result.lastID));
     res.status(201).json(newRole);
   } catch (error: any) {
-    if (error.code === 'SQLITE_CONSTRAINT' && error.message.includes('UNIQUE constraint failed: roles.roleName')) {
+    if (error.code === 'SQLITE_CONSTRAINT' || error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
       return res.status(409).json({ error: `A role with the name "${req.body.roleName}" already exists.` });
     }
     console.error("Create role error", error);
@@ -35,18 +30,14 @@ export const createRole = async (req: Request, res: Response) => {
 };
 
 export const updateRole = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { id } = req.params;
     const { roleName, roleType } = req.body;
     if (!roleName || !roleType) {
       return res.status(400).json({ error: "roleName and roleType are required" });
     }
-    await db.run(
-      "UPDATE roles SET roleName = ?, roleType = ? WHERE id = ?",
-      [roleName, roleType, id]
-    );
-    const updatedRole = await db.get("SELECT * FROM roles WHERE id = ?", [id]);
+    await RoleModel.update(Number(id), roleName, roleType);
+    const updatedRole = await RoleModel.findById(Number(id));
     res.json(updatedRole);
   } catch (error) {
     console.error("Update role error", error);
@@ -55,10 +46,9 @@ export const updateRole = async (req: Request, res: Response) => {
 };
 
 export const deleteRole = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const { id } = req.params;
-    await db.run("DELETE FROM roles WHERE id = ?", [id]);
+    await RoleModel.delete(Number(id));
     res.status(204).send();
   } catch (error) {
     console.error("Delete role error", error);

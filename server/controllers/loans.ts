@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
+import { LoanModel } from '../models/Loan';
+import { UserModel } from '../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -17,7 +19,6 @@ interface LoanInterestSlabInput {
 }
 
 const validateStructuredLoanPayload = async (payload: any) => {
-  const db = getDatabase();
   const {
     loanType,
     amount,
@@ -77,7 +78,7 @@ const validateStructuredLoanPayload = async (payload: any) => {
   }
 
   for (const member of loanMembers) {
-    const user = await db.get("SELECT id FROM users WHERE id = ?", [member.userId]);
+    const user = await UserModel.findById(member.userId);
     if (!user) {
       return { error: `Invalid user selected: ${member.userId}` };
     }
@@ -94,58 +95,13 @@ const validateStructuredLoanPayload = async (payload: any) => {
 };
 
 export const getLoans = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
-    const structuredLoans = await db.all(`
-      SELECT
-        l.Id,
-        l.LoanNo,
-        l.LoanType,
-        l.Amount,
-        l.OutstandingPrincipal,
-        l.TenureMonths,
-        l.StartDate,
-        l.EndDate,
-        l.InterestMode,
-        l.InterestRate,
-        l.Status,
-        l.CreatedBy,
-        l.CreatedDate,
-        COALESCE(p.PaidToDate, 0) as PaidToDate,
-        GROUP_CONCAT(u.fullName, ', ') as MemberNames,
-        GROUP_CONCAT(lm.UserId, ', ') as MemberIds
-      FROM Loan l
-      LEFT JOIN LoanMember lm ON lm.LoanId = l.Id
-      LEFT JOIN users u ON u.id = lm.UserId
-      LEFT JOIN (
-        SELECT lm.LoanId, SUM(lp.Amount) as PaidToDate
-        FROM LoanPayment lp
-        JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
-        GROUP BY lm.LoanId
-      ) p ON p.LoanId = l.Id
-      GROUP BY l.Id
-      ORDER BY l.CreatedDate DESC
-    `);
-
+    const structuredLoans = await LoanModel.listAllLoans();
     const structuredLoanIds = structuredLoans.map((loan: any) => loan.Id);
-    const slabsByLoan = structuredLoanIds.length
-      ? await db.all(
-          `SELECT * FROM LoanInterestSlab WHERE LoanId IN (${structuredLoanIds.map(() => "?").join(",")}) ORDER BY FromAmount`,
-          structuredLoanIds
-        )
-      : [];
-    const paymentsByLoan = structuredLoanIds.length
-      ? await db.all(
-          `SELECT lm.LoanId, COUNT(*) as RepaymentCount FROM LoanPayment lp JOIN LoanMember lm ON lp.LoanMemberId = lm.Id WHERE lm.LoanId IN (${structuredLoanIds.map(() => "?").join(",")}) GROUP BY lm.LoanId`,
-          structuredLoanIds
-        )
-      : [];
-    const membersByLoan = structuredLoanIds.length
-      ? await db.all(
-          `SELECT lm.*, u.fullName FROM LoanMember lm LEFT JOIN users u ON u.id = lm.UserId WHERE LoanId IN (${structuredLoanIds.map(() => "?").join(",")}) ORDER BY lm.Id`,
-          structuredLoanIds
-        )
-      : [];
+    
+    const slabsByLoan = await LoanModel.getSlabsByLoanIds(structuredLoanIds);
+    const paymentsByLoan = await LoanModel.getPaymentsCountByLoanIds(structuredLoanIds);
+    const membersByLoan = await LoanModel.getMembersByLoanIds(structuredLoanIds);
 
     const mappedStructuredLoans = structuredLoans.map((loan: any) => {
       const status = String(loan.Status).toUpperCase();
@@ -198,10 +154,9 @@ export const getLoans = async (req: Request, res: Response) => {
     console.error("Get loans error", error);
     res.status(500).json({ error: "Error fetching loans list" });
   }
-}
+};
 
 export const createLoan = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const {
       loanType,
@@ -266,42 +221,42 @@ export const createLoan = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admin and manager can create group loans" });
     }
 
+    const db = getDatabase();
     await db.run("BEGIN TRANSACTION");
     try {
-      await db.run(
-        `INSERT INTO Loan
-          (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          loanId,
-          loanNo,
-          normalizedLoanType,
-          parsedAmount,
-          parsedAmount,
-          parsedTenure,
-          startDate,
-          computedEndDate,
-          normalizedInterestMode,
-          normalizedInterestMode === "Fixed" ? Number(interestRate) : null,
-          normalizedStatus,
-          createdBy,
-          createdDate,
-        ]
-      );
+      await LoanModel.createLoan({
+        Id: loanId,
+        LoanNo: loanNo,
+        LoanType: normalizedLoanType as 'Single' | 'Group',
+        Amount: parsedAmount,
+        TenureMonths: parsedTenure,
+        StartDate: startDate,
+        EndDate: computedEndDate,
+        InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
+        InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
+        Status: normalizedStatus as any,
+        CreatedBy: createdBy || undefined,
+        CreatedDate: createdDate
+      });
 
       for (const member of loanMembers) {
-        await db.run(
-          "INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate) VALUES (?, ?, ?, ?, ?)",
-          [loanId, member.userId, Number(member.loanShareAmount), Number(member.loanShareAmount), createdDate]
-        );
+        await LoanModel.addLoanMember({
+          LoanId: loanId,
+          UserId: member.userId,
+          LoanShareAmount: Number(member.loanShareAmount),
+          CreatedDate: createdDate,
+          Status: 'Active'
+        });
       }
 
       if (normalizedInterestMode === "Variable") {
         for (const slab of interestSlabs) {
-          await db.run(
-            "INSERT INTO LoanInterestSlab (LoanId, FromAmount, ToAmount, InterestRate) VALUES (?, ?, ?, ?)",
-            [loanId, Number(slab.fromAmount), Number(slab.toAmount), Number(slab.interestRate)]
-          );
+          await LoanModel.addInterestSlab({
+            LoanId: loanId,
+            FromAmount: Number(slab.fromAmount),
+            ToAmount: Number(slab.toAmount),
+            InterestRate: Number(slab.interestRate)
+          });
         }
       }
 
@@ -311,7 +266,7 @@ export const createLoan = async (req: Request, res: Response) => {
       throw error;
     }
 
-    const createdLoan = await db.get("SELECT * FROM Loan WHERE Id = ?", [loanId]);
+    const createdLoan = await LoanModel.findById(loanId);
     res.status(201).json(createdLoan);
   } catch (error) {
     console.error("Create loan error", error);
@@ -320,7 +275,6 @@ export const createLoan = async (req: Request, res: Response) => {
 };
 
 export const updateLoan = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -337,7 +291,7 @@ export const updateLoan = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admin and manager can edit loans" });
     }
 
-    const existingLoan = await db.get("SELECT * FROM Loan WHERE Id = ? OR LoanNo = ?", [req.params.id, req.params.id]);
+    const existingLoan = await LoanModel.findById(req.params.id);
     if (!existingLoan) {
       return res.status(404).json({ error: "Loan not found" });
     }
@@ -378,8 +332,8 @@ export const updateLoan = async (req: Request, res: Response) => {
       interestSlabs,
     } = validation;
 
-    const paid = await db.get<{ total: number }>("SELECT COALESCE(SUM(lp.Amount), 0) as total FROM LoanPayment lp JOIN LoanMember lm ON lp.LoanMemberId = lm.Id WHERE lm.LoanId = ?", [existingLoan.Id]);
-    if ((paid?.total || 0) > parsedAmount) {
+    const paidAmount = await LoanModel.getPaidAmountByLoanId(existingLoan.Id);
+    if (paidAmount > parsedAmount) {
       return res.status(400).json({ error: "Loan amount cannot be less than repayments already posted" });
     }
 
@@ -391,42 +345,41 @@ export const updateLoan = async (req: Request, res: Response) => {
     const normalizedStatus = ["Pending", "Active", "Closed", "Cancelled"].includes(status) ? status : existingLoan.Status;
     const updatedDate = new Date().toISOString();
 
+    const db = getDatabase();
     await db.run("BEGIN TRANSACTION");
     try {
-      await db.run(
-        `UPDATE Loan
-         SET LoanType = ?, Amount = ?, OutstandingPrincipal = ?, TenureMonths = ?, StartDate = ?, EndDate = ?,
-             InterestMode = ?, InterestRate = ?, Status = ?
-         WHERE Id = ?`,
-        [
-          normalizedLoanType,
-          parsedAmount,
-          parsedAmount,
-          parsedTenure,
-          startDate,
-          computedEndDate,
-          normalizedInterestMode,
-          normalizedInterestMode === "Fixed" ? Number(interestRate) : null,
-          normalizedStatus,
-          existingLoan.Id,
-        ]
-      );
+      await LoanModel.updateLoan(existingLoan.Id, {
+        LoanType: normalizedLoanType as 'Single' | 'Group',
+        Amount: parsedAmount,
+        OutstandingPrincipal: parsedAmount,
+        TenureMonths: parsedTenure,
+        StartDate: startDate,
+        EndDate: computedEndDate,
+        InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
+        InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
+        Status: normalizedStatus as any
+      });
 
-      await db.run("DELETE FROM LoanMember WHERE LoanId = ?", [existingLoan.Id]);
+      await LoanModel.deleteLoanMembers(existingLoan.Id);
       for (const member of loanMembers) {
-        await db.run(
-          "INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate) VALUES (?, ?, ?, ?, ?)",
-          [existingLoan.Id, member.userId, Number(member.loanShareAmount), Number(member.loanShareAmount), updatedDate]
-        );
+        await LoanModel.addLoanMember({
+          LoanId: existingLoan.Id,
+          UserId: member.userId,
+          LoanShareAmount: Number(member.loanShareAmount),
+          CreatedDate: updatedDate,
+          Status: 'Active'
+        });
       }
 
-      await db.run("DELETE FROM LoanInterestSlab WHERE LoanId = ?", [existingLoan.Id]);
+      await LoanModel.deleteInterestSlabs(existingLoan.Id);
       if (normalizedInterestMode === "Variable") {
         for (const slab of interestSlabs) {
-          await db.run(
-            "INSERT INTO LoanInterestSlab (LoanId, FromAmount, ToAmount, InterestRate) VALUES (?, ?, ?, ?)",
-            [existingLoan.Id, Number(slab.fromAmount), Number(slab.toAmount), Number(slab.interestRate)]
-          );
+          await LoanModel.addInterestSlab({
+            LoanId: existingLoan.Id,
+            FromAmount: Number(slab.fromAmount),
+            ToAmount: Number(slab.toAmount),
+            InterestRate: Number(slab.interestRate)
+          });
         }
       }
 
@@ -436,7 +389,7 @@ export const updateLoan = async (req: Request, res: Response) => {
       throw error;
     }
 
-    const updatedLoan = await db.get("SELECT * FROM Loan WHERE Id = ?", [existingLoan.Id]);
+    const updatedLoan = await LoanModel.findById(existingLoan.Id);
     res.json(updatedLoan);
   } catch (error) {
     console.error("Update loan error", error);
@@ -445,7 +398,6 @@ export const updateLoan = async (req: Request, res: Response) => {
 };
 
 export const deleteLoan = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -462,17 +414,18 @@ export const deleteLoan = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admin and manager can delete loans" });
     }
 
-    const existingLoan = await db.get("SELECT * FROM Loan WHERE Id = ? OR LoanNo = ?", [req.params.id, req.params.id]);
+    const existingLoan = await LoanModel.findById(req.params.id);
     if (!existingLoan) {
       return res.status(404).json({ error: "Loan not found" });
     }
 
-    const repayment = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM LoanPayment lp JOIN LoanMember lm ON lp.LoanMemberId = lm.Id WHERE lm.LoanId = ?", [existingLoan.Id]);
-    if ((repayment?.count || 0) > 0) {
+    const repayments = await LoanModel.getPaymentsCountByLoanIds([existingLoan.Id]);
+    const count = repayments.length ? repayments[0].RepaymentCount : 0;
+    if (count > 0) {
       return res.status(409).json({ error: "Cannot delete this loan because repayment has already started" });
     }
 
-    await db.run("DELETE FROM Loan WHERE Id = ?", [existingLoan.Id]);
+    await LoanModel.deleteLoan(existingLoan.Id);
     res.status(204).send();
   } catch (error) {
     console.error("Delete loan error", error);
@@ -481,7 +434,6 @@ export const deleteLoan = async (req: Request, res: Response) => {
 };
 
 export const approveLoan = async (req: Request, res: Response) => {
-  const db = getDatabase();
   try {
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -498,18 +450,17 @@ export const approveLoan = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admin and manager can approve loans" });
     }
 
-    const existingLoan = await db.get("SELECT * FROM Loan WHERE Id = ? OR LoanNo = ?", [req.params.id, req.params.id]);
+    const existingLoan = await LoanModel.findById(req.params.id);
     if (!existingLoan) {
       return res.status(404).json({ error: "Loan not found" });
     }
 
-    await db.run("UPDATE Loan SET Status = 'Active' WHERE Id = ?", [existingLoan.Id]);
+    await LoanModel.updateLoan(existingLoan.Id, { Status: 'Active' });
 
-    const updatedLoan = await db.get("SELECT * FROM Loan WHERE Id = ?", [existingLoan.Id]);
+    const updatedLoan = await LoanModel.findById(existingLoan.Id);
     res.json(updatedLoan);
   } catch (error) {
     console.error("Approve loan error", error);
     res.status(500).json({ error: "Error approving loan" });
   }
 };
-

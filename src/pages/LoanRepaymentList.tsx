@@ -265,6 +265,12 @@ const LoanRepaymentList: React.FC = () => {
                       Beneficiary User
                     </th>
                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                      Interest Rate
+                    </th>
+                    <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
+                      Outstanding Balance
+                    </th>
+                    <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
                       Current Due (Month)
                     </th>
                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500 text-center">
