@@ -153,12 +153,12 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-slate-50">
-              <tr className="text-slate-500 font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/60">
+              <tr className="text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
                 <th className="p-4 pl-6 uppercase tracking-wider text-[10px]">User</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Contact</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Assigned Role</th>
@@ -173,7 +173,7 @@ export default function UsersPage() {
                 <tr><td colSpan={5} className="text-center p-8 text-rose-500">{error}</td></tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition-colors">
                     <td className="p-4 pl-6">
                       <p className="font-bold text-slate-900">{user.fullName}</p>
                       <p className="text-xs text-slate-500 font-mono">{user.id}</p>
@@ -249,7 +249,7 @@ export default function UsersPage() {
             <div className="text-center p-6 text-xs text-slate-400">No users found.</div>
           ) : (
             users.map((user) => (
-              <div key={user.id} className="p-3 flex items-center justify-between gap-2 text-[10px] hover:bg-slate-50 transition duration-150">
+              <div key={user.id} className="p-3 flex items-center justify-between gap-2 text-[10px] hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition duration-150">
                 <div className="space-y-1 flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-slate-800 truncate text-[11px]">{user.fullName}</span>

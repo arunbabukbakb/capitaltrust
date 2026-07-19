@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
 import { LoanModel } from '../models/Loan';
+import { sendPushNotification } from '../firebaseAdmin';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -225,113 +226,142 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
     const currentMonth = month ? parseInt(month) : parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
     const currentDate = new Date().toISOString().split('T')[0];
 
-    await db.run("BEGIN TRANSACTION");
-    try {
-      for (const item of payments) {
-        // item: { loanMemberId: number, approved: boolean, amountPaid: number, requestId?: number }
-        const member = await LoanModel.findMemberById(item.loanMemberId);
-        if (!member) continue;
+      const notificationsToSend: { userId: string; amount: number; loanNo: string }[] = [];
 
-        const loan = await LoanModel.findById(member.LoanId);
-        if (!loan) continue;
+      await db.run("BEGIN TRANSACTION");
+      try {
+        for (const item of payments) {
+          // item: { loanMemberId: number, approved: boolean, amountPaid: number, requestId?: number }
+          const member = await LoanModel.findMemberById(item.loanMemberId);
+          if (!member) continue;
 
-        const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
+          const loan = await LoanModel.findById(member.LoanId);
+          if (!loan) continue;
 
-        // Ensure dues records exist and are saved in DB
-        const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, true);
+          const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
 
-        const amountPaid = Number(item.amountPaid || 0);
+          // Ensure dues records exist and are saved in DB
+          const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, true);
 
-        // Check if there is already an existing payment for this member and month
-        const existingPayment = await LoanModel.findPaymentByMemberAndMonth(member.Id, currentMonth);
+          const amountPaid = Number(item.amountPaid || 0);
 
-        if (amountPaid === 0) {
-          // If amount is 0, delete the payment if it exists
-          if (existingPayment) {
-            await LoanModel.deletePayment(existingPayment.Id);
-          }
+          // Check if there is already an existing payment for this member and month
+          const existingPayment = await LoanModel.findPaymentByMemberAndMonth(member.Id, currentMonth);
 
-          // Reset the dues record in database to unpaid
-          await LoanModel.updateLoanDue(dueRecord.Id, {
-            PaidAmount: 0,
-            InterestPaid: 0,
-            PrincipalPaid: 0,
-            ClosingPrincipal: dueRecord.OpeningPrincipal,
-            Status: 'Pending'
-          });
-        } else {
-          // Reset local dueRecord for new allocation calculation
-          dueRecord.PaidAmount = 0;
-          dueRecord.InterestPaid = 0;
-          dueRecord.PrincipalPaid = 0;
-          dueRecord.ClosingPrincipal = dueRecord.OpeningPrincipal;
-          dueRecord.Status = 'Pending';
+          if (amountPaid === 0) {
+            // If amount is 0, delete the payment if it exists
+            if (existingPayment) {
+              await LoanModel.deletePayment(existingPayment.Id);
+            }
 
-          // Allocate payment: Interest first, then Principal
-          const interestRemaining = Math.max(0, (dueRecord.InterestDue + dueRecord.CarryForwardInterest) - dueRecord.InterestPaid);
-          const interestPaid = Math.min(amountPaid, interestRemaining);
-          const principalRemaining = Math.max(0, dueRecord.OpeningPrincipal - dueRecord.PrincipalPaid);
-          const principalPaid = Math.min(amountPaid - interestPaid, principalRemaining);
-
-          if (existingPayment) {
-            // UPDATE existing LoanPayment record
-            await LoanModel.updatePayment(existingPayment.Id, {
-              Amount: amountPaid,
-              InterestPaid: interestPaid,
-              PrincipalPaid: principalPaid,
-              PaymentDate: currentDate,
-              ApprovedDate: currentDate,
-              ApprovedBy: decoded.id
+            // Reset the dues record in database to unpaid
+            await LoanModel.updateLoanDue(dueRecord.Id, {
+              PaidAmount: 0,
+              InterestPaid: 0,
+              PrincipalPaid: 0,
+              ClosingPrincipal: dueRecord.OpeningPrincipal,
+              Status: 'Pending'
             });
           } else {
-            // INSERT new LoanPayment record
-            await LoanModel.addPayment({
-              LoanMemberId: member.Id,
-              DueMonth: currentMonth,
-              PaymentDate: currentDate,
-              Amount: amountPaid,
-              InterestPaid: interestPaid,
-              PrincipalPaid: principalPaid,
-              ApprovedBy: decoded.id,
-              ApprovedDate: currentDate
+            // Reset local dueRecord for new allocation calculation
+            dueRecord.PaidAmount = 0;
+            dueRecord.InterestPaid = 0;
+            dueRecord.PrincipalPaid = 0;
+            dueRecord.ClosingPrincipal = dueRecord.OpeningPrincipal;
+            dueRecord.Status = 'Pending';
+
+            // Allocate payment: Interest first, then Principal
+            const interestRemaining = Math.max(0, (dueRecord.InterestDue + dueRecord.CarryForwardInterest) - dueRecord.InterestPaid);
+            const interestPaid = Math.min(amountPaid, interestRemaining);
+            const principalRemaining = Math.max(0, dueRecord.OpeningPrincipal - dueRecord.PrincipalPaid);
+            const principalPaid = Math.min(amountPaid - interestPaid, principalRemaining);
+
+            if (existingPayment) {
+              // UPDATE existing LoanPayment record
+              await LoanModel.updatePayment(existingPayment.Id, {
+                Amount: amountPaid,
+                InterestPaid: interestPaid,
+                PrincipalPaid: principalPaid,
+                PaymentDate: currentDate,
+                ApprovedDate: currentDate,
+                ApprovedBy: decoded.id
+              });
+            } else {
+              // INSERT new LoanPayment record
+              await LoanModel.addPayment({
+                LoanMemberId: member.Id,
+                DueMonth: currentMonth,
+                PaymentDate: currentDate,
+                Amount: amountPaid,
+                InterestPaid: interestPaid,
+                PrincipalPaid: principalPaid,
+                ApprovedBy: decoded.id,
+                ApprovedDate: currentDate
+              });
+            }
+
+            // Update LoanDue record with the totals
+            const updatedPaidAmount = amountPaid;
+            const updatedInterestPaid = interestPaid;
+            const updatedPrincipalPaid = principalPaid;
+            const updatedClosingPrincipal = dueRecord.OpeningPrincipal - updatedPrincipalPaid;
+            const updatedStatus = updatedPaidAmount >= dueRecord.TotalDue ? 'Paid' : (updatedPaidAmount > 0 ? 'Partial' : 'Pending');
+
+            await LoanModel.updateLoanDue(dueRecord.Id, {
+              PaidAmount: updatedPaidAmount,
+              InterestPaid: updatedInterestPaid,
+              PrincipalPaid: updatedPrincipalPaid,
+              ClosingPrincipal: updatedClosingPrincipal,
+              Status: updatedStatus as any
+            });
+
+            // Add to notification list to send post-commit
+            notificationsToSend.push({
+              userId: member.UserId,
+              amount: amountPaid,
+              loanNo: loan.LoanNo
             });
           }
 
-          // Update LoanDue record with the totals
-          const updatedPaidAmount = amountPaid;
-          const updatedInterestPaid = interestPaid;
-          const updatedPrincipalPaid = principalPaid;
-          const updatedClosingPrincipal = dueRecord.OpeningPrincipal - updatedPrincipalPaid;
-          const updatedStatus = updatedPaidAmount >= dueRecord.TotalDue ? 'Paid' : (updatedPaidAmount > 0 ? 'Partial' : 'Pending');
+          // Recalculate OutstandingPrincipal of LoanMember
+          const latestClosingPrincipal = await LoanModel.getLatestClosingPrincipal(member.Id, currentMonth);
+          const newOutstanding = latestClosingPrincipal !== null ? latestClosingPrincipal : member.LoanShareAmount;
+          await LoanModel.updateLoanMemberOutstanding(member.Id, newOutstanding);
 
-          await LoanModel.updateLoanDue(dueRecord.Id, {
-            PaidAmount: updatedPaidAmount,
-            InterestPaid: updatedInterestPaid,
-            PrincipalPaid: updatedPrincipalPaid,
-            ClosingPrincipal: updatedClosingPrincipal,
-            Status: updatedStatus as any
+          // Recalculate OutstandingPrincipal of Loan
+          const newLoanOutstanding = await LoanModel.getSumOutstandingPrincipalByLoan(loan.Id);
+          const newLoanStatus = newLoanOutstanding <= 0 ? 'Closed' : 'Active';
+
+          await LoanModel.updateLoanOutstanding(loan.Id, newLoanOutstanding);
+          await LoanModel.updateLoan(loan.Id, { Status: newLoanStatus });
+        }
+
+        await db.run("COMMIT");
+
+        // Send notifications asynchronously
+        if (notificationsToSend.length > 0) {
+          setImmediate(() => {
+            notificationsToSend.forEach(async (notif) => {
+              try {
+                const notifAmount = new Intl.NumberFormat('en-IN').format(notif.amount);
+                await sendPushNotification(
+                  [notif.userId],
+                  'Repayment Posted Successfully',
+                  `A repayment of ₹${notifAmount} has been recorded for your loan ${notif.loanNo}.`,
+                  '/loan-repayment'
+                );
+              } catch (notifError) {
+                console.error('Failed to send repayment notification:', notifError);
+              }
+            });
           });
         }
 
-        // Recalculate OutstandingPrincipal of LoanMember
-        const latestClosingPrincipal = await LoanModel.getLatestClosingPrincipal(member.Id, currentMonth);
-        const newOutstanding = latestClosingPrincipal !== null ? latestClosingPrincipal : member.LoanShareAmount;
-        await LoanModel.updateLoanMemberOutstanding(member.Id, newOutstanding);
-
-        // Recalculate OutstandingPrincipal of Loan
-        const newLoanOutstanding = await LoanModel.getSumOutstandingPrincipalByLoan(loan.Id);
-        const newLoanStatus = newLoanOutstanding <= 0 ? 'Closed' : 'Active';
-
-        await LoanModel.updateLoanOutstanding(loan.Id, newLoanOutstanding);
-        await LoanModel.updateLoan(loan.Id, { Status: newLoanStatus });
+        res.json({ success: true, message: "Repayments finalized and balances updated." });
+      } catch (err) {
+        await db.run("ROLLBACK");
+        throw err;
       }
-
-      await db.run("COMMIT");
-      res.json({ success: true, message: "Repayments finalized and balances updated." });
-    } catch (err) {
-      await db.run("ROLLBACK");
-      throw err;
-    }
   } catch (error) {
     console.error("Final submit repayment error", error);
     res.status(500).json({ error: "Error finalizing repayment batch" });

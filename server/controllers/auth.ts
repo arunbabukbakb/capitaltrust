@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { UserModel } from '../models/User';
 import { RoleModel } from '../models/Role';
+import { sendPushNotification } from '../firebaseAdmin';
+import { getDatabase } from '../database';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -73,6 +75,31 @@ export const register = async (req: Request, res: Response) => {
       sameSite: 'strict'
     });
 
+    // Trigger notification to admin and managers asynchronously
+    setImmediate(async () => {
+      try {
+        const db = getDatabase();
+        const admins = await db.all<{ id: string }[]>(
+          `SELECT u.id FROM users u
+           JOIN user_roles ur ON ur.userId = u.id
+           JOIN roles r ON r.id = ur.roleId
+           WHERE r.roleType IN ('admin', 'manager')`,
+          []
+        );
+        const adminUserIds = admins.map(u => u.id);
+        if (adminUserIds.length > 0) {
+          await sendPushNotification(
+            adminUserIds,
+            'New User Registered',
+            `User "${fullName}" (${userId}) has registered for a portal account.`,
+            '/users'
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to send registration notification:', notifError);
+      }
+    });
+
     res.status(201).json({ message: "Registration successful", user: newUser, token });
   } catch (error: any) {
     console.error("Register error", error);
@@ -88,6 +115,14 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const tenantId = req.headers['x-tenant-id'] as string;
+    const db = getDatabase();
+    if (tenantId) {
+      const tenant = await db.get("SELECT isActive FROM tenants WHERE id = ?", [tenantId]);
+      if (tenant && tenant.isActive === 0) {
+        return res.status(403).json({ error: "This organization account is currently suspended. Please contact support." });
+      }
+    }
+
     const user = await UserModel.findByUsernameOrEmail(username, tenantId);
     if (!user) {
       return res.status(404).json({ error: "No account found for this username/email" });

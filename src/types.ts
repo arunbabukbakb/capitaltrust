@@ -42,4 +42,5 @@ export interface Payment {
   amount: number;
   type: string; // e.g. "Scheduled Repayment", "Extra Principal Payment"
   status: PaymentStatus;
+  interestRate?: number;
 }

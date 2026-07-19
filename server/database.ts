@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcrypt';
 
 export interface Database {
   get<T = any>(sql: string, params?: any[]): Promise<T | undefined>;
@@ -138,6 +139,35 @@ export async function initDatabase(): Promise<Database> {
       return !!res;
     };
 
+    // Check if tenants table id is VARCHAR (legacy schema) and requires upgrade
+    let schemaUpgradeNeeded = false;
+    try {
+      const colInfo = await db.get(`
+        SELECT DATA_TYPE 
+        FROM information_schema.columns 
+        WHERE table_schema = DATABASE() AND table_name = 'tenants' AND column_name = 'id'
+      `);
+      if (colInfo && colInfo.DATA_TYPE === 'varchar') {
+        schemaUpgradeNeeded = true;
+      }
+    } catch (e) {
+      // Table doesn't exist yet
+    }
+
+    if (schemaUpgradeNeeded) {
+      console.log("Upgrading database schema to support auto-increment integer tenant IDs...");
+      await db.exec("SET FOREIGN_KEY_CHECKS = 0;");
+      const tables = [
+        'user_push_tokens', 'user_roles', 'role_menu_permissions', 'MemberCollection',
+        'FundCollectionGroup', 'CollectionType', 'LoanPayment', 'LoanDue',
+        'LoanInterestSlab', 'LoanMember', 'Loan', 'password_reset_tokens', 'users', 'tenants'
+      ];
+      for (const table of tables) {
+        await db.exec(`DROP TABLE IF EXISTS ${table};`);
+      }
+      await db.exec("SET FOREIGN_KEY_CHECKS = 1;");
+    }
+
     // Temporarily disable foreign key checks to make table creation order-independent
     await db.exec("SET FOREIGN_KEY_CHECKS = 0;");
 
@@ -170,15 +200,26 @@ export async function initDatabase(): Promise<Database> {
       if (hasOldEmail && hasOldEmail.count > 0) {
         await db!.exec("ALTER TABLE users DROP INDEX email;");
       }
-
-      // Update null/empty tenantIds to 'default'
-      await db!.exec("UPDATE users SET tenantId = 'default' WHERE tenantId IS NULL OR tenantId = '';");
     } catch (e) {
       // Ignored if table or index does not exist yet
     }
 
     // Create tables if they do not exist
     await db.exec(`
+      CREATE TABLE IF NOT EXISTS tenants (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        subdomain VARCHAR(255) UNIQUE NOT NULL,
+        adminEmail VARCHAR(255) NOT NULL,
+        createdDate VARCHAR(255) NOT NULL,
+        isActive TINYINT NOT NULL DEFAULT 1,
+        paymentStatus VARCHAR(255) NOT NULL DEFAULT 'Pending',
+        paymentDate VARCHAR(255) DEFAULT NULL,
+        razorpayOrderId VARCHAR(255) DEFAULT NULL,
+        razorpayPaymentId VARCHAR(255) DEFAULT NULL,
+        razorpaySignature VARCHAR(255) DEFAULT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
         fullName VARCHAR(255) NOT NULL,
@@ -190,8 +231,9 @@ export async function initDatabase(): Promise<Database> {
         phoneNumber VARCHAR(255),
         roleId INT,
         profileImage VARCHAR(255),
-        tenantId VARCHAR(255) NOT NULL,
+        tenantId INT NOT NULL,
         FOREIGN KEY(roleId) REFERENCES roles(id),
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
         UNIQUE(tenantId, username),
         UNIQUE(tenantId, email)
       );
@@ -297,7 +339,8 @@ export async function initDatabase(): Promise<Database> {
         Id INT AUTO_INCREMENT PRIMARY KEY,
         TypeName VARCHAR(255) NOT NULL,
         Status INT NOT NULL DEFAULT 1,
-        tenantId VARCHAR(255) NOT NULL,
+        tenantId INT NOT NULL,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
         UNIQUE(tenantId, TypeName)
       );
 
@@ -305,8 +348,9 @@ export async function initDatabase(): Promise<Database> {
         Id INT AUTO_INCREMENT PRIMARY KEY,
         CollectionTypeId INT NOT NULL,
         CollectionDate VARCHAR(255) NOT NULL,
-        tenantId VARCHAR(255) NOT NULL,
-        FOREIGN KEY(CollectionTypeId) REFERENCES CollectionType(Id) ON DELETE RESTRICT
+        tenantId INT NOT NULL,
+        FOREIGN KEY(CollectionTypeId) REFERENCES CollectionType(Id) ON DELETE RESTRICT,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS MemberCollection (
@@ -346,6 +390,14 @@ export async function initDatabase(): Promise<Database> {
         UNIQUE(userId, roleId)
       );
 
+      CREATE TABLE IF NOT EXISTS user_push_tokens (
+        userId VARCHAR(255) NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(userId, token),
+        FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+
       CREATE TABLE IF NOT EXISTS company_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         companyName VARCHAR(255) NOT NULL,
@@ -354,14 +406,81 @@ export async function initDatabase(): Promise<Database> {
         supportPhone VARCHAR(255)
       );
 
-      CREATE TABLE IF NOT EXISTS tenants (
-        id VARCHAR(255) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        subdomain VARCHAR(255) UNIQUE NOT NULL,
-        adminEmail VARCHAR(255) NOT NULL,
+      CREATE TABLE IF NOT EXISTS superadmins (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        fullName VARCHAR(255) NOT NULL,
         createdDate VARCHAR(255) NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS amcdetails (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        amcCharge DOUBLE NOT NULL,
+        dueDate VARCHAR(255) NOT NULL,
+        paidDate VARCHAR(255) DEFAULT NULL,
+        paidStatus VARCHAR(255) NOT NULL DEFAULT 'Pending',
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS pricedetails (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        price DOUBLE NOT NULL DEFAULT 0,
+        tax DOUBLE NOT NULL DEFAULT 0,
+        amc DOUBLE NOT NULL DEFAULT 0
+      );
     `);
+
+    // Seed default tenant if not exists
+    try {
+      const defaultTenant = await db.get("SELECT id FROM tenants WHERE subdomain = 'default'");
+      if (!defaultTenant) {
+        await db.run(
+          "INSERT INTO tenants (id, name, subdomain, adminEmail, createdDate, isActive) VALUES (?, ?, ?, ?, ?, ?)",
+          [1, 'CapitalTrust Default', 'default', 'admin@capitaltrust.com', new Date().toISOString(), 1]
+        );
+        console.log('Seeded default tenant with ID 1.');
+      }
+    } catch (err) {
+      console.error('Error seeding default tenant:', err);
+    }
+
+    // Seed default price details if empty
+    try {
+      const priceCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM pricedetails");
+      if (priceCount && priceCount.count === 0) {
+        await db.run(
+          "INSERT INTO pricedetails (price, tax, amc) VALUES (?, ?, ?)",
+          [0, 0, 0]
+        );
+        console.log('Seeded default pricing details.');
+      }
+    } catch (err) {
+      console.error('Error seeding default pricing details:', err);
+    }
+
+    // Seed default superadmin if not exists
+    try {
+      const superAdminCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM superadmins");
+      if (superAdminCount && superAdminCount.count === 0) {
+        const defaultPasswordHash = await bcrypt.hash('superpassword', 10);
+        await db.run(
+          "INSERT INTO superadmins (username, password, email, fullName, createdDate) VALUES (?, ?, ?, ?, ?)",
+          [
+            'superadmin',
+            defaultPasswordHash,
+            'superadmin@capitaltrust.com',
+            'Super Administrator',
+            new Date().toISOString()
+          ]
+        );
+        console.log('Seeded default superadmin user.');
+      }
+    } catch (err) {
+      console.error('Error seeding default superadmin user:', err);
+    }
 
     // Clean up legacy tables if needed
     try {
@@ -375,6 +494,36 @@ export async function initDatabase(): Promise<Database> {
     } catch (e) {}
 
     // Perform migrations for existing databases to add columns if necessary
+    const hasIsActive = await checkColumnExists('tenants', 'isActive');
+    if (!hasIsActive) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN isActive TINYINT NOT NULL DEFAULT 1");
+    }
+
+    const hasPaymentStatus = await checkColumnExists('tenants', 'paymentStatus');
+    if (!hasPaymentStatus) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN paymentStatus VARCHAR(255) NOT NULL DEFAULT 'Pending'");
+    }
+
+    const hasPaymentDate = await checkColumnExists('tenants', 'paymentDate');
+    if (!hasPaymentDate) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN paymentDate VARCHAR(255) DEFAULT NULL");
+    }
+
+    const hasRzpOrderId = await checkColumnExists('tenants', 'razorpayOrderId');
+    if (!hasRzpOrderId) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN razorpayOrderId VARCHAR(255) DEFAULT NULL");
+    }
+
+    const hasRzpPaymentId = await checkColumnExists('tenants', 'razorpayPaymentId');
+    if (!hasRzpPaymentId) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN razorpayPaymentId VARCHAR(255) DEFAULT NULL");
+    }
+
+    const hasRzpSignature = await checkColumnExists('tenants', 'razorpaySignature');
+    if (!hasRzpSignature) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN razorpaySignature VARCHAR(255) DEFAULT NULL");
+    }
+
     const hasOutstanding = await checkColumnExists('Loan', 'OutstandingPrincipal');
     if (!hasOutstanding) {
       await db.exec("ALTER TABLE Loan ADD COLUMN OutstandingPrincipal DOUBLE NOT NULL DEFAULT 0");

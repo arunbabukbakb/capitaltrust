@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { setCompanySettings } from '../authSlice';
+import { RootState } from '../../store';
+import { setCompanySettings } from '../../authSlice';
 import { ShieldCheck, Building, Image, Mail, Phone, Save } from 'lucide-react';
 
 export default function SettingsPage() {

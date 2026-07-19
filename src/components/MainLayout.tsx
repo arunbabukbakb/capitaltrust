@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import NotificationToast from './NotificationToast';
 
 interface MainLayoutProps {
   user: any;
@@ -27,7 +28,7 @@ export default function MainLayout({ user, onLogout, onNewTransaction }: MainLay
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 antialiased transition-colors duration-200">
+    <div className="bg-[#f7f9fb] dark:bg-[#0b0f19] selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 antialiased transition-colors duration-200">
       {!isOnline && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0f172a] text-white px-5 py-3 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2.5 border border-slate-800 animate-bounce">
           <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
@@ -73,8 +74,11 @@ export default function MainLayout({ user, onLogout, onNewTransaction }: MainLay
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
+      {/* In-app push notification toasts */}
+      <NotificationToast />
+
       {/* Primary Workspace Space */}
-      <main className="lg:pl-72 lg:pr-8 min-h-screen mx-auto">
+      <main className="lg:pl-72 lg:pr-8 px-4 sm:px-6 lg:px-0 mx-auto" style={{ minHeight: 'calc(100vh - 65px)' }}>
         <Outlet />
       </main>
     </div>

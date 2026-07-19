@@ -27,9 +27,27 @@ export function getSubdomain(): string | null {
   return null;
 }
 
-// Override global fetch to automatically inject the JWT token from localStorage
+// Override global fetch to automatically inject the JWT token from localStorage.
+// Only intercept same-origin requests (relative paths or same origin).
+// External URLs (e.g. Google Firebase APIs) are passed through unchanged to prevent CORS failures.
 const originalFetch = window.fetch;
 window.fetch = async (input, init) => {
+  // Determine request URL
+  const url = typeof input === 'string'
+    ? input
+    : input instanceof URL
+      ? input.href
+      : (input as Request).url;
+
+  // Check if request is to our own server (relative paths or same origin)
+  const isSameOrigin = url.startsWith('/') ||
+    url.startsWith(window.location.origin);
+
+  // For external URLs (Firebase, Google, etc.), skip custom header injection
+  if (!isSameOrigin) {
+    return originalFetch(input, init);
+  }
+
   const token = localStorage.getItem('token');
   const newInit = { ...(init || {}) };
   const headers = new Headers(newInit.headers || {});
@@ -76,6 +94,11 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(
       (reg) => console.log('ServiceWorker registered successfully with scope:', reg.scope),
       (err) => console.error('ServiceWorker registration failed:', err)
+    );
+    // Register Firebase Cloud Messaging background service worker for push notifications
+    navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' }).then(
+      (reg) => console.log('Firebase Messaging ServiceWorker registered with scope:', reg.scope),
+      (err) => console.error('Firebase Messaging ServiceWorker registration failed:', err)
     );
   });
 }

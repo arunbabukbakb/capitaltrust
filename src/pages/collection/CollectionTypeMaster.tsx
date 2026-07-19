@@ -137,49 +137,47 @@ export default function CollectionTypeMaster() {
       )}
 
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200/85 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200/85 dark:border-slate-800 shadow-sm">
         <div>
-          <h3 className="text-base sm:text-2xl font-bold font-headline text-slate-900 flex items-center gap-1.5">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950" />
+          <h3 className="text-base sm:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 dark:text-slate-100" />
             Collection Type Master
           </h3>
-          <p className="text-[10px] sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Configure master collection types, such as monthly dues or savings pools.
           </p>
         </div>
-        {!showForm && (
-          <button
-            onClick={() => { resetForm(); setShowForm(true); }}
-            className="w-full sm:w-auto px-3.5 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Collection Type</span>
-          </button>
-        )}
+        <button
+          onClick={() => { resetForm(); setShowForm(true); }}
+          className="w-full sm:w-auto px-3.5 py-2 bg-slate-950 hover:bg-slate-900 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 text-white rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Collection Type</span>
+        </button>
       </div>
 
-      {error && (
-        <div className="bg-rose-50 border border-rose-250 text-rose-800 rounded-lg px-4 py-3 text-xs font-semibold flex items-center gap-2 animate-shake">
-          <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
-        {/* Form Column */}
-        {showForm && (
-          <div className="lg:col-span-4 bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4 animate-slide-in">
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-              <h4 className="text-xs sm:text-sm font-bold font-headline">
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 p-4 sm:p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2.5 border-b border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs sm:text-sm font-bold font-headline text-slate-900 dark:text-slate-100">
                 {editingId ? 'Edit Collection Type' : 'Create Collection Type'}
               </h4>
               <button
                 onClick={resetForm}
-                className="p-1 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-700"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-805 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {error && (
+              <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-250 dark:border-rose-900/50 text-rose-800 dark:text-rose-400 rounded-lg px-4 py-3 text-xs font-semibold flex items-center gap-2 animate-shake">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-455 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -192,23 +190,23 @@ export default function CollectionTypeMaster() {
                   placeholder="e.g. Q3 Savings Pool"
                   value={typeName}
                   onChange={(e) => setTypeName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold text-slate-900 focus:outline-none focus:border-slate-950"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-950 dark:focus:border-slate-100"
                 />
               </div>
 
-              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-850">
                 <input
                   id="status"
                   type="checkbox"
                   checked={status}
                   onChange={(e) => setStatus(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded border-slate-300 text-slate-950 focus:ring-slate-950 cursor-pointer"
+                  className="w-4 h-4 mt-0.5 rounded border-slate-300 dark:border-slate-700 text-slate-950 dark:text-slate-100 focus:ring-slate-950 cursor-pointer"
                 />
                 <div>
-                  <label htmlFor="status" className="text-xs font-bold text-slate-900 block select-none cursor-pointer">
+                  <label htmlFor="status" className="text-xs font-bold text-slate-900 dark:text-slate-100 block select-none cursor-pointer">
                     Active Status
                   </label>
-                  <label htmlFor="status" className="text-[10px] text-slate-505 font-medium select-none cursor-pointer block mt-0.5">
+                  <label htmlFor="status" className="text-[10px] text-slate-505 dark:text-slate-400 select-none cursor-pointer block mt-0.5 font-medium">
                     If inactive, this type will be hidden from new entry dropdown lists.
                   </label>
                 </div>
@@ -218,14 +216,14 @@ export default function CollectionTypeMaster() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-bold transition cursor-pointer"
+                  className="flex-1 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-2 bg-slate-950 hover:bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-2 bg-slate-950 hover:bg-slate-900 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 rounded-lg text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -237,11 +235,13 @@ export default function CollectionTypeMaster() {
               </div>
             </form>
           </div>
-        )}
+        </div>
+      )}
 
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
         {/* List Table Column */}
-        <div className={`${showForm ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden`}>
-          <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-slate-50/40">
+        <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40">
             <h4 className="text-xs sm:text-sm font-bold font-headline">Configured Collection Types</h4>
             <p className="text-[10px] text-slate-500 mt-0.5">Manage existing categories and toggle status parameters.</p>
           </div>
@@ -261,7 +261,7 @@ export default function CollectionTypeMaster() {
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold border-b border-slate-100 dark:border-slate-700">
                       <th className="py-3 px-4 pl-6 uppercase tracking-wider text-[9px] sm:text-[10px]">ID</th>
                       <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Collection Type Name</th>
                       <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">Status</th>
@@ -270,7 +270,7 @@ export default function CollectionTypeMaster() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {collectionTypes.map((type) => (
-                      <tr key={type.id} className="hover:bg-slate-50/30 transition">
+                      <tr key={type.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                         <td className="py-3 px-4 pl-6 font-semibold font-mono text-slate-500">
                           #{type.id}
                         </td>
@@ -307,7 +307,7 @@ export default function CollectionTypeMaster() {
               {/* Mobile View Card List */}
               <div className="block sm:hidden divide-y divide-slate-100">
                 {collectionTypes.map((type) => (
-                  <div key={type.id} className="p-3.5 flex justify-between items-center text-xs hover:bg-slate-50/30 transition">
+                  <div key={type.id} className="p-3.5 flex justify-between items-center text-xs hover:bg-slate-50/30 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono text-[9px] font-bold text-slate-400">#{type.id}</span>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Loan } from '../models/Loan';
-import PaymentRow from '../components/PaymentRow';
+import { Loan } from '../../models/Loan';
+import PaymentRow from '../../components/PaymentRow';
 import { CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 const LoanRepaymentList: React.FC = () => {
@@ -159,21 +159,21 @@ const LoanRepaymentList: React.FC = () => {
       )}
 
       {/* Header Info */}
-      <div className="bg-white border border-slate-200/80 rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm flex flex-row items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm flex flex-row items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm md:text-2xl font-bold font-headline text-slate-900 tracking-tight">Repayment Entry / Posting</h2>
+          <h2 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight">Repayment Entry / Posting</h2>
           <p className="hidden md:block text-xs text-slate-500 mt-1">
             Input, adjust, and post active monthly repayments. Balances and interest carryovers recalculate upon Submission.
           </p>
         </div>
 
         {/* Tab Selection */}
-        <div className="inline-flex p-0.5 bg-slate-100/80 rounded-lg border border-slate-200 flex-shrink-0">
+        <div className="inline-flex p-0.5 bg-slate-100/80 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex-shrink-0">
           <button
             onClick={() => handleTabChange('single')}
             className={`px-2 py-1 md:px-4 md:py-2 text-[10px] md:text-xs font-semibold rounded-md md:rounded-lg transition-all duration-200 cursor-pointer ${activeTab === 'single'
-              ? 'bg-white text-slate-950 shadow-sm border border-slate-200/20'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white dark:bg-slate-700 text-slate-950 dark:text-slate-100 shadow-sm border border-slate-200/20 dark:border-slate-600'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
           >
             Single
@@ -181,8 +181,8 @@ const LoanRepaymentList: React.FC = () => {
           <button
             onClick={() => handleTabChange('group')}
             className={`px-2 py-1 md:px-4 md:py-2 text-[10px] md:text-xs font-semibold rounded-md md:rounded-lg transition-all duration-200 cursor-pointer ${activeTab === 'group'
-              ? 'bg-white text-slate-950 shadow-sm border border-slate-200/20'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white dark:bg-slate-700 text-slate-950 dark:text-slate-100 shadow-sm border border-slate-200/20 dark:border-slate-600'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
           >
             Group
@@ -191,8 +191,8 @@ const LoanRepaymentList: React.FC = () => {
       </div>
 
       {/* Main Content Card */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-3 md:p-6 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        <div className="p-3 md:p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row gap-4">
           {activeTab === 'group' && (
             <div className="max-w-xs w-full space-y-1">
               <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-500">
@@ -255,7 +255,7 @@ const LoanRepaymentList: React.FC = () => {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700">
                     {activeTab === 'single' && (
                       <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
                         Loan No
@@ -324,7 +324,7 @@ const LoanRepaymentList: React.FC = () => {
 
         {/* Action Panel / Bottom Submit */}
         {payments.length > 0 && !(activeTab === 'group' && !selectedLoanId) && (
-          <div className="p-3 md:p-6 bg-slate-50/50 border-t border-slate-100 flex flex-row justify-between items-center gap-3">
+          <div className="p-3 md:p-3 bg-slate-50/50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex flex-row justify-between items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-slate-500 text-xs font-semibold">
               <AlertCircle className="w-4 h-4 text-amber-500" />
               <span>
@@ -338,7 +338,7 @@ const LoanRepaymentList: React.FC = () => {
             <button
               onClick={handleFinalSubmit}
               disabled={submitting}
-              className="px-4 py-2 md:px-6 md:py-3 bg-slate-950 hover:bg-slate-900 active:scale-[0.98] text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-slate-950/10 cursor-pointer flex-shrink-0 text-white font-headline"
+              className="px-4 py-2 md:px-6 md:py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-blue-500/10 cursor-pointer flex-shrink-0 text-white font-headline"
             >
               {submitting ? (
                 <>

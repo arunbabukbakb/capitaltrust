@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
 import { LoanModel } from '../models/Loan';
 import { UserModel } from '../models/User';
+import { sendPushNotification } from '../firebaseAdmin';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -267,6 +268,35 @@ export const createLoan = async (req: Request, res: Response) => {
     }
 
     const createdLoan = await LoanModel.findById(loanId);
+
+    // Fire push notifications to admin and manager users asynchronously (non-blocking)
+    setImmediate(async () => {
+      try {
+        const db = getDatabase();
+        // Fetch all admin and manager user IDs
+        const adminUsers = await db.all<{ id: string }[]>(
+          `SELECT u.id FROM users u
+           JOIN user_roles ur ON ur.userId = u.id
+           JOIN roles r ON r.id = ur.roleId
+           WHERE r.roleType IN ('admin', 'manager')`,
+          []
+        );
+        const adminUserIds = adminUsers.map(u => u.id);
+        if (adminUserIds.length > 0) {
+          const notifAmount = new Intl.NumberFormat('en-IN').format(parsedAmount);
+          const requesterName = createdLoan?.MemberNames || 'A member';
+          await sendPushNotification(
+            adminUserIds,
+            'New Loan Facility Request',
+            `${requesterName} has submitted a new loan request of ₹${notifAmount} (Facility No: ${loanNo})`,
+            '/loan-list'
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to send loan notification:', notifError);
+      }
+    });
+
     res.status(201).json(createdLoan);
   } catch (error) {
     console.error("Create loan error", error);
@@ -390,6 +420,30 @@ export const updateLoan = async (req: Request, res: Response) => {
     }
 
     const updatedLoan = await LoanModel.findById(existingLoan.Id);
+
+    // If loan status transitions to Active/Approved, notify the members
+    const statusChangedToActive = (existingLoan.Status !== 'Active' && existingLoan.Status !== 'ACTIVE') &&
+                                  (normalizedStatus === 'Active' || normalizedStatus === 'ACTIVE');
+    if (statusChangedToActive) {
+      setImmediate(async () => {
+        try {
+          const members = await LoanModel.getMembersByLoanIds([existingLoan.Id]);
+          const userIds = members.map((m: any) => m.UserId).filter(Boolean);
+          if (userIds.length > 0) {
+            const notifAmount = new Intl.NumberFormat('en-IN').format(parsedAmount);
+            await sendPushNotification(
+              userIds,
+              'Loan Facility Approved',
+              `Your loan facility of ₹${notifAmount} (Facility No: ${updatedLoan?.LoanNo || existingLoan.LoanNo}) has been approved!`,
+              '/loan-repayment'
+            );
+          }
+        } catch (notifError) {
+          console.error('Failed to send loan approval notification:', notifError);
+        }
+      });
+    }
+
     res.json(updatedLoan);
   } catch (error) {
     console.error("Update loan error", error);
@@ -458,6 +512,26 @@ export const approveLoan = async (req: Request, res: Response) => {
     await LoanModel.updateLoan(existingLoan.Id, { Status: 'Active' });
 
     const updatedLoan = await LoanModel.findById(existingLoan.Id);
+
+    // Trigger notification to the members of the loan
+    setImmediate(async () => {
+      try {
+        const members = await LoanModel.getMembersByLoanIds([existingLoan.Id]);
+        const userIds = members.map((m: any) => m.UserId).filter(Boolean);
+        if (userIds.length > 0) {
+          const notifAmount = new Intl.NumberFormat('en-IN').format(existingLoan.Amount);
+          await sendPushNotification(
+            userIds,
+            'Loan Facility Approved',
+            `Your loan facility of ₹${notifAmount} (Facility No: ${existingLoan.LoanNo}) has been approved!`,
+            '/loan-repayment'
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to send loan approval notification:', notifError);
+      }
+    });
+
     res.json(updatedLoan);
   } catch (error) {
     console.error("Approve loan error", error);

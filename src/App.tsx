@@ -5,37 +5,45 @@ import { RootState } from './store';
 import { logOut, setCredentials, setMenus, setCompanySettings } from './authSlice';
 import MainLayout from './components/MainLayout';
 import Dashboard from './pages/Dashboard';
-import FundCollection from './pages/FundCollection';
-import LoanRepayment from './pages/LoanRepayment';
-import LoanEntry from './pages/LoanEntry';
+import FundCollection from './pages/collection/FundCollection';
+import LoanRepayment from './pages/loan/LoanRepayment';
+import LoanEntry from './pages/loan/LoanEntry';
 import { getSubdomain } from './main';
 import LandingPage from './pages/LandingPage';
-import TenantRegistration from './pages/TenantRegistration';
-import LoanList from './pages/LoanList';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import RolesPage from './pages/RolesPage';
-import UsersPage from './pages/UsersPage';
-import LoanRepaymentList from './pages/LoanRepaymentList';
+import TenantRegistration from './pages/tenant/TenantRegistration';
+import LoanList from './pages/loan/LoanList';
+import Register from './pages/auth/Register';
+import Login from './pages/auth/Login';
+import RolesPage from './pages/user/RolesPage';
+import UsersPage from './pages/user/UsersPage';
+import LoanRepaymentList from './pages/loan/LoanRepaymentList';
 import PrivateRoute from './components/PrivateRoute';
-import CollectionTypeMaster from './pages/CollectionTypeMaster';
-import CollectionAuditSummary from './pages/CollectionAuditSummary';
-import MenusPage from './pages/MenusPage';
-import PermissionsPage from './pages/PermissionsPage';
-import SettingsPage from './pages/SettingsPage';
-import ProfilePage from './pages/ProfilePage';
-import { 
-  PlusCircle, 
-  Settings as SettingsIcon, 
-  ShieldCheck, 
-  HelpCircle, 
+import CollectionTypeMaster from './pages/collection/CollectionTypeMaster';
+import CollectionAuditSummary from './pages/collection/CollectionAuditSummary';
+import MenusPage from './pages/user/MenusPage';
+import PermissionsPage from './pages/user/PermissionsPage';
+import SettingsPage from './pages/superadmin/SettingsPage';
+import ProfilePage from './pages/user/ProfilePage';
+import AdminLogin from './pages/superadmin/AdminLogin';
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import SuperAdminLayout from './components/SuperAdminLayout';
+import AdminProfile from './pages/superadmin/AdminProfile';
+import AdminPricing from './pages/superadmin/AdminPricing';
+import WorkspacePayment from './pages/tenant/WorkspacePayment';
+import {
+  PlusCircle,
+  Settings as SettingsIcon,
+  ShieldCheck,
+  HelpCircle,
   X,
   CreditCard,
-  Coins
+  Coins,
+  AlertTriangle
 } from 'lucide-react';
+import { initializePushNotifications, registerForegroundMessageHandler } from './firebase';
 
 export default function App() {
-  const { user, menus, activeRole } = useSelector((state: RootState) => state.auth);
+  const { user, menus, activeRole, companySettings } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
@@ -60,14 +68,30 @@ export default function App() {
     fetchUserMenus();
   }, [user, activeRole, dispatch]);
 
+  // Initialize Firebase push notifications when a user session is active
+  useEffect(() => {
+    if (!user) return;
+    initializePushNotifications().catch(err =>
+      console.warn('[FCM] Push notification init error:', err)
+    );
+    registerForegroundMessageHandler();
+  }, [user]);
+
   useEffect(() => {
     const fetchCompanySettings = async () => {
       try {
         const res = await fetch('/api/settings/company');
         if (res.status === 404) {
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (data.error === 'tenant_not_found') {
             setTenantError('not_found');
+            return;
+          }
+        }
+        if (res.status === 403) {
+          const data = await res.json().catch(() => ({}));
+          if (data.error === 'tenant_deactivated') {
+            setTenantError('deactivated');
             return;
           }
         }
@@ -123,7 +147,7 @@ export default function App() {
       <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[150px] pointer-events-none" />
-        
+
         <div className="max-w-md w-full bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 backdrop-blur-xl shadow-2xl text-center space-y-6 relative z-10">
           <div className="mx-auto w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-400">
             <ShieldCheck className="w-10 h-10 text-indigo-400 animate-pulse" />
@@ -155,12 +179,50 @@ export default function App() {
     );
   }
 
+  if (tenantError === 'deactivated' && subdomain) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-red-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-orange-500/10 blur-[150px] pointer-events-none" />
+
+        <div className="max-w-md w-full bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 backdrop-blur-xl shadow-2xl text-center space-y-6 relative z-10">
+          <div className="mx-auto w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center text-red-400 animate-bounce">
+            <AlertTriangle className="w-10 h-10 text-rose-500" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-white font-headline">Workspace Suspended</h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              The organization space <span className="text-rose-455 font-mono font-bold">"{subdomain}"</span> has been suspended. Please contact system administrators for resolution.
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <a
+              href={`http://${window.location.hostname.split('.').slice(1).join('.') || 'localhost'}${window.location.port ? `:${window.location.port}` : ''}`}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-slate-800 to-slate-950 hover:from-slate-700 hover:to-slate-900 border border-slate-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer no-underline"
+            >
+              Back to CapitalTrust Home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!subdomain) {
     return (
-      <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] selection:bg-indigo-500 selection:text-white antialiased">
+      <div className="bg-[#090d16] text-[#e2e8f0] selection:bg-indigo-500 selection:text-white antialiased">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/register-tenant" element={<TenantRegistration />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route element={<SuperAdminLayout />}>
+            <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
+            <Route path="/admin/pricing" element={<AdminPricing />} />
+            <Route path="/admin/profile" element={<AdminProfile />} />
+          </Route>
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -177,20 +239,28 @@ export default function App() {
     );
   }
 
+  const isSuperAdminRoute = location.pathname.startsWith('/admin');
+  if (companySettings?.paymentStatus === 'Pending' && !isSuperAdminRoute && location.pathname !== '/payment') {
+    return <Navigate to="/payment" replace />;
+  }
+  if (companySettings?.paymentStatus === 'Paid' && location.pathname === '/payment') {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#f7f9fb] selection:bg-slate-900 selection:text-white antialiased">
+    <div className="bg-[#f7f9fb] selection:bg-slate-900 selection:text-white antialiased">
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-        {/* Public Routes without Sidebar/Header */}
+        <Route path="/payment" element={<WorkspacePayment />} />
         <Route path="/login" element={
           user ? <Navigate to="/dashboard" /> :
-            <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center p-4 selection:bg-slate-900 selection:text-white">
+            <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center p-4 selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
               <Login onNavigateToRegister={() => navigate('/register')} />
             </div>
         } />
         <Route path="/register" element={
           user ? <Navigate to="/dashboard" /> :
-            <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center p-4 selection:bg-slate-900 selection:text-white">
+            <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center p-4 selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
               <Register onNavigateToLogin={() => navigate('/login')} />
             </div>
         } />
@@ -223,7 +293,7 @@ export default function App() {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-up text-slate-900">
             <header className="flex justify-between items-center mb-6">
               <h4 className="text-lg font-bold font-headline">Simulate Asset Event</h4>
-              <button 
+              <button
                 onClick={() => setShowTransactionModal(false)}
                 className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"
               >
@@ -236,7 +306,7 @@ export default function App() {
                 Instantly trigger transactions to see dashboard graphs and tables update in real time:
               </p>
 
-              <button 
+              <button
                 onClick={() => {
                   navigate('/loan-repayment');
                   setShowTransactionModal(false);
@@ -255,7 +325,7 @@ export default function App() {
                 <X className="w-4 h-4 text-slate-400 transform rotate-45" />
               </button>
 
-              <button 
+              <button
                 onClick={() => {
                   navigate('/fund-collection');
                   setShowTransactionModal(false);

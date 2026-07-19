@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState } from '../../store';
 import {
   CheckCircle,
   Edit3,
@@ -196,7 +196,7 @@ export default function LoanList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center gap-3">
           <div>
             <h4 className="text-sm sm:text-base font-bold font-headline">Saved Loans Ledger</h4>
@@ -206,7 +206,7 @@ export default function LoanList() {
             <button
               type="button"
               onClick={() => navigate('/loan-entry')}
-              className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-950 text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1 hover:bg-slate-900 transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Loan</span>
@@ -218,7 +218,7 @@ export default function LoanList() {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+              <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold border-b border-slate-100 dark:border-slate-700">
                 <th className="p-4 pl-5 uppercase tracking-wider text-[10px]">Loan No</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Members</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Type</th>
@@ -235,7 +235,7 @@ export default function LoanList() {
                 const isManagedLoan = Boolean(loan.loanId);
                 const repaymentStarted = Number(loan.repaymentCount || 0) > 0 || Number(loan.paidToDate || 0) > 0;
                 return (
-                  <tr key={loan.loanId || loan.id} className="hover:bg-slate-50/60 transition">
+                  <tr key={loan.loanId || loan.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                     <td className="p-4 pl-5">
                       <p className="font-mono font-bold text-slate-950 text-tnum">{loan.loanNo || loan.id}</p>
                       {!isManagedLoan && <p className="text-[10px] text-slate-400 mt-0.5">Legacy seed</p>}
@@ -346,7 +346,7 @@ export default function LoanList() {
             const isManagedLoan = Boolean(loan.loanId);
             const repaymentStarted = Number(loan.repaymentCount || 0) > 0 || Number(loan.paidToDate || 0) > 0;
             return (
-              <div key={loan.loanId || loan.id} className="p-3 flex justify-between items-center text-[10px] hover:bg-slate-50/50 transition">
+              <div key={loan.loanId || loan.id} className="p-3 flex justify-between items-center text-[10px] hover:bg-slate-50/50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                 <div className="space-y-1 max-w-[65%]">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold text-slate-950 text-[10px] text-tnum">#{loan.loanNo || loan.id}</span>

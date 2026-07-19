@@ -147,7 +147,7 @@ export default function PermissionsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {/* Roles List Card */}
-        <div className="bg-white border border-slate-200 rounded-xl md:rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 shadow-sm space-y-3">
           <h4 className="text-xs uppercase tracking-wider font-bold text-slate-400">Select Role</h4>
           <div className="flex flex-col gap-1.5">
             {roles.map((role) => (
@@ -178,7 +178,7 @@ export default function PermissionsPage() {
         </div>
 
         {/* Permissions Table Card */}
-        <div className="bg-white border border-slate-200 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm md:col-span-2 space-y-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm md:col-span-2 space-y-6">
           <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-150 pb-4">
             <div>
               <h4 className="text-sm font-bold text-slate-900 font-headline">
@@ -254,7 +254,7 @@ export default function PermissionsPage() {
                         const isChildChecked = checkedMenuIds.includes(child.id);
 
                         return (
-                          <div key={child.id} className="p-3 pl-8 flex items-center justify-between gap-3 hover:bg-slate-50/30 transition-colors">
+                          <div key={child.id} className="p-3 pl-8 flex items-center justify-between gap-3 hover:bg-slate-50/30 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition-colors">
                             <label className="flex items-center gap-3 cursor-pointer select-none text-slate-650 text-xs font-semibold">
                               <input
                                 type="checkbox"

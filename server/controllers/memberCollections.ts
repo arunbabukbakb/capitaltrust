@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getDatabase } from '../database';
 import { CollectionModel } from '../models/Collection';
+import { sendPushNotification } from '../firebaseAdmin';
 
 export const submitMemberCollections = async (req: Request, res: Response) => {
   const db = getDatabase();
@@ -17,6 +18,7 @@ export const submitMemberCollections = async (req: Request, res: Response) => {
     }
 
     const tenantId = req.headers['x-tenant-id'] as string;
+    const collectionsToSend: { userId: string; amount: number }[] = [];
 
     await db.run("BEGIN TRANSACTION");
     try {
@@ -35,11 +37,43 @@ export const submitMemberCollections = async (req: Request, res: Response) => {
           const amt = parseFloat(p.amount) || 0;
           if (amt > 0) {
             await CollectionModel.addMemberCollection(groupId, p.userId, amt);
+            collectionsToSend.push({ userId: p.userId, amount: amt });
           }
         }
       }
 
       await db.run("COMMIT");
+
+      // Trigger notifications asynchronously
+      if (collectionsToSend.length > 0) {
+        setImmediate(async () => {
+          try {
+            const dbConn = getDatabase();
+            const typeRow = await dbConn.get<{ typeName: string }>(
+              'SELECT typeName FROM collection_types WHERE id = ?',
+              [collectionTypeId]
+            );
+            const typeName = typeRow?.typeName || 'Fund Contribution';
+
+            collectionsToSend.forEach(async (item) => {
+              try {
+                const notifAmount = new Intl.NumberFormat('en-IN').format(item.amount);
+                await sendPushNotification(
+                  [item.userId],
+                  'New Contribution Recorded',
+                  `A new contribution of ₹${notifAmount} has been recorded for "${typeName}".`,
+                  '/fund-collection-audit'
+                );
+              } catch (err) {
+                console.error('Failed to send collection push notification:', err);
+              }
+            });
+          } catch (err) {
+            console.error('Failed to resolve collection type for notification:', err);
+          }
+        });
+      }
+
       res.json({ id: groupId, message: "Collections saved successfully." });
     } catch (txError) {
       await db.run("ROLLBACK");

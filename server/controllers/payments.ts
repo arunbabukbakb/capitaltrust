@@ -6,8 +6,12 @@ export const getPayments = async (req: Request, res: Response) => {
   try {
     const { loanId } = req.query;
     
+    // Fetch all slabs to calculate variable rate if needed
+    const slabs = await db.all(`SELECT * FROM LoanInterestSlab`);
+
+    let lpPayments: any[] = [];
     if (loanId) {
-      const lpPayments = await db.all(`
+      lpPayments = await db.all(`
         SELECT 
           CONCAT('TRX-', lp.Id) as id,
           lp.PaymentDate as date,
@@ -16,31 +20,63 @@ export const getPayments = async (req: Request, res: Response) => {
           'Processed' as status,
           lm.LoanId as loanId,
           lp.InterestPaid as interestPaid,
-          lp.PrincipalPaid as principalPaid
+          lp.PrincipalPaid as principalPaid,
+          l.InterestMode as interestMode,
+          l.InterestRate as loanInterestRate,
+          ld.OpeningPrincipal as openingPrincipal
         FROM LoanPayment lp
         JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
+        JOIN Loan l ON lm.LoanId = l.Id
+        LEFT JOIN LoanDue ld ON ld.LoanMemberId = lp.LoanMemberId AND ld.DueMonth = lp.DueMonth
         WHERE lm.LoanId = ?
         ORDER BY lp.PaymentDate DESC, lp.Id DESC
       `, [loanId]);
-      return res.json(lpPayments);
+    } else {
+      lpPayments = await db.all(`
+        SELECT 
+          CONCAT('TRX-', lp.Id) as id,
+          lp.PaymentDate as date,
+          lp.Amount as amount,
+          'Manual Collection' as type,
+          'Processed' as status,
+          lm.LoanId as loanId,
+          lp.InterestPaid as interestPaid,
+          lp.PrincipalPaid as principalPaid,
+          l.InterestMode as interestMode,
+          l.InterestRate as loanInterestRate,
+          ld.OpeningPrincipal as openingPrincipal
+        FROM LoanPayment lp
+        JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
+        JOIN Loan l ON lm.LoanId = l.Id
+        LEFT JOIN LoanDue ld ON ld.LoanMemberId = lp.LoanMemberId AND ld.DueMonth = lp.DueMonth
+        ORDER BY lp.PaymentDate DESC, lp.Id DESC
+      `);
     }
 
-    const lpPayments = await db.all(`
-      SELECT 
-        CONCAT('TRX-', lp.Id) as id,
-        lp.PaymentDate as date,
-        lp.Amount as amount,
-        'Manual Collection' as type,
-        'Processed' as status,
-        lm.LoanId as loanId,
-        lp.InterestPaid as interestPaid,
-        lp.PrincipalPaid as principalPaid
-      FROM LoanPayment lp
-      JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
-      ORDER BY lp.PaymentDate DESC, lp.Id DESC
-    `);
+    const mapped = lpPayments.map((payment: any) => {
+      let interestRate = payment.loanInterestRate || 0;
+      if (payment.interestMode === 'Variable') {
+        const matchingSlabs = slabs.filter((s: any) => s.LoanId === payment.loanId);
+        const op = payment.openingPrincipal || 0;
+        const slab = matchingSlabs.find((s: any) => op >= s.FromAmount && op <= s.ToAmount);
+        if (slab) {
+          interestRate = slab.InterestRate;
+        }
+      }
+      return {
+        id: payment.id,
+        date: payment.date,
+        amount: Number(payment.amount),
+        type: payment.type,
+        status: payment.status,
+        loanId: payment.loanId,
+        interestPaid: Number(payment.interestPaid || 0),
+        principalPaid: Number(payment.principalPaid || 0),
+        interestRate: Number(interestRate)
+      };
+    });
 
-    res.json(lpPayments);
+    res.json(mapped);
   } catch (error) {
     console.error("Get payments ledger error", error);
     res.status(500).json({ error: "Error fetching payments ledger" });

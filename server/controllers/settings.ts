@@ -21,15 +21,28 @@ export const getCompanySettings = async (req: Request, res: Response) => {
   try {
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
-      const tenant = await db.get("SELECT name, adminEmail FROM tenants WHERE subdomain = ?", [tenantId]);
+      const tenant = await db.get("SELECT name, adminEmail, isActive, paymentStatus, paymentDate FROM tenants WHERE id = ?", [tenantId]);
       if (!tenant) {
         return res.status(404).json({ error: "tenant_not_found" });
       }
+      if (tenant.isActive === 0) {
+        return res.status(403).json({ error: "tenant_deactivated" });
+      }
+      
+      const pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
+
       return res.json({
         companyName: tenant.name,
         companyLogo: '',
         supportEmail: tenant.adminEmail,
-        supportPhone: '+1 (555) 555-5555'
+        supportPhone: '+1 (555) 555-5555',
+        paymentStatus: tenant.paymentStatus,
+        paymentDate: tenant.paymentDate,
+        pricing: pricing ? {
+          price: pricing.price,
+          tax: pricing.tax,
+          amc: pricing.amc
+        } : null
       });
     }
 
@@ -65,7 +78,7 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
       await db.run(
-        "UPDATE tenants SET name = ?, adminEmail = ? WHERE subdomain = ?",
+        "UPDATE tenants SET name = ?, adminEmail = ? WHERE id = ?",
         [companyName, supportEmail || '', tenantId]
       );
       return res.json({ message: "Company settings updated successfully" });

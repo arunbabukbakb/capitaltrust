@@ -97,12 +97,12 @@ export default function RolesPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-slate-50">
-              <tr className="text-slate-500 font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/60">
+              <tr className="text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
                 <th className="p-4 pl-6 uppercase tracking-wider text-[10px]">ID</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Role Name</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Role Type</th>
@@ -116,7 +116,7 @@ export default function RolesPage() {
                 <tr><td colSpan={4} className="text-center p-8 text-rose-500">{error}</td></tr>
               ) : (
                 roles?.map((role) => (
-                  <tr key={role.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={role.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition-colors">
                     <td className="p-4 pl-6 font-mono font-bold text-slate-500">{role.id}</td>
                     <td className="p-4 font-semibold text-slate-900">{role.roleName}</td>
                     <td className="p-4">
@@ -155,7 +155,7 @@ export default function RolesPage() {
             <div className="text-center p-6 text-xs text-slate-400">No roles found.</div>
           ) : (
             roles.map((role) => (
-              <div key={role.id} className="p-3 flex items-center justify-between gap-2 text-[10px] hover:bg-slate-50 transition duration-150">
+              <div key={role.id} className="p-3 flex items-center justify-between gap-2 text-[10px] hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition duration-150">
                 <div className="space-y-1 flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-mono font-bold text-slate-400 text-[8px] bg-slate-50 px-1 py-0.5 rounded">ID: {role.id}</span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { updateUser } from '../authSlice';
+import { RootState } from '../../store';
+import { updateUser } from '../../authSlice';
 import { User, Mail, Phone, Shield, Camera, Save, ArrowLeft, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

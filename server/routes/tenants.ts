@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerTenant } from '../controllers/tenants';
+import { registerTenant, payTenant, createRazorpayOrder, verifyRazorpayPayment } from '../controllers/tenants';
 
 const router = Router();
 
@@ -40,9 +40,12 @@ const router = Router();
  *         description: Tenant registered successfully
  *       400:
  *         description: Missing fields, invalid subdomain format, or already exists
- *       500:
+ *       550:
  *         description: Internal server error
  */
 router.post('/register', registerTenant);
+router.post('/pay', payTenant);
+router.post('/payment/order', createRazorpayOrder);
+router.post('/payment/verify', verifyRazorpayPayment);
 
 export default router;

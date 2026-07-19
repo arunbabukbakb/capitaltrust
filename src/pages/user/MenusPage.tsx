@@ -149,12 +149,12 @@ export default function MenusPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl md:rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Desktop Table View */}
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-slate-50">
-              <tr className="text-slate-500 font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/60">
+              <tr className="text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
                 <th className="p-4 pl-6 uppercase tracking-wider text-[10px]">Icon</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Display Name</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Menu Key</th>
@@ -173,7 +173,7 @@ export default function MenusPage() {
                 <tr><td colSpan={7} className="text-center p-8 text-slate-400">No menus defined. Add some to build your layout!</td></tr>
               ) : (
                 menus.map((menu) => (
-                  <tr key={menu.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={menu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition-colors">
                     <td className="p-4 pl-6">
                       <div className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg inline-flex items-center justify-center text-slate-700">
                         {renderIcon(menu.icon)}
@@ -228,7 +228,7 @@ export default function MenusPage() {
             <div className="text-center p-6 text-xs text-slate-400 font-semibold">No menus defined. Add some to build your layout!</div>
           ) : (
             menus.map((menu) => (
-              <div key={menu.id} className="p-3 flex items-center justify-between gap-3 text-[10px] hover:bg-slate-50 transition duration-150">
+              <div key={menu.id} className="p-3 flex items-center justify-between gap-3 text-[10px] hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition duration-150">
                 {/* Left Side: Icon */}
                 <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg inline-flex items-center justify-center text-slate-700 flex-shrink-0">
                   {renderIcon(menu.icon)}
