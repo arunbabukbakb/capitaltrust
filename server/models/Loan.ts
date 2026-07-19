@@ -64,8 +64,40 @@ export interface LoanPayment {
 }
 
 export const LoanModel = {
-  async listAllLoans(): Promise<any[]> {
+  async listAllLoans(tenantId?: string): Promise<any[]> {
     const db = getDatabase();
+    if (tenantId) {
+      return db.all<any[]>(`
+        SELECT
+          l.Id,
+          l.LoanNo,
+          l.LoanType,
+          l.Amount,
+          l.OutstandingPrincipal,
+          l.TenureMonths,
+          l.StartDate,
+          l.EndDate,
+          l.InterestMode,
+          l.InterestRate,
+          l.Status,
+          l.CreatedBy,
+          l.CreatedDate,
+          COALESCE(p.PaidToDate, 0) as PaidToDate,
+          GROUP_CONCAT(u.fullName SEPARATOR ', ') as MemberNames,
+          GROUP_CONCAT(lm.UserId SEPARATOR ', ') as MemberIds
+        FROM Loan l
+        JOIN LoanMember lm ON lm.LoanId = l.Id
+        JOIN users u ON u.id = lm.UserId AND u.tenantId = ?
+        LEFT JOIN (
+          SELECT lm.LoanId, SUM(lp.Amount) as PaidToDate
+          FROM LoanPayment lp
+          JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
+          GROUP BY lm.LoanId
+        ) p ON p.LoanId = l.Id
+        GROUP BY l.Id
+        ORDER BY l.CreatedDate DESC
+      `, [tenantId]);
+    }
     return db.all<any[]>(`
       SELECT
         l.Id,

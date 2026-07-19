@@ -1,8 +1,48 @@
 import { Database } from '../database';
 import bcrypt from 'bcrypt';
 
-const initialUsers: any[] = [];
-
+const initialUsers = [
+  {
+    id: 'CT-00001',
+    fullName: 'Demo Administrator',
+    email: 'admin@capitaltrust.com',
+    username: 'admin',
+    role: 'admin',
+    phoneNumber: '+1 (555) 123-4567',
+  },
+  {
+    id: 'CT-00002',
+    fullName: 'Demo Manager',
+    email: 'manager@capitaltrust.com',
+    username: 'manager',
+    role: 'manager',
+    phoneNumber: '+1 (555) 234-5678',
+  },
+  {
+    id: 'CT-00003',
+    fullName: 'John Doe',
+    email: 'john@capitaltrust.com',
+    username: 'john',
+    role: 'user',
+    phoneNumber: '+1 (555) 345-6789',
+  },
+  {
+    id: 'CT-00004',
+    fullName: 'Jane Smith',
+    email: 'jane@capitaltrust.com',
+    username: 'jane',
+    role: 'user',
+    phoneNumber: '+1 (555) 456-7890',
+  },
+  {
+    id: 'CT-00005',
+    fullName: 'Robert Johnson',
+    email: 'robert@capitaltrust.com',
+    username: 'robert',
+    role: 'user',
+    phoneNumber: '+1 (555) 567-8901',
+  }
+];
 
 const initialRoles = [
   { roleName: 'Administrator', roleType: 'admin' },
@@ -33,8 +73,8 @@ export async function runSeeders(db: Database) {
       const hashedPassword = await bcrypt.hash('123', saltRounds);
 
       await db.run(
-        "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [user.id, user.fullName, user.email, user.username, user.role, hashedPassword, 1, user.phoneNumber || null, role.id]
+        "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [user.id, user.fullName, user.email, user.username, user.role, hashedPassword, 1, user.phoneNumber || null, role.id, 1]
       );
     }
 
@@ -94,7 +134,7 @@ export async function runSeeders(db: Database) {
     const managerRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'manager'");
 
     if (memberRole) {
-      const memberMenus = ['dashboard', 'liquidity', 'fund-collection', 'credit', 'loan-repayment', 'loan-entry'];
+      const memberMenus = ['dashboard', 'liquidity', 'fund-collection-audit', 'credit', 'loan-repayment', 'loan-entry'];
       for (const mId of memberMenus) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
         if (menu) {
@@ -124,6 +164,22 @@ export async function runSeeders(db: Database) {
       }
     }
   }
+  // Force sync member permissions: replace 'fund-collection' with 'fund-collection-audit'
+  try {
+    const memberRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'user'");
+    if (memberRole) {
+      const oldMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'fund-collection'");
+      if (oldMenu) {
+        await db.run("DELETE FROM role_menu_permissions WHERE roleId = ? AND menuId = ?", [memberRole.id, oldMenu.id]);
+      }
+      const newMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'fund-collection-audit'");
+      if (newMenu) {
+        await db.run("INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)", [memberRole.id, newMenu.id]);
+      }
+    }
+  } catch (err) {
+    console.error("Error syncing member role permissions:", err);
+  }
 
   // Seed company settings if empty
   const settingsCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM company_settings");
@@ -132,5 +188,150 @@ export async function runSeeders(db: Database) {
       "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone) VALUES (?, ?, ?, ?)",
       ['CapitalTrust', '', 'support@capitaltrust.com', '+1 (555) 555-5555']
     );
+  }
+
+  // Seed Collection Types
+  const collectionTypesCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM CollectionType WHERE tenantId = 1");
+  if (collectionTypesCount && collectionTypesCount.count === 0) {
+    await db.run("INSERT INTO CollectionType (TypeName, Status, tenantId) VALUES (?, ?, ?)", ["Monthly Contribution", 1, 1]);
+    await db.run("INSERT INTO CollectionType (TypeName, Status, tenantId) VALUES (?, ?, ?)", ["Festival Special Fund", 1, 1]);
+    console.log("Seeded default collection types.");
+  }
+
+  // Seed Collection Groups and Member Collections
+  const groupsCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM FundCollectionGroup WHERE tenantId = 1");
+  if (groupsCount && groupsCount.count === 0) {
+    const monthlyType = await db.get<{ Id: number }>("SELECT Id FROM CollectionType WHERE TypeName = ? AND tenantId = 1", ["Monthly Contribution"]);
+    const festivalType = await db.get<{ Id: number }>("SELECT Id FROM CollectionType WHERE TypeName = ? AND tenantId = 1", ["Festival Special Fund"]);
+
+    if (monthlyType && festivalType) {
+      // May 2026 Monthly Contribution
+      const group1 = await db.run("INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId) VALUES (?, ?, ?)", [monthlyType.Id, "2026-05-10", 1]);
+      if (group1.lastID) {
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group1.lastID, "CT-00003", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group1.lastID, "CT-00004", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group1.lastID, "CT-00005", 5000]);
+      }
+
+      // June 2026 Monthly Contribution
+      const group2 = await db.run("INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId) VALUES (?, ?, ?)", [monthlyType.Id, "2026-06-10", 1]);
+      if (group2.lastID) {
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group2.lastID, "CT-00003", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group2.lastID, "CT-00004", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group2.lastID, "CT-00005", 5000]);
+      }
+
+      // July 2026 Monthly Contribution
+      const group3 = await db.run("INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId) VALUES (?, ?, ?)", [monthlyType.Id, "2026-07-10", 1]);
+      if (group3.lastID) {
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group3.lastID, "CT-00003", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group3.lastID, "CT-00004", 5000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group3.lastID, "CT-00005", 5000]);
+      }
+
+      // June 2026 Festival Special Fund
+      const group4 = await db.run("INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId) VALUES (?, ?, ?)", [festivalType.Id, "2026-06-15", 1]);
+      if (group4.lastID) {
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group4.lastID, "CT-00003", 10000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group4.lastID, "CT-00004", 10000]);
+        await db.run("INSERT INTO MemberCollection (CollectionGroupId, UserId, Amount) VALUES (?, ?, ?)", [group4.lastID, "CT-00005", 10000]);
+      }
+      console.log("Seeded default collection groups and member payments.");
+    }
+  }
+
+  // Seed Loans, Slabs, Dues and Payments
+  const loansCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM Loan");
+  if (loansCount && loansCount.count === 0) {
+    // --- LOAN 1: John Doe (Active) ---
+    const loan1Id = 'LN-DEMO-00001';
+    await db.run(`
+      INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [loan1Id, 'LN-2026-00001', 'Single', 50000, 20000, 10, '2026-01-15', '2026-10-15', 'Fixed', 12.0, 'Active', 'CT-00001', '2026-01-10']);
+
+    const lm1 = await db.run(`
+      INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate, Status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [loan1Id, 'CT-00003', 50000, 20000, '2026-01-10', 'Active']);
+
+    if (lm1.lastID) {
+      // Create dues for months 1-10
+      for (let month = 1; month <= 10; month++) {
+        const openingPrincipal = 50000 - (month - 1) * 5000;
+        const principalDue = 5000;
+        const interestDue = (openingPrincipal * 0.12) / 12;
+        const totalDue = principalDue + interestDue;
+        const isPaid = month <= 6;
+        
+        const status = isPaid ? 'Paid' : 'Pending';
+        const paidAmount = isPaid ? totalDue : 0;
+        const interestPaid = isPaid ? interestDue : 0;
+        const principalPaid = isPaid ? principalDue : 0;
+        const closingPrincipal = isPaid ? (openingPrincipal - principalPaid) : openingPrincipal;
+
+        await db.run(`
+          INSERT INTO LoanDue (LoanMemberId, DueMonth, OpeningPrincipal, PrincipalDue, InterestDue, CarryForwardInterest, TotalDue, PaidAmount, InterestPaid, PrincipalPaid, ClosingPrincipal, Status)
+          VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+        `, [lm1.lastID, month, openingPrincipal, principalDue, interestDue, totalDue, paidAmount, interestPaid, principalPaid, closingPrincipal, status]);
+
+        // Add actual payment records for paid months
+        if (isPaid) {
+          const pad = String(month).padStart(2, '0');
+          const paymentDate = `2026-${pad}-20`;
+          await db.run(`
+            INSERT INTO LoanPayment (LoanMemberId, DueMonth, PaymentDate, Amount, InterestPaid, PrincipalPaid, ApprovedBy, ApprovedDate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [lm1.lastID, month, paymentDate, totalDue, interestDue, principalPaid, 'CT-00001', paymentDate]);
+        }
+      }
+    }
+
+    // --- LOAN 2: Jane Smith (Pending) ---
+    const loan2Id = 'LN-DEMO-00002';
+    await db.run(`
+      INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [loan2Id, 'LN-2026-00002', 'Single', 100000, 100000, 12, '2026-08-01', '2027-07-31', 'Fixed', 10.0, 'Pending', 'CT-00002', '2026-07-10']);
+
+    await db.run(`
+      INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate, Status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [loan2Id, 'CT-00004', 100000, 100000, '2026-07-10', 'Active']);
+
+    // --- LOAN 3: Robert Johnson (Closed) ---
+    const loan3Id = 'LN-DEMO-00003';
+    await db.run(`
+      INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [loan3Id, 'LN-2025-00003', 'Single', 30000, 0, 6, '2025-06-01', '2025-11-30', 'Fixed', 12.0, 'Closed', 'CT-00001', '2025-05-25']);
+
+    const lm3 = await db.run(`
+      INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate, Status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [loan3Id, 'CT-00005', 30000, 0, '2025-05-25', 'Closed']);
+
+    if (lm3.lastID) {
+      for (let month = 1; month <= 6; month++) {
+        const openingPrincipal = 30000 - (month - 1) * 5000;
+        const principalDue = 5000;
+        const interestDue = (openingPrincipal * 0.12) / 12;
+        const totalDue = principalDue + interestDue;
+        const closingPrincipal = openingPrincipal - principalDue;
+
+        await db.run(`
+          INSERT INTO LoanDue (LoanMemberId, DueMonth, OpeningPrincipal, PrincipalDue, InterestDue, CarryForwardInterest, TotalDue, PaidAmount, InterestPaid, PrincipalPaid, ClosingPrincipal, Status)
+          VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 'Paid')
+        `, [lm3.lastID, month, openingPrincipal, principalDue, interestDue, totalDue, totalDue, interestDue, principalDue, closingPrincipal]);
+
+        const pad = String(5 + month).padStart(2, '0');
+        const paymentDate = `2025-${pad}-20`;
+        await db.run(`
+          INSERT INTO LoanPayment (LoanMemberId, DueMonth, PaymentDate, Amount, InterestPaid, PrincipalPaid, ApprovedBy, ApprovedDate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [lm3.lastID, month, paymentDate, totalDue, interestDue, principalDue, 'CT-00001', paymentDate]);
+      }
+    }
+    console.log("Seeded default loans and transaction history.");
   }
 }

@@ -37,7 +37,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass caching for API endpoints entirely to ensure real-time financial accuracy
+  // 1. Bypass caching for non-http/https protocols (like chrome-extension://) to avoid cache.put errors
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // 2. Bypass caching for API endpoints entirely to ensure real-time financial accuracy
   if (url.pathname.startsWith('/api/')) {
     return;
   }

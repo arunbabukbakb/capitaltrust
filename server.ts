@@ -1,5 +1,20 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import fs from 'fs';
+
+const isBundled = typeof __filename !== 'undefined' && (__filename.endsWith('server.cjs') || __dirname.includes('dist'));
+const defaultEnv = isBundled ? 'production' : 'development';
+const nodeEnv = process.env.NODE_ENV || defaultEnv;
+const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
+const envPath = path.join(process.cwd(), envFile);
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log(`Loaded environment configuration from ${envFile} (mode: ${nodeEnv})`);
+} else {
+  dotenv.config(); // fallback to standard .env
+  console.log(`Loaded default environment configuration (mode: ${nodeEnv})`);
+}
 
 import { initDatabase } from './server/database';
 import { runSeeders } from './server/seeders';

@@ -21,19 +21,51 @@ const router = Router();
 
 // Tenant resolution middleware to resolve subdomain string to integer ID
 router.use(async (req, res, next) => {
-  const subdomain = req.headers['x-tenant-id'] as string;
-  if (subdomain) {
-    if (subdomain === 'default') {
-      req.headers['x-tenant-id'] = '1';
-    } else {
-      try {
-        const db = getDatabase();
-        const tenant = await db.get("SELECT id FROM tenants WHERE LOWER(subdomain) = ?", [subdomain.toLowerCase().trim()]);
-        if (tenant) {
-          req.headers['x-tenant-id'] = String(tenant.id);
-        }
-      } catch (err) {
-        console.error("[Tenant Resolution Middleware] Error:", err);
+  let subdomain = req.headers['x-tenant-id'] as string;
+  if (!subdomain) {
+    subdomain = 'demo';
+  }
+
+  if (subdomain === 'demo' || subdomain === 'default') {
+    req.headers['x-tenant-id'] = '1';
+  } else {
+    try {
+      const db = getDatabase();
+      const tenant = await db.get("SELECT id FROM tenants WHERE LOWER(subdomain) = ?", [subdomain.toLowerCase().trim()]);
+      if (tenant) {
+        req.headers['x-tenant-id'] = String(tenant.id);
+      } else {
+        req.headers['x-tenant-id'] = '1'; // Fallback
+      }
+    } catch (err) {
+      console.error("[Tenant Resolution Middleware] Error:", err);
+      req.headers['x-tenant-id'] = '1'; // Fallback
+    }
+  }
+  next();
+});
+
+// Demo / Read-Only Mode Middleware
+router.use((req, res, next) => {
+  const method = req.method;
+  const path = req.path;
+
+  // Modifying methods (POST, PUT, DELETE, PATCH)
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    // Exempt login and logout paths
+    const isLoginOrLogout = path.startsWith('/auth/login') || 
+                            path.startsWith('/auth/logout') || 
+                            path.startsWith('/super-admin/login');
+    
+    if (!isLoginOrLogout) {
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const isDefaultTenant = tenantId === '1';
+      const isDemoMode = process.env.DEMO_MODE === 'true' || isDefaultTenant;
+      
+      if (isDemoMode) {
+        return res.status(403).json({
+          error: "Action disabled: The portal is running in Demo Mode (Read-Only)."
+        });
       }
     }
   }

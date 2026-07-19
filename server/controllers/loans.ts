@@ -97,7 +97,8 @@ const validateStructuredLoanPayload = async (payload: any) => {
 
 export const getLoans = async (req: Request, res: Response) => {
   try {
-    const structuredLoans = await LoanModel.listAllLoans();
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const structuredLoans = await LoanModel.listAllLoans(tenantId);
     const structuredLoanIds = structuredLoans.map((loan: any) => loan.Id);
     
     const slabsByLoan = await LoanModel.getSlabsByLoanIds(structuredLoanIds);

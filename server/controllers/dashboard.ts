@@ -3,31 +3,79 @@ import { getDatabase } from '../database';
 
 export const getStats = async (req: Request, res: Response) => {
   const db = getDatabase();
+  const tenantId = req.headers['x-tenant-id'] as string;
   try {
-    const structuredLoansResult = await db.get<{ total: number }>(`
-      SELECT SUM(l.Amount - COALESCE(p.totalPaid, 0)) as total
-      FROM Loan l
-      LEFT JOIN (
-        SELECT lm.LoanId, SUM(lp.Amount) as totalPaid
-        FROM LoanPayment lp
-        JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
-        GROUP BY lm.LoanId
-      ) p ON p.LoanId = l.Id
-      WHERE l.Status NOT IN ('Closed', 'Cancelled')
-    `);
-    const totalOutwardLoans = structuredLoansResult?.total || 0;
+    let totalOutwardLoans = 0;
+    let totalPool = 0;
+    let inArrearsCount = 0;
+    let activeCount = 0;
 
-    const contributionsResult = await db.get<{ total: number }>(`
-      SELECT COALESCE(SUM(mc.Amount), 0) as total
-      FROM MemberCollection mc
-    `);
-    const totalPool = contributionsResult?.total || 0;
+    if (tenantId) {
+      const structuredLoansResult = await db.get<{ total: number }>(`
+        SELECT SUM(l.Amount - COALESCE(p.totalPaid, 0)) as total
+        FROM Loan l
+        JOIN LoanMember lm ON lm.LoanId = l.Id
+        JOIN users u ON u.id = lm.UserId AND u.tenantId = ?
+        LEFT JOIN (
+          SELECT lm.LoanId, SUM(lp.Amount) as totalPaid
+          FROM LoanPayment lp
+          JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
+          GROUP BY lm.LoanId
+        ) p ON p.LoanId = l.Id
+        WHERE l.Status NOT IN ('Closed', 'Cancelled')
+      `, [tenantId]);
+      totalOutwardLoans = structuredLoansResult?.total || 0;
 
-    const overdueResult = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM Loan WHERE Status IN ('Overdue', 'OVERDUE')");
-    const inArrearsCount = overdueResult?.count || 0;
+      const contributionsResult = await db.get<{ total: number }>(`
+        SELECT COALESCE(SUM(mc.Amount), 0) as total
+        FROM MemberCollection mc
+        JOIN users u ON mc.UserId = u.id AND u.tenantId = ?
+      `, [tenantId]);
+      totalPool = contributionsResult?.total || 0;
 
-    const activeResult = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM Loan WHERE Status IN ('Active', 'ACTIVE')");
-    const activeCount = activeResult?.count || 0;
+      const overdueResult = await db.get<{ count: number }>(`
+        SELECT COUNT(DISTINCT l.Id) as count
+        FROM Loan l
+        JOIN LoanMember lm ON lm.LoanId = l.Id
+        JOIN users u ON u.id = lm.UserId AND u.tenantId = ?
+        WHERE l.Status IN ('Overdue', 'OVERDUE')
+      `, [tenantId]);
+      inArrearsCount = overdueResult?.count || 0;
+
+      const activeResult = await db.get<{ count: number }>(`
+        SELECT COUNT(DISTINCT l.Id) as count
+        FROM Loan l
+        JOIN LoanMember lm ON lm.LoanId = l.Id
+        JOIN users u ON u.id = lm.UserId AND u.tenantId = ?
+        WHERE l.Status IN ('Active', 'ACTIVE')
+      `, [tenantId]);
+      activeCount = activeResult?.count || 0;
+    } else {
+      const structuredLoansResult = await db.get<{ total: number }>(`
+        SELECT SUM(l.Amount - COALESCE(p.totalPaid, 0)) as total
+        FROM Loan l
+        LEFT JOIN (
+          SELECT lm.LoanId, SUM(lp.Amount) as totalPaid
+          FROM LoanPayment lp
+          JOIN LoanMember lm ON lp.LoanMemberId = lm.Id
+          GROUP BY lm.LoanId
+        ) p ON p.LoanId = l.Id
+        WHERE l.Status NOT IN ('Closed', 'Cancelled')
+      `);
+      totalOutwardLoans = structuredLoansResult?.total || 0;
+
+      const contributionsResult = await db.get<{ total: number }>(`
+        SELECT COALESCE(SUM(mc.Amount), 0) as total
+        FROM MemberCollection mc
+      `);
+      totalPool = contributionsResult?.total || 0;
+
+      const overdueResult = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM Loan WHERE Status IN ('Overdue', 'OVERDUE')");
+      inArrearsCount = overdueResult?.count || 0;
+
+      const activeResult = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM Loan WHERE Status IN ('Active', 'ACTIVE')");
+      activeCount = activeResult?.count || 0;
+    }
 
     res.json({
       totalOutwardLoans,

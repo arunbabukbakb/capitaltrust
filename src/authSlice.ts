@@ -11,6 +11,12 @@ interface AuthState {
     companyLogo: string;
     supportEmail: string;
     supportPhone: string;
+    paymentStatus?: string;
+    pricing?: {
+      price: number;
+      tax: number;
+      amc: number;
+    };
   } | null;
 }
 

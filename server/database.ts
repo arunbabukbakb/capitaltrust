@@ -435,13 +435,16 @@ export async function initDatabase(): Promise<Database> {
 
     // Seed default tenant if not exists
     try {
-      const defaultTenant = await db.get("SELECT id FROM tenants WHERE subdomain = 'default'");
+      await db.run(
+        "UPDATE tenants SET subdomain = 'demo', name = 'CapitalTrust Demo' WHERE id = 1 AND subdomain = 'default'"
+      );
+      const defaultTenant = await db.get("SELECT id FROM tenants WHERE subdomain = 'demo'");
       if (!defaultTenant) {
         await db.run(
           "INSERT INTO tenants (id, name, subdomain, adminEmail, createdDate, isActive) VALUES (?, ?, ?, ?, ?, ?)",
-          [1, 'CapitalTrust Default', 'default', 'admin@capitaltrust.com', new Date().toISOString(), 1]
+          [1, 'CapitalTrust Demo', 'demo', 'admin@capitaltrust.com', new Date().toISOString(), 1]
         );
-        console.log('Seeded default tenant with ID 1.');
+        console.log('Seeded demo tenant with ID 1.');
       }
     } catch (err) {
       console.error('Error seeding default tenant:', err);
