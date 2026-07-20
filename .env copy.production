@@ -1,0 +1,20 @@
+# Application Port
+PORT=3002
+
+# GEMINI_API_KEY: Required for Gemini AI API calls.
+GEMINI_API_KEY="MY_GEMINI_API_KEY"
+
+# APP_URL: The URL where this applet is hosted.
+APP_URL="https://dryzen.in"
+VITE_APP_URL="https://dryzen.in"
+
+# MySQL Database connection configuration parameters
+MYSQL_HOST="127.0.0.1"
+MYSQL_USER="capitaltrus_usr"
+MYSQL_PASSWORD="Ftns@ker8332"
+MYSQL_DATABASE="capitaltrust"
+MYSQL_PORT="3306"
+
+# Razorpay API Credentials
+RAZORPAY_KEY_ID="rzp_test_TFIB0N3EJ1MlZQ"
+RAZORPAY_KEY_SECRET="yQqEQ4Cl8dXlDGEadGRAr9xd"

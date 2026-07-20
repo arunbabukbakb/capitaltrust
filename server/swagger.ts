@@ -1,6 +1,7 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { Router } from 'express';
+import path from 'path';
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -12,12 +13,23 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Development Server',
+        url: '/',
+        description: 'Current Application Host (Relative)',
+      },
+      {
+        url: process.env.APP_URL || 'http://localhost:3000',
+        description: 'Configured Environment Server',
       },
     ],
   },
-  apis: ['./server/routes/*.ts', './server/routes/*.js'],
+  apis: [
+    path.join(process.cwd(), 'server', 'routes', '*.ts'),
+    path.join(process.cwd(), 'server', 'routes', '*.js'),
+    path.join(process.cwd(), 'dist', 'server', 'routes', '*.ts'),
+    path.join(process.cwd(), 'dist', 'server', 'routes', '*.js'),
+    './server/routes/*.ts',
+    './server/routes/*.js',
+  ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
@@ -26,3 +38,4 @@ const router = Router();
 router.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 export default router;
+

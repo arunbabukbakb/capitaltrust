@@ -5,6 +5,8 @@ import fs from 'fs';
 const isBundled = typeof __filename !== 'undefined' && (__filename.endsWith('server.cjs') || __dirname.includes('dist'));
 const defaultEnv = isBundled ? 'production' : 'development';
 const nodeEnv = process.env.NODE_ENV || defaultEnv;
+process.env.NODE_ENV = nodeEnv;
+
 const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
 const envPath = path.join(process.cwd(), envFile);
 

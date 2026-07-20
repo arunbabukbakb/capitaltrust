@@ -1,21 +1,69 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Shield, 
-  Coins, 
-  TrendingUp, 
-  Users, 
-  Layers, 
-  CheckCircle, 
-  ArrowRight, 
-  Globe, 
-  Cpu, 
+import {
+  Shield,
+  Coins,
+  TrendingUp,
+  Users,
+  Layers,
+  CheckCircle,
+  ArrowRight,
+  Globe,
+  Cpu,
   Activity,
-  UserCheck
+  UserCheck,
+  Play,
+  Sparkles
 } from 'lucide-react';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  const handleLoadDemo = () => {
+    const envUrl =
+      (import.meta as any).env?.VITE_APP_URL ||
+      (typeof process !== 'undefined' && process.env?.APP_URL);
+
+    let rawAppUrl = envUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    
+    // If envUrl is set to localhost but app is running in production browser, fallback to window.location.origin
+    if (
+      envUrl &&
+      envUrl.includes('localhost') &&
+      typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1'
+    ) {
+      rawAppUrl = window.location.origin;
+    }
+
+    if (!rawAppUrl) return;
+
+    try {
+      const url = new URL(rawAppUrl);
+      const parts = url.hostname.split('.');
+      let demoHostname = url.hostname;
+
+      if (parts.length === 2 && parts[1] === 'localhost') {
+        demoHostname = 'demo.localhost';
+      } else if (parts.length > 2) {
+        if (parts[0] !== 'demo') {
+          demoHostname = `demo.${parts.slice(1).join('.')}`;
+        }
+      } else {
+        demoHostname = `demo.${url.hostname}`;
+      }
+
+      url.hostname = demoHostname;
+      url.pathname = '/login';
+      url.searchParams.set('demo', 'true');
+
+      window.location.href = url.toString();
+    } catch (e) {
+      const fallbackBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      window.location.href = `${fallbackBase}/login?demo=true`;
+    }
+  };
 
   const benefits = [
     {
@@ -73,18 +121,25 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <a 
-            href="#features" 
-            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+        <div className="flex items-center gap-3 sm:gap-4">
+          <a
+            href="#features"
+            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors hidden sm:block"
           >
             Features
           </a>
-          <button 
+          <button
+            onClick={handleLoadDemo}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-indigo-500/10"
+          >
+            <Play className="w-3.5 h-3.5 fill-indigo-400 text-indigo-400" />
+            Live Demo
+          </button>
+          <button
             onClick={() => navigate('/register-tenant')}
             className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-xs font-bold text-white rounded-xl group bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 group-hover:from-indigo-500 group-hover:to-cyan-500 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 cursor-pointer"
           >
-            <span className="relative px-4 py-2 transition-all ease-in duration-75 bg-[#090d16] rounded-[10px] group-hover:bg-opacity-0">
+            <span className="relative px-3 sm:px-4 py-2 transition-all ease-in duration-75 bg-[#090d16] rounded-[10px] group-hover:bg-opacity-0">
               Create Organization
             </span>
           </button>
@@ -110,16 +165,23 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button 
-            onClick={() => navigate('/register-tenant')}
+          <button
+            onClick={handleLoadDemo}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all transform hover:-translate-y-0.5 cursor-pointer"
           >
-            Get Started & Create Tenant
+            <Sparkles className="w-4 h-4" />
+            Launch Demo Site
             <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/register-tenant')}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 text-slate-200 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+          >
+            Create Organization
           </button>
           <a
             href="#features"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-800/40 hover:bg-slate-800/70 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-900/40 hover:bg-slate-800/50 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 text-xs font-bold rounded-xl transition-all"
           >
             Explore Benefits
           </a>
@@ -132,9 +194,13 @@ export default function LandingPage() {
             <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
-            <div className="mx-auto bg-slate-900/80 border border-slate-800 text-[10px] text-slate-500 py-0.5 px-6 rounded-md select-none font-mono">
-              demo-organization.capitaltrust.com/dashboard
-            </div>
+            <button
+              onClick={handleLoadDemo}
+              className="mx-auto bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/50 text-[10px] text-slate-400 hover:text-indigo-300 py-0.5 px-6 rounded-md select-none font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>demo.localhost:5173/dashboard</span>
+              <Sparkles className="w-3 h-3 text-indigo-400" />
+            </button>
           </div>
           <div className="bg-slate-950/40 p-6 flex flex-col md:flex-row gap-6 items-start rounded-b-xl border-t border-slate-900">
             {/* Left Column (Mini Stats) */}
@@ -203,7 +269,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {benefits.map((b, idx) => (
-            <div 
+            <div
               key={idx}
               className="p-6 bg-slate-900/20 border border-slate-800/60 rounded-2xl hover:border-indigo-500/40 transition-all duration-300 hover:bg-slate-900/40 group text-left"
             >

@@ -55,3 +55,13 @@ if (fs.existsSync(firebasePath)) {
   fs.copyFileSync(firebasePath, path.join(destDir, 'firebase-service-account.json'));
   console.log('Copied firebase-service-account.json to dist/');
 }
+
+// 4. Copy server/routes directory to dist/server/routes for Swagger annotations in production
+const serverRoutesSrc = path.join(srcDir, 'server', 'routes');
+const serverRoutesDest = path.join(destDir, 'server', 'routes');
+if (fs.existsSync(serverRoutesSrc)) {
+  fs.mkdirSync(serverRoutesDest, { recursive: true });
+  fs.cpSync(serverRoutesSrc, serverRoutesDest, { recursive: true });
+  console.log('Copied server/routes to dist/server/routes/');
+}
+

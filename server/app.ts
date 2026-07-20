@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import apiRoutes from './routes';
 import swaggerRouter from './swagger';
@@ -26,10 +27,21 @@ export async function createApp() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    const candidatePaths = [
+      path.join(process.cwd(), 'dist', 'dist'),
+      path.join(process.cwd(), 'dist'),
+      path.join(process.cwd(), 'dist', 'public'),
+      path.join(process.cwd(), 'public'),
+      path.join(__dirname, 'dist'),
+      path.join(__dirname, 'public'),
+      process.cwd()
+    ];
+
+    const staticPath = candidatePaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || process.cwd();
+
+    app.use(express.static(staticPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(staticPath, 'index.html'));
     });
   }
 

@@ -41,6 +41,50 @@ export default function TenantRegistration() {
     }
   };
 
+  const getAppUrl = () => {
+    const envUrl =
+      (import.meta as any).env?.VITE_APP_URL ||
+      (typeof process !== 'undefined' && process.env?.APP_URL);
+
+    let rawAppUrl = envUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+
+    if (
+      envUrl &&
+      envUrl.includes('localhost') &&
+      typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1'
+    ) {
+      rawAppUrl = window.location.origin;
+    }
+    return rawAppUrl;
+  };
+
+  const buildTenantUrl = (subdomainStr: string) => {
+    const rawUrl = getAppUrl();
+    if (!rawUrl) return `http://${subdomainStr || 'tenant'}.localhost/login`;
+
+    try {
+      const url = new URL(rawUrl);
+      const parts = url.hostname.split('.');
+      let tenantHostname = url.hostname;
+
+      if (parts.length === 2 && parts[1] === 'localhost') {
+        tenantHostname = `${subdomainStr}.${parts[1]}`;
+      } else if (parts.length > 2) {
+        tenantHostname = `${subdomainStr}.${parts.slice(1).join('.')}`;
+      } else {
+        tenantHostname = `${subdomainStr}.${url.hostname}`;
+      }
+
+      url.hostname = tenantHostname;
+      url.pathname = '/login';
+      return url.toString();
+    } catch (e) {
+      return `http://${subdomainStr || 'tenant'}.localhost:3000/login`;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,9 +114,8 @@ export default function TenantRegistration() {
       }
 
       // Successful registration
-      const portStr = window.location.port ? `:${window.location.port}` : '';
-      const customDomain = `${data.subdomain}.localhost${portStr}`;
-      setRegisteredUrl(customDomain);
+      const fullTenantUrl = buildTenantUrl(data.subdomain || subdomain);
+      setRegisteredUrl(fullTenantUrl);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An error occurred during registration.');
@@ -83,7 +126,7 @@ export default function TenantRegistration() {
 
   const handleOpenTenant = () => {
     if (registeredUrl) {
-      window.open(`http://${registeredUrl}/login`, '_blank');
+      window.open(registeredUrl, '_blank');
     }
   };
 
@@ -132,8 +175,8 @@ export default function TenantRegistration() {
               {/* Subdomain URL Display Box */}
               <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl flex flex-col items-center gap-2">
                 <div className="text-[10px] text-slate-500 font-mono tracking-wider uppercase">Your Custom Address</div>
-                <div className="text-sm font-bold text-indigo-300 select-all font-mono">
-                  http://{registeredUrl}
+                <div className="text-sm font-bold text-indigo-300 select-all font-mono break-all">
+                  {registeredUrl}
                 </div>
               </div>
 
@@ -225,7 +268,7 @@ export default function TenantRegistration() {
                     </div>
                     {/* Live Domain Preview */}
                     <div className="text-[10px] text-slate-500 font-mono mt-1">
-                      Preview: <span className="text-indigo-400 font-semibold">{formData.subdomain || 'tz-branch'}.localhost:5173</span>
+                      Preview: <span className="text-indigo-400 font-semibold">{buildTenantUrl(formData.subdomain || 'tz-branch')}</span>
                     </div>
                   </div>
                 </div>

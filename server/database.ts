@@ -433,18 +433,22 @@ export async function initDatabase(): Promise<Database> {
       );
     `);
 
-    // Seed default tenant if not exists
+    // Seed default tenant if not exists and ensure status is active (1) and paid
     try {
       await db.run(
-        "UPDATE tenants SET subdomain = 'demo', name = 'CapitalTrust Demo' WHERE id = 1 AND subdomain = 'default'"
+        "UPDATE tenants SET subdomain = 'demo', name = 'CapitalTrust Demo', isActive = 1, paymentStatus = 'Paid' WHERE id = 1 AND subdomain = 'default'"
       );
       const defaultTenant = await db.get("SELECT id FROM tenants WHERE subdomain = 'demo'");
       if (!defaultTenant) {
         await db.run(
-          "INSERT INTO tenants (id, name, subdomain, adminEmail, createdDate, isActive) VALUES (?, ?, ?, ?, ?, ?)",
-          [1, 'CapitalTrust Demo', 'demo', 'admin@capitaltrust.com', new Date().toISOString(), 1]
+          "INSERT INTO tenants (id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [1, 'CapitalTrust Demo', 'demo', 'admin@capitaltrust.com', new Date().toISOString(), 1, 'Paid', new Date().toISOString()]
         );
         console.log('Seeded demo tenant with ID 1.');
+      } else {
+        await db.run(
+          "UPDATE tenants SET isActive = 1, paymentStatus = 'Paid' WHERE subdomain = 'demo' OR id = 1"
+        );
       }
     } catch (err) {
       console.error('Error seeding default tenant:', err);

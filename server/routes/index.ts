@@ -52,16 +52,21 @@ router.use((req, res, next) => {
 
   // Modifying methods (POST, PUT, DELETE, PATCH)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    // Exempt login and logout paths
-    const isLoginOrLogout = path.startsWith('/auth/login') || 
-                            path.startsWith('/auth/logout') || 
-                            path.startsWith('/super-admin/login');
-    
-    if (!isLoginOrLogout) {
+    // Exempt authentication, password reset, tenant creation/payment, and super-admin operations
+    const isExempt =
+      path.startsWith('/auth/login') ||
+      path.startsWith('/auth/logout') ||
+      path.startsWith('/auth/register') ||
+      path.startsWith('/auth/forgot-password') ||
+      path.startsWith('/auth/reset-password') ||
+      path.startsWith('/tenants') ||
+      path.startsWith('/super-admin');
+
+    if (!isExempt) {
       const tenantId = req.headers['x-tenant-id'] as string;
       const isDefaultTenant = tenantId === '1';
       const isDemoMode = process.env.DEMO_MODE === 'true' || isDefaultTenant;
-      
+
       if (isDemoMode) {
         return res.status(403).json({
           error: "Action disabled: The portal is running in Demo Mode (Read-Only)."

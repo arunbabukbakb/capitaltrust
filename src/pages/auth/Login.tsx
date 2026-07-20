@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials } from '../../authSlice';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Sparkles, Key, UserCheck } from 'lucide-react';
 import { RootState } from '../../store';
+import { getSubdomain } from '../../main';
 
 interface LoginProps {
   onNavigateToRegister: () => void;
@@ -11,7 +12,7 @@ interface LoginProps {
 
 export default function Login({ onNavigateToRegister }: LoginProps) {
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('123');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
@@ -25,6 +26,11 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
   const location = useLocation();
   const { companySettings } = useSelector((state: RootState) => state.auth);
   const registrationMessage = location.state?.message;
+
+  const subdomain = getSubdomain();
+  const searchParams = new URLSearchParams(location.search);
+  const isDemoParam = searchParams.get('demo') === 'true' || searchParams.get('demo') === '1';
+  const isDemo = subdomain === 'demo' || isDemoParam;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +116,76 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
               <header>
                 <h3 className="text-lg font-bold font-headline text-slate-900 dark:text-white">Welcome back</h3>
               </header>
+
+              {isDemo && (
+                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-cyan-500/10 border border-indigo-500/30 dark:border-indigo-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+                      <span>Demo Mode Credentials</span>
+                    </div>
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-mono font-bold px-2 py-0.5 rounded border border-indigo-500/30 uppercase">
+                      Demo Data
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
+                    Click any role below to autofill demo credentials:
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsername('admin');
+                        setPassword('123');
+                      }}
+                      className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                        username === 'admin'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                          : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-indigo-400'
+                      }`}
+                    >
+                      <div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Admin</div>
+                      <div className="text-xs font-bold font-mono mt-0.5 truncate">admin</div>
+                      <div className="text-[10px] opacity-80 font-mono">Pass: 123</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsername('manager');
+                        setPassword('123');
+                      }}
+                      className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                        username === 'manager'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                          : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-indigo-400'
+                      }`}
+                    >
+                      <div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Manager</div>
+                      <div className="text-xs font-bold font-mono mt-0.5 truncate">manager</div>
+                      <div className="text-[10px] opacity-80 font-mono">Pass: 123</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsername('john');
+                        setPassword('123');
+                      }}
+                      className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                        username === 'john'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                          : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-indigo-400'
+                      }`}
+                    >
+                      <div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Member</div>
+                      <div className="text-xs font-bold font-mono mt-0.5 truncate">john</div>
+                      <div className="text-[10px] opacity-80 font-mono">Pass: 123</div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {registrationMessage && (
                 <div className="p-3 text-xs bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-lg font-medium">
