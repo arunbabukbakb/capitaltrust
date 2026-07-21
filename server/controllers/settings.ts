@@ -30,6 +30,10 @@ export const getCompanySettings = async (req: Request, res: Response) => {
       }
       
       const pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
+      const amcRecord = await db.get(
+        "SELECT id, amcCharge, dueDate, paidStatus FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' ORDER BY dueDate ASC LIMIT 1",
+        [tenantId]
+      );
 
       return res.json({
         companyName: tenant.name,
@@ -42,6 +46,12 @@ export const getCompanySettings = async (req: Request, res: Response) => {
           price: pricing.price,
           tax: pricing.tax,
           amc: pricing.amc
+        } : null,
+        amcRecord: amcRecord ? {
+          id: amcRecord.id,
+          amcCharge: amcRecord.amcCharge,
+          dueDate: amcRecord.dueDate,
+          paidStatus: amcRecord.paidStatus
         } : null
       });
     }

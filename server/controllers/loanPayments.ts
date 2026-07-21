@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
 import { LoanModel } from '../models/Loan';
 import { sendPushNotification } from '../firebaseAdmin';
+import { recordTransaction } from '../services/transactionService';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -313,6 +314,17 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
               PrincipalPaid: updatedPrincipalPaid,
               ClosingPrincipal: updatedClosingPrincipal,
               Status: updatedStatus as any
+            });
+
+            await recordTransaction({
+              tenantId: (req.headers['x-tenant-id'] as string) || 1,
+              transactionDate: currentDate,
+              transactionType: 'LoanRepayment',
+              amount: amountPaid,
+              referenceType: 'LoanRepayment',
+              referenceId: `LP-${member.Id}-${currentMonth}`,
+              narration: `EMI Repayment for Loan ${loan.LoanNo} (Month: ${currentMonth})`,
+              createdBy: decoded.id
             });
 
             // Add to notification list to send post-commit

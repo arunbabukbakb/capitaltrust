@@ -8,6 +8,8 @@ import {
   LucideIcon,
   Shield,
   FileText,
+  Receipt,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -24,6 +26,12 @@ export const navConfig: NavItem[] = [
     name: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
+  },
+  {
+    id: 'expenses',
+    name: 'Expenses',
+    icon: Receipt,
+    path: '/expenses',
   },
   {
     id: 'liquidity',
@@ -77,6 +85,19 @@ export const navConfig: NavItem[] = [
         name: 'User Management',
         icon: Users,
         path: '/users',
+      },
+    ],
+  },
+  {
+    id: 'reports',
+    name: 'Reports',
+    icon: FileSpreadsheet,
+    children: [
+      {
+        id: 'transactions',
+        name: 'Transactions',
+        icon: Receipt,
+        path: '/reports/transactions',
       },
     ],
   },

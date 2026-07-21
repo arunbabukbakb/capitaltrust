@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { registerTenant, payTenant, createRazorpayOrder, verifyRazorpayPayment } from '../controllers/tenants';
+import { registerTenant, payTenant, createRazorpayOrder, verifyRazorpayPayment, createAmcOrder, verifyAmcPayment } from '../controllers/tenants';
 
 const router = Router();
+
 
 /**
  * @swagger
@@ -47,5 +48,7 @@ router.post('/register', registerTenant);
 router.post('/pay', payTenant);
 router.post('/payment/order', createRazorpayOrder);
 router.post('/payment/verify', verifyRazorpayPayment);
+router.post('/amc/order', createAmcOrder);
+router.post('/amc/verify', verifyAmcPayment);
 
 export default router;

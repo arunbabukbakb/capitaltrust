@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate, Link, Navigate } from 'react-router-dom';
-import { Shield, Layers, User, LogOut, Menu, X, Coins } from 'lucide-react';
+import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send } from 'lucide-react';
 
 export default function SuperAdminLayout() {
   const location = useLocation();
@@ -22,13 +22,16 @@ export default function SuperAdminLayout() {
   };
 
   const navItems = [
-    { label: 'Tenants Registry', path: '/admin/dashboard', icon: Layers },
+    { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Tenants Registry', path: '/admin/tenants', icon: Building2 },
+    { label: 'Broadcast Mail', path: '/admin/send-mail', icon: Send },
+    { label: 'SMTP Mail Settings', path: '/admin/smtp', icon: Mail },
     { label: 'Pricing Settings', path: '/admin/pricing', icon: Coins },
     { label: 'SuperAdmin Profile', path: '/admin/profile', icon: User }
   ];
 
   return (
-    <div className="min-h-screen bg-[#070b13] text-[#e2e8f0] font-sans antialiased flex">
+    <div className="min-h-screen bg-[#070b13] text-[#e2e8f0] font-sans antialiased flex w-full max-w-full overflow-x-hidden">
       {/* Background Glows */}
       <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none z-0" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/5 blur-[150px] pointer-events-none z-0" />
@@ -92,7 +95,7 @@ export default function SuperAdminLayout() {
       </aside>
 
       {/* Main Content Area Wrapper */}
-      <div className="flex-1 lg:pl-64 flex flex-col z-10 min-h-screen">
+      <div className="flex-1 lg:pl-64 flex flex-col z-10 min-h-screen w-full max-w-full overflow-x-hidden">
         {/* Mobile Header */}
         <header className="lg:hidden sticky top-0 bg-[#070b13]/80 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 flex items-center justify-between z-30">
           <div className="flex items-center gap-2">

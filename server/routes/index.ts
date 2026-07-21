@@ -16,6 +16,8 @@ import settingsRoutes from './settings';
 import tenantsRoutes from './tenants';
 import notificationRoutes from './notification';
 import superadminRoutes from './superadmin';
+import expensesRoutes from './expenses';
+import transactionsRoutes from './transactions';
 
 const router = Router();
 
@@ -93,5 +95,7 @@ router.use('/settings', settingsRoutes);
 router.use('/tenants', tenantsRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/super-admin', superadminRoutes);
+router.use('/expenses', expensesRoutes);
+router.use('/transactions', transactionsRoutes);
 
 export default router;

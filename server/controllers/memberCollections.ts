@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { getDatabase } from '../database';
 import { CollectionModel } from '../models/Collection';
 import { sendPushNotification } from '../firebaseAdmin';
+import { recordTransaction } from '../services/transactionService';
 
 export const submitMemberCollections = async (req: Request, res: Response) => {
   const db = getDatabase();
@@ -38,6 +39,17 @@ export const submitMemberCollections = async (req: Request, res: Response) => {
           if (amt > 0) {
             await CollectionModel.addMemberCollection(groupId, p.userId, amt);
             collectionsToSend.push({ userId: p.userId, amount: amt });
+
+            await recordTransaction({
+              tenantId: tenantId || 1,
+              transactionDate: date,
+              transactionType: 'Collection',
+              amount: amt,
+              referenceType: 'Collection',
+              referenceId: `MC-${groupId}-${p.userId}`,
+              narration: `Member Fund Collection Entry`,
+              createdBy: p.userId
+            });
           }
         }
       }

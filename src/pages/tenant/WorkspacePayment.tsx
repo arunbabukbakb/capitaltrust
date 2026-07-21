@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import { CreditCard, RefreshCw, CheckCircle, HelpCircle, AlertTriangle } from 'lucide-react';
+import { CreditCard, RefreshCw, CheckCircle, HelpCircle, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../components/ThemeContext';
 
 export default function WorkspacePayment() {
   const navigate = useNavigate();
   const { companySettings } = useSelector((state: RootState) => state.auth);
+  const { theme, toggleTheme } = useTheme();
+
 
   const [paying, setPaying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -122,7 +125,16 @@ export default function WorkspacePayment() {
   const totalAmount = basePrice + taxAmount;
 
   return (
-    <div className="w-full relative flex items-center justify-center min-h-screen py-8 sm:py-12 px-4 bg-[#f7f9fb] dark:bg-[#0b0f19] transition-colors duration-200">
+    <div className="w-full relative flex items-center justify-center min-h-screen py-8 sm:py-12 px-4 bg-[#f7f9fb] dark:bg-[#0b0f19] selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
+      {/* Theme toggle — fixed top-right */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md transition-all cursor-pointer"
+        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      >
+        {theme === 'dark' ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+      </button>
+
       {/* Decorative Blur Spheres background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] bg-emerald-100 dark:bg-emerald-950/10 opacity-50 blur-[130px] rounded-full" />
@@ -223,9 +235,26 @@ export default function WorkspacePayment() {
           </div>
         </div>
 
-        <footer className="mt-6 flex flex-col items-center gap-3 opacity-70">
-          <p className="text-[9px] text-slate-450 dark:text-slate-500 tracking-widest leading-relaxed uppercase text-center font-bold">
-            © 2026 {(companySettings.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
+        <footer className="mt-6 flex flex-col items-center gap-3 opacity-80">
+          {/* Terms note before paying */}
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center leading-relaxed">
+            By paying, you agree to our{' '}
+            <button
+              onClick={() => navigate('/terms-of-service')}
+              className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+            >
+              Terms of Service
+            </button>
+            {' '}including payment terms, and our{' '}
+            <button
+              onClick={() => navigate('/privacy-policy')}
+              className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+            >
+              Privacy Policy
+            </button>.
+          </p>
+          <p className="text-[9px] text-slate-500 dark:text-slate-600 tracking-widest leading-relaxed uppercase text-center font-bold">
+            © {new Date().getFullYear()} {(companySettings.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
           </p>
         </footer>
       </main>

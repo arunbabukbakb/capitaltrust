@@ -77,13 +77,13 @@ export default function AdminPricing() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+    <div className="p-3 sm:p-8 max-w-2xl mx-auto space-y-4 sm:space-y-6 font-sans text-slate-200">
       <div>
-        <h3 className="text-xl sm:text-2xl font-bold text-white font-headline">Pricing & Licensing Settings</h3>
-        <p className="text-xs text-slate-400 mt-1">Configure workspace subscription cost, percentage tax metrics, and annual maintenance charges.</p>
+        <h3 className="text-lg sm:text-2xl font-bold text-white font-headline">Pricing & Licensing Settings</h3>
+        <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1">Configure workspace subscription cost, percentage tax metrics, and annual maintenance charges.</p>
       </div>
 
-      <div className="bg-slate-900/30 border border-slate-800/85 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-xl space-y-6">
+      <div className="bg-[#0d1322] border border-slate-800/85 rounded-2xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
         
         {loading ? (
           <div className="py-12 text-center text-slate-500 font-bold">

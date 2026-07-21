@@ -10,8 +10,12 @@ import {
   AlertCircle,
   CheckCircle,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  Receipt
 } from 'lucide-react';
+
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 interface DashboardProps {
   user: any;
@@ -19,21 +23,41 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ user, onNavigate }: DashboardProps) {
+  const { companySettings } = useSelector((state: RootState) => state.auth);
   const [stats, setStats] = useState<any>(null);
   const [loans, setLoans] = useState<any[]>([]);
   const [contributions, setContributions] = useState<any[]>([]);
+  const [todayExpenseSummary, setTodayExpenseSummary] = useState<{ totalAmount: number; count: number; totalLoggedCount: number }>({
+    totalAmount: 0,
+    count: 0,
+    totalLoggedCount: 0
+  });
 
+  // Calculate AMC Due status
+  const amcRecord = companySettings?.amcRecord;
+  let amcDaysRemaining: number | null = null;
+  let showAmcAlert = false;
+  if (amcRecord && amcRecord.dueDate && amcRecord.paidStatus === 'Pending') {
+    const dueTime = new Date(amcRecord.dueDate).getTime();
+    const nowTime = new Date().getTime();
+    amcDaysRemaining = Math.ceil((dueTime - nowTime) / (1000 * 60 * 60 * 24));
+    if (amcDaysRemaining <= 10) {
+      showAmcAlert = true;
+    }
+  }
 
   useEffect(() => {
     // Collect active numbers
     Promise.all([
       fetch("/api/dashboard/stats").then(res => res.ok ? res.json() : null),
       fetch("/api/loans").then(res => res.ok ? res.json() : []),
-      fetch("/api/contributions").then(res => res.ok ? res.json() : [])
-    ]).then(([statsData, loansData, contributionsData]) => {
+      fetch("/api/contributions").then(res => res.ok ? res.json() : []),
+      fetch("/api/expenses/today-summary").then(res => res.ok ? res.json() : { totalAmount: 0, count: 0, totalLoggedCount: 0 })
+    ]).then(([statsData, loansData, contributionsData, todaySummary]) => {
       setStats(statsData && !statsData.error ? statsData : null);
       setLoans(Array.isArray(loansData) ? loansData : []);
       setContributions(Array.isArray(contributionsData) ? contributionsData : []);
+      setTodayExpenseSummary(todaySummary || { totalAmount: 0, count: 0, totalLoggedCount: 0 });
     }).catch(err => {
       console.error("Dashboard data load error", err);
     });
@@ -94,8 +118,43 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Primary key metric cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+      {/* AMC Charge Warning Alert Banner (When due in <= 10 days) */}
+      {showAmcAlert && amcRecord && amcDaysRemaining !== null && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/40 rounded-xl sm:rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl shrink-0 mt-0.5 sm:mt-0">
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="space-y-1 text-left">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-headline">
+                  Annual Maintenance Charge (AMC) Due Notice
+                </h4>
+                <span className="text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase">
+                  {amcDaysRemaining < 0 ? `Overdue by ${Math.abs(amcDaysRemaining)} days` : `Due in ${amcDaysRemaining} days`}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Your organization's AMC charge of <strong className="text-slate-900 dark:text-white">₹{amcRecord.amcCharge?.toFixed(2)}</strong> is due on{' '}
+                <strong className="text-slate-900 dark:text-white">
+                  {new Date(amcRecord.dueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                </strong>. Please complete payment to avoid service suspension.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('/amc-payment')}
+            className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Pay AMC Charge Now</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Primary key metric cards (3 Tiles in a row) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Metric CARD 1: Credit Facility Balance */}
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
           <div>
@@ -108,7 +167,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               </span>
             </div>
             <div className="mt-2 sm:mt-4">
-              <h4 className="text-2xl sm:text-4xl font-extrabold font-headline text-tnum text-slate-950 dark:text-slate-50">
+              <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-headline text-tnum text-slate-950 dark:text-slate-50">
                 ₹{totalOutstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
@@ -151,7 +210,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               </span>
             </div>
             <div className="mt-2 sm:mt-4">
-              <h4 className="text-2xl sm:text-4xl font-extrabold font-headline text-tnum text-slate-950 dark:text-slate-50">
+              <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-headline text-tnum text-slate-950 dark:text-slate-50">
                 ₹{personalContributionsSum.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
@@ -172,6 +231,44 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:text-emerald-800 flex items-center gap-0.5 transition-colors cursor-pointer"
             >
               <span>+ Add Capital</span>
+              <ArrowUpRight className="w-3 h-3 sm:w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Metric CARD 3: Current Day Expense (Fetched directly from API) */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+          <div>
+            <div className="flex justify-between items-start">
+              <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400">
+                Today's Expenses
+              </span>
+              <span className="p-1 sm:p-1.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
+                <Receipt className="w-3.5 h-3.5 sm:w-4 h-4" />
+              </span>
+            </div>
+            <div className="mt-2 sm:mt-4">
+              <h4 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-headline text-tnum text-slate-950 dark:text-slate-50">
+                ₹{Number(todayExpenseSummary.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </h4>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
+                <span className="bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400 px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold">
+                  {todayExpenseSummary.count} Entry{todayExpenseSummary.count !== 1 ? 'ies' : ''} Today
+                </span>
+                <span>• Total {todayExpenseSummary.totalLoggedCount} Logged</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 sm:mt-8 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Operational expenditure
+            </span>
+            <button
+              onClick={() => onNavigate('/expenses')}
+              className="text-[10px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 hover:text-indigo-800 flex items-center gap-0.5 transition-colors cursor-pointer"
+            >
+              <span>View Expenses</span>
               <ArrowUpRight className="w-3 h-3 sm:w-3.5 h-3.5" />
             </button>
           </div>
@@ -232,100 +329,117 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           </div>
         </div>
 
-        {/* UPCOMING PORTFOLIO EVENTS / AGENDA */}
+        {/* UPCOMING LOANS & COLLECTIONS */}
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between col-span-1 lg:col-span-2 min-h-[280px] sm:min-h-[340px] transition-colors duration-200">
           <div>
             <div className="flex justify-between items-center mb-3 sm:mb-6">
-              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Upcoming Payments</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
+                Upcoming Payments & Collections
+              </span>
               <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" /> Oct-Nov 2023
+                <Calendar className="w-3.5 h-3.5" /> Schedule
               </span>
             </div>
 
-            <div className="space-y-2.5 sm:space-y-4">
+            <div className="space-y-2.5 sm:space-y-3">
               {/* Dynamic Loan Repayments */}
               {activeUserLoans.map((loan) => {
                 const emi = calculateEMI(loan.principal, loan.interestRate || 12, loan.tenureMonths || 12);
                 const nextDue = getNextPaymentDueDate(loan.startDate, loan.repaymentCount || 0);
+                const isOverdue = loan.status?.toLowerCase() === 'overdue';
+
                 return (
-                  <div key={loan.id} className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-base sm:text-lg">
-                        💰
+                  <div
+                    key={loan.id}
+                    onClick={() => onNavigate('/loan-repayment')}
+                    className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-base shrink-0 ${
+                        isOverdue
+                          ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
+                          : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div>
                         <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                          {loan.loanNo} EMI Repayment
+                          {loan.loanNo || loan.id} EMI Repayment
                         </h5>
-                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-450">
-                          {loan.type || `${loan.loanType} Facility`} • Due {nextDue}
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                          {loan.type || `${loan.loanType || 'Loan'} Facility`} • Due {nextDue}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-550">
+                      <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-50">
                         ₹{emi.toLocaleString()}
                       </p>
-                      <span className="inline-block text-[8px] sm:text-[10px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400 rounded font-semibold">
-                        Scheduled
+                      <span className={`inline-block text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                        isOverdue
+                          ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50'
+                          : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50'
+                      }`}>
+                        {isOverdue ? 'Overdue' : 'Scheduled'}
                       </span>
                     </div>
                   </div>
                 );
               })}
 
-              {activeUserLoans.length === 0 && (
-                <div className="text-center py-4 sm:py-6 text-[10px] sm:text-xs text-slate-400 dark:text-slate-500">
-                  No active loan repayments scheduled
+              {/* Fund Collections */}
+              {contributions.slice(0, 3).map((contrib) => (
+                <div
+                  key={contrib.id}
+                  onClick={() => onNavigate('/fund-collection')}
+                  className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shrink-0">
+                      <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </div>
+                    <div>
+                      <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Capital Pool Collection
+                      </h5>
+                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                        {contrib.method || 'Direct Transfer'} • {contrib.date}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-50">
+                      ₹{Number(contrib.amount || 0).toLocaleString()}
+                    </p>
+                    <span className="inline-block text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+                      {contrib.status || 'Completed'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {activeUserLoans.length === 0 && contributions.length === 0 && (
+                <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 font-medium space-y-1">
+                  <Calendar className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <p>No upcoming loan repayments or collections scheduled.</p>
                 </div>
               )}
-
-              {/* Event 2 */}
-              <div className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-base sm:text-lg">
-                    📊
-                  </div>
-                  <div>
-                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">Capital Pool Top-Up</h5>
-                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Savings Contribution • Voluntary • Due Aug 15, 2026</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-550">₹5,000</p>
-                  <span className="inline-block text-[8px] sm:text-[10px] px-1.5 py-0.5 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-400 rounded font-semibold">
-                    Voluntary Request
-                  </span>
-                </div>
-              </div>
-
-              {/* Event 3 */}
-              <div className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-base sm:text-lg">
-                    🗒️
-                  </div>
-                  <div>
-                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">Annual Compliance Fee</h5>
-                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Platform Membership • Due Dec 31, 2026</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-550">₹1,500</p>
-                  <span className="inline-block text-[8px] sm:text-[10px] px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 rounded font-semibold">
-                    Invoiced
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] sm:text-xs">
             <button
               onClick={() => onNavigate('/loan-repayment')}
-              className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+              className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>Manage scheduled repayment protocols</span>
+              <span>View Repayments</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onNavigate('/fund-collection')}
+              className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>View Collections</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

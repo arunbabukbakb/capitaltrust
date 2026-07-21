@@ -5,6 +5,7 @@ import { getDatabase } from '../database';
 import { LoanModel } from '../models/Loan';
 import { UserModel } from '../models/User';
 import { sendPushNotification } from '../firebaseAdmin';
+import { recordTransaction } from '../services/transactionService';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -511,6 +512,17 @@ export const approveLoan = async (req: Request, res: Response) => {
     }
 
     await LoanModel.updateLoan(existingLoan.Id, { Status: 'Active' });
+
+    await recordTransaction({
+      tenantId: (req.headers['x-tenant-id'] as string) || 1,
+      transactionDate: existingLoan.StartDate || new Date().toISOString().split('T')[0],
+      transactionType: 'LoanIssue',
+      amount: existingLoan.Amount,
+      referenceType: 'Loan',
+      referenceId: existingLoan.Id,
+      narration: `Disbursement of Loan Facility ${existingLoan.LoanNo}`,
+      createdBy: decoded.id
+    });
 
     const updatedLoan = await LoanModel.findById(existingLoan.Id);
 

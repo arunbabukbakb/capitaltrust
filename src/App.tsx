@@ -26,10 +26,26 @@ import SettingsPage from './pages/superadmin/SettingsPage';
 import ProfilePage from './pages/user/ProfilePage';
 import AdminLogin from './pages/superadmin/AdminLogin';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import TenantManagement from './pages/superadmin/TenantManagement';
+import SmtpSettings from './pages/superadmin/SmtpSettings';
+import SendMailPage from './pages/superadmin/SendMailPage';
 import SuperAdminLayout from './components/SuperAdminLayout';
 import AdminProfile from './pages/superadmin/AdminProfile';
 import AdminPricing from './pages/superadmin/AdminPricing';
 import WorkspacePayment from './pages/tenant/WorkspacePayment';
+import AmcPayment from './pages/tenant/AmcPayment';
+import ExpensesPage from './pages/expense/ExpensesPage';
+import TransactionsPage from './pages/reports/TransactionsPage';
+import DocLayout from './pages/documentation/DocLayout';
+import GettingStartedDoc from './pages/documentation/GettingStartedDoc';
+import MemberManagementDoc from './pages/documentation/MemberManagementDoc';
+import CollectionDoc from './pages/documentation/CollectionDoc';
+import LoanDoc from './pages/documentation/LoanDoc';
+import ExpenseDoc from './pages/documentation/ExpenseDoc';
+import AdminFeaturesDoc from './pages/documentation/AdminFeaturesDoc';
+import ReportDoc from './pages/documentation/ReportDoc';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import TermsOfService from './pages/legal/TermsOfService';
 import {
   PlusCircle,
   Settings as SettingsIcon,
@@ -216,13 +232,34 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/register-tenant" element={<TenantRegistration />} />
+          
+          {/* Customer Documentation Module Routes */}
+          <Route path="/document" element={<DocLayout />}>
+            <Route index element={<Navigate to="/document/getting-started" replace />} />
+            <Route path="getting-started" element={<GettingStartedDoc />} />
+            <Route path="member-management" element={<MemberManagementDoc />} />
+            <Route path="collection" element={<CollectionDoc />} />
+            <Route path="loan" element={<LoanDoc />} />
+            <Route path="expense" element={<ExpenseDoc />} />
+            <Route path="admin-features" element={<AdminFeaturesDoc />} />
+            <Route path="report" element={<ReportDoc />} />
+          </Route>
+
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route element={<SuperAdminLayout />}>
             <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
+            <Route path="/admin/tenants" element={<TenantManagement />} />
+            <Route path="/admin/send-mail" element={<SendMailPage />} />
+            <Route path="/admin/smtp" element={<SmtpSettings />} />
             <Route path="/admin/pricing" element={<AdminPricing />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
           </Route>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+          {/* Legal Pages */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -240,7 +277,14 @@ export default function App() {
   }
 
   const isSuperAdminRoute = location.pathname.startsWith('/admin');
-  if (companySettings?.paymentStatus === 'Pending' && !isSuperAdminRoute && location.pathname !== '/payment') {
+  const isAllowedUnpaidRoute =
+    location.pathname === '/payment' ||
+    location.pathname === '/amc-payment' ||
+    location.pathname === '/privacy-policy' ||
+    location.pathname === '/terms-of-service' ||
+    location.pathname.startsWith('/document');
+
+  if (companySettings?.paymentStatus === 'Pending' && !isSuperAdminRoute && !isAllowedUnpaidRoute) {
     return <Navigate to="/payment" replace />;
   }
   if (companySettings?.paymentStatus === 'Paid' && location.pathname === '/payment') {
@@ -252,6 +296,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/payment" element={<WorkspacePayment />} />
+        <Route path="/amc-payment" element={<AmcPayment />} />
         <Route path="/login" element={
           user ? <Navigate to="/dashboard" /> :
             <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center p-4 selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
@@ -264,6 +309,22 @@ export default function App() {
               <Register onNavigateToLogin={() => navigate('/login')} />
             </div>
         } />
+
+        {/* Customer Documentation Module Routes */}
+        <Route path="/document" element={<DocLayout />}>
+          <Route index element={<Navigate to="/document/getting-started" replace />} />
+          <Route path="getting-started" element={<GettingStartedDoc />} />
+          <Route path="member-management" element={<MemberManagementDoc />} />
+          <Route path="collection" element={<CollectionDoc />} />
+          <Route path="loan" element={<LoanDoc />} />
+          <Route path="expense" element={<ExpenseDoc />} />
+          <Route path="admin-features" element={<AdminFeaturesDoc />} />
+          <Route path="report" element={<ReportDoc />} />
+        </Route>
+
+        {/* Legal Pages */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
 
         {/* Private Routes wrapping under MainLayout */}
         <Route element={<PrivateRoute user={user} />}>
@@ -280,6 +341,8 @@ export default function App() {
             <Route path="/loan-repayments" element={hasPermission('loan-repayments') ? <LoanRepaymentList /> : <Navigate to="/dashboard" replace />} />
             <Route path="/collection-types" element={hasPermission('collection-types') ? <CollectionTypeMaster /> : <Navigate to="/dashboard" replace />} />
             <Route path="/fund-collection-audit" element={hasPermission('fund-collection-audit') ? <CollectionAuditSummary /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/expenses" element={hasPermission('expenses') ? <ExpensesPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/reports/transactions" element={hasPermission('transactions') ? <TransactionsPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

@@ -2,6 +2,11 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
+import {
+  sendRegistrationPaymentEmail,
+  sendAmcPaymentEmail,
+  sendTenantBroadcastMessageEmail
+} from '../utils/mailer';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -140,6 +145,63 @@ export const toggleTenantStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const updateTenantDetails = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, adminEmail, subdomain, paymentStatus, isActive } = req.body;
+
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const db = getDatabase();
+    const tenant = await db.get("SELECT * FROM tenants WHERE id = ?", [id]);
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found.' });
+    }
+
+    // Check subdomain uniqueness if changed
+    if (subdomain && subdomain.toLowerCase().trim() !== tenant.subdomain.toLowerCase()) {
+      const existing = await db.get("SELECT id FROM tenants WHERE LOWER(subdomain) = ? AND id != ?", [subdomain.toLowerCase().trim(), id]);
+      if (existing) {
+        return res.status(400).json({ error: 'Subdomain is already taken by another organization.' });
+      }
+    }
+
+    const newName = name?.trim() || tenant.name;
+    const newAdminEmail = adminEmail?.trim() || tenant.adminEmail;
+    const newSubdomain = subdomain?.toLowerCase().trim() || tenant.subdomain;
+    const newPaymentStatus = paymentStatus || tenant.paymentStatus;
+    const newIsActive = (isActive === 0 || isActive === 1) ? isActive : tenant.isActive;
+
+    await db.run(
+      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ? WHERE id = ?",
+      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Tenant details updated successfully.',
+      tenant: {
+        id,
+        name: newName,
+        adminEmail: newAdminEmail,
+        subdomain: newSubdomain,
+        paymentStatus: newPaymentStatus,
+        isActive: newIsActive
+      }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update tenant details.' });
+  }
+};
+
 export const updateSuperAdminProfile = async (req: Request, res: Response) => {
   try {
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
@@ -272,12 +334,12 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
     }
 
     const paymentDateObj = new Date();
-    const paymentDateStr = paymentDateObj.toISOString();
+    const paymentDateStr = paymentDateObj.toISOString().slice(0, 19).replace('T', ' ');
     
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
-    const dueDateStr = dueDateObj.toISOString();
+    const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
     // Fetch AMC charge from pricedetails table
     let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
@@ -303,6 +365,27 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
       throw err;
     }
 
+    // Trigger Registration Payment Email Confirmation
+    if (tenant.adminEmail) {
+      let pricing = await db.get("SELECT price, tax FROM pricedetails LIMIT 1");
+      const price = pricing ? pricing.price : 0;
+      const tax = pricing ? pricing.tax : 0;
+      const totalAmount = price + (price * (tax / 100));
+
+      const port = req.headers.host?.includes(':') ? `:${req.headers.host.split(':')[1]}` : '';
+      const domainHost = req.hostname.includes('.') ? req.hostname.split('.').slice(1).join('.') : req.hostname;
+      const loginUrl = `http://${tenant.subdomain}.${domainHost}${port}/user/login`;
+
+      sendRegistrationPaymentEmail({
+        to: tenant.adminEmail,
+        tenantName: tenant.name,
+        subdomain: tenant.subdomain,
+        amount: totalAmount,
+        paidDate: paymentDateStr.slice(0, 10),
+        loginUrl
+      }).catch(err => console.error('Failed to send registration email:', err));
+    }
+
     return res.json({
       success: true,
       message: 'Tenant registration payment recorded and AMC bill generated.',
@@ -311,7 +394,7 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Confirm tenant payment error:', error);
-    return res.status(550).json({ error: 'Failed to record tenant registration payment.' });
+    return res.status(500).json({ error: 'Failed to record tenant registration payment.' });
   }
 };
 
@@ -356,11 +439,49 @@ export const payTenantAmcRecord = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'AMC billing record not found.' });
     }
 
-    const paidDate = new Date().toISOString();
+    const paidDateObj = new Date();
+    const paidDate = paidDateObj.toISOString().slice(0, 19).replace('T', ' ');
     await db.run(
       "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ? WHERE id = ?",
       [paidDate, id]
     );
+
+    // Rule: If previous due date is already passed (overdue), set next due date 1 year from paidDate.
+    // Otherwise, set next due date 1 year from previous due date.
+    const prevDueDateObj = record.dueDate ? new Date(record.dueDate) : paidDateObj;
+    const isOverdue = prevDueDateObj.getTime() < paidDateObj.getTime();
+    const baseDateForNextDue = isOverdue ? paidDateObj : prevDueDateObj;
+
+    const nextDueDateObj = new Date(baseDateForNextDue);
+    nextDueDateObj.setFullYear(baseDateForNextDue.getFullYear() + 1);
+    const nextDueDateStr = nextDueDateObj.toISOString().slice(0, 10);
+
+    const existingPending = await db.get(
+      "SELECT id FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' AND id != ?",
+      [record.tenantId, id]
+    );
+
+    if (!existingPending) {
+      let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+      const nextAmcCharge = pricing ? pricing.amc : record.amcCharge;
+      await db.run(
+        "INSERT INTO amcdetails (tenantId, amcCharge, dueDate, paidDate, paidStatus) VALUES (?, ?, ?, NULL, 'Pending')",
+        [record.tenantId, nextAmcCharge, nextDueDateStr]
+      );
+    }
+
+    // Trigger AMC Payment Receipt Email
+    const tenant = await db.get("SELECT name, subdomain, adminEmail FROM tenants WHERE id = ?", [record.tenantId]);
+    if (tenant && tenant.adminEmail) {
+      sendAmcPaymentEmail({
+        to: tenant.adminEmail,
+        tenantName: tenant.name,
+        subdomain: tenant.subdomain,
+        amcCharge: Number(record.amcCharge) || 0,
+        paidDate: paidDate.slice(0, 10),
+        nextDueDate: nextDueDateStr
+      }).catch(err => console.error('Failed to send AMC email:', err));
+    }
 
     return res.json({
       success: true,
@@ -373,3 +494,226 @@ export const payTenantAmcRecord = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to record AMC payment.' });
   }
 };
+
+export const sendTenantBroadcastMail = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { sendToAll, tenantIds, subject, message } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'Subject and message body are required.' });
+    }
+
+    const db = getDatabase();
+    let recipients: { id: number; name: string; adminEmail: string }[] = [];
+
+    if (sendToAll) {
+      // Fetch all active tenants
+      recipients = await db.all("SELECT id, name, adminEmail FROM tenants WHERE isActive = 1 AND adminEmail IS NOT NULL AND adminEmail != ''");
+    } else {
+      if (!Array.isArray(tenantIds) || tenantIds.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one tenant organization.' });
+      }
+      const placeholders = tenantIds.map(() => '?').join(',');
+      recipients = await db.all(`SELECT id, name, adminEmail FROM tenants WHERE id IN (${placeholders}) AND adminEmail IS NOT NULL AND adminEmail != ''`, tenantIds);
+    }
+
+    if (recipients.length === 0) {
+      return res.status(404).json({ error: 'No valid recipient email addresses found for selection.' });
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
+
+    for (const recipient of recipients) {
+      const result = await sendTenantBroadcastMessageEmail({
+        to: recipient.adminEmail,
+        tenantName: recipient.name,
+        subject: subject.trim(),
+        messageBody: message
+      });
+
+      if (result.success) {
+        successCount++;
+      } else {
+        failCount++;
+        errors.push(`${recipient.name} (${recipient.adminEmail}): ${result.error}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Mail dispatched to ${successCount} organization(s). ${failCount > 0 ? `${failCount} failed.` : ''}`,
+      totalRecipients: recipients.length,
+      successCount,
+      failCount,
+      errors
+    });
+  } catch (error: any) {
+    console.error('Send tenant broadcast mail error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to dispatch email broadcast.' });
+  }
+};
+
+export const listSmtpSettings = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const db = getDatabase();
+    const records = await db.all("SELECT id, server, username, port, encryption, password, status FROM smtp_settings ORDER BY id DESC");
+    return res.json(records);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch SMTP settings.' });
+  }
+};
+
+export const createSmtpSetting = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { server, username, port, encryption, password, status } = req.body;
+    if (!server || !username || !password) {
+      return res.status(400).json({ error: 'Server, username, and password are required.' });
+    }
+
+    const db = getDatabase();
+    const shouldBeActive = status === 'Active';
+
+    await db.exec("BEGIN TRANSACTION;");
+    try {
+      if (shouldBeActive) {
+        await db.run("UPDATE smtp_settings SET status = 'Inactive'");
+      }
+      const resInsert = await db.run(
+        "INSERT INTO smtp_settings (server, username, port, encryption, password, status) VALUES (?, ?, ?, ?, ?, ?)",
+        [server.trim(), username.trim(), Number(port) || 587, encryption || 'STARTTLS', password, shouldBeActive ? 'Active' : 'Inactive']
+      );
+      await db.exec("COMMIT;");
+      return res.json({ success: true, message: 'SMTP settings created successfully.', id: resInsert.lastID });
+    } catch (err) {
+      await db.exec("ROLLBACK;");
+      throw err;
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to create SMTP setting.' });
+  }
+};
+
+export const updateSmtpSetting = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { id } = req.params;
+    const { server, username, port, encryption, password, status } = req.body;
+
+    const db = getDatabase();
+    const existing = await db.get("SELECT * FROM smtp_settings WHERE id = ?", [id]);
+    if (!existing) return res.status(404).json({ error: 'SMTP setting not found.' });
+
+    const shouldBeActive = status === 'Active';
+
+    await db.exec("BEGIN TRANSACTION;");
+    try {
+      if (shouldBeActive) {
+        await db.run("UPDATE smtp_settings SET status = 'Inactive'");
+      }
+      await db.run(
+        "UPDATE smtp_settings SET server = ?, username = ?, port = ?, encryption = ?, password = ?, status = ? WHERE id = ?",
+        [
+          server?.trim() || existing.server,
+          username?.trim() || existing.username,
+          Number(port) || existing.port,
+          encryption || existing.encryption,
+          password || existing.password,
+          shouldBeActive ? 'Active' : 'Inactive',
+          id
+        ]
+      );
+      await db.exec("COMMIT;");
+      return res.json({ success: true, message: 'SMTP settings updated successfully.' });
+    } catch (err) {
+      await db.exec("ROLLBACK;");
+      throw err;
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to update SMTP setting.' });
+  }
+};
+
+export const activateSmtpSetting = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { id } = req.params;
+    const db = getDatabase();
+
+    await db.exec("BEGIN TRANSACTION;");
+    try {
+      await db.run("UPDATE smtp_settings SET status = 'Inactive'");
+      await db.run("UPDATE smtp_settings SET status = 'Active' WHERE id = ?", [id]);
+      await db.exec("COMMIT;");
+      return res.json({ success: true, message: 'SMTP configuration activated successfully.' });
+    } catch (err) {
+      await db.exec("ROLLBACK;");
+      throw err;
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to activate SMTP setting.' });
+  }
+};
+
+export const deleteSmtpSetting = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { id } = req.params;
+    const db = getDatabase();
+    const existing = await db.get("SELECT * FROM smtp_settings WHERE id = ?", [id]);
+    if (!existing) return res.status(404).json({ error: 'SMTP setting not found.' });
+
+    await db.exec("BEGIN TRANSACTION;");
+    try {
+      await db.run("DELETE FROM smtp_settings WHERE id = ?", [id]);
+      if (existing.status === 'Active') {
+        const remaining = await db.get("SELECT id FROM smtp_settings ORDER BY id DESC LIMIT 1");
+        if (remaining) {
+          await db.run("UPDATE smtp_settings SET status = 'Active' WHERE id = ?", [remaining.id]);
+        }
+      }
+      await db.exec("COMMIT;");
+      return res.json({ success: true, message: 'SMTP setting deleted successfully.' });
+    } catch (err) {
+      await db.exec("ROLLBACK;");
+      throw err;
+    }
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to delete SMTP setting.' });
+  }
+};
+

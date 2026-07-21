@@ -44,3 +44,21 @@ export interface Payment {
   status: PaymentStatus;
   interestRate?: number;
 }
+
+export type ExpensePaymentMode = 'Cash' | 'Bank' | 'UPI';
+export type ExpenseStatus = 'Draft' | 'Approved' | 'Cancelled';
+
+export interface Expense {
+  Id: string;
+  TenantId: number | string;
+  ExpenseDate: string;
+  Amount: number;
+  PaymentMode: ExpensePaymentMode;
+  ReferenceNo?: string | null;
+  Description: string;
+  Status: ExpenseStatus;
+  CreatedBy: string;
+  CreatedAt?: string;
+  createdByName?: string;
+}
+

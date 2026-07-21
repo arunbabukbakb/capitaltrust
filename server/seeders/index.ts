@@ -164,21 +164,70 @@ export async function runSeeders(db: Database) {
       }
     }
   }
-  // Force sync member permissions: replace 'fund-collection' with 'fund-collection-audit'
+  // Force sync expenses menu item and role permissions
   try {
-    const memberRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'user'");
-    if (memberRole) {
-      const oldMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'fund-collection'");
-      if (oldMenu) {
-        await db.run("DELETE FROM role_menu_permissions WHERE roleId = ? AND menuId = ?", [memberRole.id, oldMenu.id]);
-      }
-      const newMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'fund-collection-audit'");
-      if (newMenu) {
-        await db.run("INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)", [memberRole.id, newMenu.id]);
+    const existingExpenseMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'expenses'");
+    let expenseMenuId = existingExpenseMenu?.id;
+    if (!expenseMenuId) {
+      const res = await db.run(
+        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
+        ['expenses', 'Expenses', 'Receipt', '/expenses', null, 35]
+      );
+      expenseMenuId = res.lastID as number;
+    }
+
+    if (expenseMenuId) {
+      const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
+      for (const r of allRoles) {
+        await db.run(
+          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+          [r.id, expenseMenuId]
+        );
       }
     }
   } catch (err) {
-    console.error("Error syncing member role permissions:", err);
+    console.error("Error syncing expenses menu item:", err);
+  }
+
+  // Force sync Reports parent menu & Transactions child menu
+  try {
+    const existingReportsMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'reports'");
+    let reportsParentDbId = existingReportsMenu?.id;
+    if (!reportsParentDbId) {
+      const res = await db.run(
+        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
+        ['reports', 'Reports', 'FileSpreadsheet', null, null, 50]
+      );
+      reportsParentDbId = res.lastID as number;
+    }
+
+    const existingTxnMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'transactions'");
+    let txnMenuDbId = existingTxnMenu?.id;
+    if (!txnMenuDbId) {
+      const res = await db.run(
+        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
+        ['transactions', 'Transactions', 'Receipt', '/reports/transactions', 'reports', 51]
+      );
+      txnMenuDbId = res.lastID as number;
+    }
+
+    const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
+    for (const r of allRoles) {
+      if (reportsParentDbId) {
+        await db.run(
+          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+          [r.id, reportsParentDbId]
+        );
+      }
+      if (txnMenuDbId) {
+        await db.run(
+          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+          [r.id, txnMenuDbId]
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Error syncing Reports & Transactions menu items:", err);
   }
 
   // Seed company settings if empty

@@ -39,7 +39,7 @@ class MySQLPromiseDatabase implements Database {
 
   async run(sql: string, params: any[] = []): Promise<{ lastID?: number | string; changes?: number }> {
     const cleanSql = this.translateSql(sql);
-    
+
     if (cleanSql.includes('START TRANSACTION') || cleanSql.includes('BEGIN')) {
       if (!this.txConn) {
         this.txConn = await this.pool.getConnection();
@@ -67,7 +67,7 @@ class MySQLPromiseDatabase implements Database {
 
   async exec(sql: string): Promise<void> {
     const cleanSql = this.translateSql(sql);
-    
+
     if (cleanSql.includes('START TRANSACTION') || cleanSql.includes('BEGIN')) {
       if (!this.txConn) {
         this.txConn = await this.pool.getConnection();
@@ -419,8 +419,8 @@ export async function initDatabase(): Promise<Database> {
         id INT AUTO_INCREMENT PRIMARY KEY,
         tenantId INT NOT NULL,
         amcCharge DOUBLE NOT NULL,
-        dueDate VARCHAR(255) NOT NULL,
-        paidDate VARCHAR(255) DEFAULT NULL,
+        dueDate DATE NOT NULL,
+        paidDate DATETIME DEFAULT NULL,
         paidStatus VARCHAR(255) NOT NULL DEFAULT 'Pending',
         FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
       );
@@ -431,7 +431,68 @@ export async function initDatabase(): Promise<Database> {
         tax DOUBLE NOT NULL DEFAULT 0,
         amc DOUBLE NOT NULL DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS expenses (
+        Id VARCHAR(255) PRIMARY KEY,
+        TenantId INT NOT NULL,
+        ExpenseDate VARCHAR(255) NOT NULL,
+        Amount DOUBLE NOT NULL CHECK(Amount > 0),
+        PaymentMode VARCHAR(255) NOT NULL CHECK(PaymentMode IN ('Cash', 'Bank', 'UPI')),
+        ReferenceNo VARCHAR(255) NULL,
+        Description TEXT NOT NULL,
+        Status VARCHAR(255) NOT NULL CHECK(Status IN ('Draft', 'Approved', 'Cancelled')),
+        CreatedBy VARCHAR(255) NOT NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(TenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY(CreatedBy) REFERENCES users(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS transactions (
+        Id VARCHAR(255) PRIMARY KEY,
+        TenantId INT NOT NULL,
+        TransactionNo VARCHAR(255) NOT NULL,
+        TransactionDate VARCHAR(255) NOT NULL,
+        TransactionType VARCHAR(255) NOT NULL CHECK(TransactionType IN ('Collection', 'LoanIssue', 'LoanRepayment', 'Expense', 'OpeningBalance', 'Adjustment')),
+        Amount DOUBLE NOT NULL CHECK(Amount >= 0),
+        ReferenceType VARCHAR(255) NOT NULL,
+        ReferenceId VARCHAR(255) NOT NULL,
+        Narration TEXT NOT NULL,
+        Status VARCHAR(255) NOT NULL DEFAULT 'Completed',
+        CreatedBy VARCHAR(255) NOT NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UpdatedBy VARCHAR(255) NULL,
+        UpdatedAt DATETIME NULL,
+        FOREIGN KEY(TenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY(CreatedBy) REFERENCES users(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS smtp_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        server VARCHAR(255) NOT NULL,
+        username VARCHAR(255) NOT NULL,
+        port INT NOT NULL DEFAULT 587,
+        encryption VARCHAR(50) NOT NULL DEFAULT 'STARTTLS',
+        password VARCHAR(255) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Inactive'
+      );
     `);
+
+    // Ensure amcdetails.dueDate and amcdetails.paidDate are DATETIME
+    try {
+      const amcCol = await db.get(`
+        SELECT DATA_TYPE 
+        FROM information_schema.columns 
+        WHERE table_schema = DATABASE() AND table_name = 'amcdetails' AND column_name = 'dueDate'
+      `);
+      if (amcCol && amcCol.DATA_TYPE !== 'datetime') {
+        console.log("Upgrading amcdetails.dueDate and amcdetails.paidDate columns to DATETIME...");
+        await db.exec("ALTER TABLE amcdetails MODIFY COLUMN dueDate DATETIME NOT NULL");
+        await db.exec("ALTER TABLE amcdetails MODIFY COLUMN paidDate DATETIME DEFAULT NULL");
+        console.log("amcdetails date columns successfully upgraded to DATETIME.");
+      }
+    } catch (err) {
+      console.error("Failed to migrate amcdetails date columns to DATETIME:", err);
+    }
 
     // Seed default tenant if not exists and ensure status is active (1) and paid
     try {
@@ -445,9 +506,19 @@ export async function initDatabase(): Promise<Database> {
           [1, 'CapitalTrust Demo', 'demo', 'admin@capitaltrust.com', new Date().toISOString(), 1, 'Paid', new Date().toISOString()]
         );
         console.log('Seeded demo tenant with ID 1.');
-      } else {
+      }
+      if (defaultTenant) {
         await db.run(
           "UPDATE tenants SET isActive = 1, paymentStatus = 'Paid' WHERE subdomain = 'demo' OR id = 1"
+        );
+      }
+
+      // Seed default SMTP settings if empty
+      const smtpCount = await db.get("SELECT COUNT(*) as cnt FROM smtp_settings");
+      if (smtpCount && (smtpCount.cnt === 0 || smtpCount.cnt === '0')) {
+        await db.run(
+          "INSERT INTO smtp_settings (server, username, port, encryption, password, status) VALUES (?, ?, ?, ?, ?, ?)",
+          ['dryzen.in', 'contact@dryzen.in', 587, 'STARTTLS', 'samplepassword123', 'Active']
         );
       }
     } catch (err) {
@@ -492,13 +563,13 @@ export async function initDatabase(): Promise<Database> {
     // Clean up legacy tables if needed
     try {
       await db.exec("DROP TABLE IF EXISTS UserDue;");
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.exec("DROP TABLE IF EXISTS payments;");
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.exec("DROP TABLE IF EXISTS LoanPaymentRequest;");
-    } catch (e) {}
+    } catch (e) { }
 
     // Perform migrations for existing databases to add columns if necessary
     const hasIsActive = await checkColumnExists('tenants', 'isActive');
@@ -584,7 +655,7 @@ export async function initDatabase(): Promise<Database> {
       if (!hasTenantIdColType) {
         await db.exec("ALTER TABLE CollectionType ADD COLUMN tenantId VARCHAR(255) NOT NULL DEFAULT 'default'");
       }
-      
+
       const hasTenantIdColGroup = await checkColumnExists('FundCollectionGroup', 'tenantId');
       if (!hasTenantIdColGroup) {
         await db.exec("ALTER TABLE FundCollectionGroup ADD COLUMN tenantId VARCHAR(255) NOT NULL DEFAULT 'default'");

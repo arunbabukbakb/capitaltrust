@@ -58,13 +58,13 @@ export default function AdminProfile() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="p-3 sm:p-8 max-w-2xl mx-auto space-y-4 sm:space-y-6 font-sans text-slate-200">
       <div>
-        <h3 className="text-xl sm:text-2xl font-bold text-white font-headline">SuperAdmin Profile</h3>
-        <p className="text-xs text-slate-400 mt-1">Manage your administrator details and system credentials.</p>
+        <h3 className="text-lg sm:text-2xl font-bold text-white font-headline">SuperAdmin Profile</h3>
+        <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1">Manage your administrator details and system credentials.</p>
       </div>
 
-      <div className="bg-slate-900/30 border border-slate-800/85 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-xl space-y-6">
+      <div className="bg-[#0d1322] border border-slate-800/85 rounded-2xl p-4 sm:p-8 shadow-xl space-y-4 sm:space-y-6">
         {error && (
           <div className="bg-red-500/10 border border-red-505/20 text-red-400 rounded-xl p-4 flex gap-2 text-xs font-semibold items-center animate-shake">
             <AlertTriangle className="w-4.5 h-4.5 text-red-500 flex-shrink-0" />

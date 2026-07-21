@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { getDatabase } from '../database';
+import { sendRegistrationPaymentEmail, sendAmcPaymentEmail } from '../utils/mailer';
 import { TenantModel } from '../models/Tenant';
 import { UserModel } from '../models/User';
 import { RoleModel } from '../models/Role';
@@ -138,13 +139,18 @@ export const payTenant = async (req: Request, res: Response) => {
       return res.json({ success: true, message: "Already paid." });
     }
 
+    function toMySQLDateTime(dateInput?: Date | string | null): string {
+      const d = dateInput ? new Date(dateInput) : new Date();
+      return d.toISOString().slice(0, 19).replace('T', ' ');
+    }
+
     const paymentDateObj = new Date();
-    const paymentDateStr = paymentDateObj.toISOString();
+    const paymentDateStr = toMySQLDateTime(paymentDateObj);
     
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
-    const dueDateStr = dueDateObj.toISOString();
+    const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
     // Fetch AMC charge from pricedetails table
     let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
@@ -264,12 +270,12 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
 
     const db = getDatabase();
     const paymentDateObj = new Date();
-    const paymentDateStr = paymentDateObj.toISOString();
+    const paymentDateStr = paymentDateObj.toISOString().slice(0, 19).replace('T', ' ');
     
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
-    const dueDateStr = dueDateObj.toISOString();
+    const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
     // Fetch AMC charge from pricedetails table
     let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
@@ -301,6 +307,28 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
       throw err;
     }
 
+    // Trigger Registration Payment Email Confirmation
+    const tenant = await db.get("SELECT name, subdomain, adminEmail FROM tenants WHERE id = ?", [tenantId]);
+    if (tenant && tenant.adminEmail) {
+      let pricingDetails = await db.get("SELECT price, tax FROM pricedetails LIMIT 1");
+      const price = pricingDetails ? pricingDetails.price : 0;
+      const tax = pricingDetails ? pricingDetails.tax : 0;
+      const totalAmount = price + (price * (tax / 100));
+
+      const port = req.headers.host?.includes(':') ? `:${req.headers.host.split(':')[1]}` : '';
+      const domainHost = req.hostname.includes('.') ? req.hostname.split('.').slice(1).join('.') : req.hostname;
+      const loginUrl = `http://${tenant.subdomain}.${domainHost}${port}/user/login`;
+
+      sendRegistrationPaymentEmail({
+        to: tenant.adminEmail,
+        tenantName: tenant.name,
+        subdomain: tenant.subdomain,
+        amount: totalAmount,
+        paidDate: paymentDateStr.slice(0, 10),
+        loginUrl
+      }).catch(err => console.error("Failed to send registration email:", err));
+    }
+
     return res.json({
       success: true,
       message: "Payment successfully verified and workspace activated.",
@@ -312,3 +340,145 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
     return res.status(550).json({ error: "Failed to verify payment." });
   }
 };
+
+export const createAmcOrder = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant header is missing." });
+    }
+    const db = getDatabase();
+    const amcRecord = await db.get(
+      "SELECT id, amcCharge FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' ORDER BY dueDate ASC LIMIT 1",
+      [tenantId]
+    );
+
+    if (!amcRecord) {
+      return res.status(404).json({ error: "No pending AMC record found for this organization." });
+    }
+
+    const totalAmount = amcRecord.amcCharge || 0;
+    const rzpDetails = getRazorpayDetails();
+
+    if (!rzpDetails.client) {
+      return res.json({
+        isMock: true,
+        orderId: `mock_amc_order_${Date.now()}`,
+        amount: totalAmount,
+        currency: "INR",
+        amcRecordId: amcRecord.id
+      });
+    }
+
+    const order = await rzpDetails.client.orders.create({
+      amount: Math.round(totalAmount * 100),
+      currency: "INR",
+      receipt: `amc_receipt_${amcRecord.id}_${Date.now()}`,
+      notes: {
+        tenantId,
+        amcRecordId: amcRecord.id,
+        type: 'amc'
+      }
+    });
+
+    res.json({
+      isMock: false,
+      keyId: rzpDetails.keyId,
+      orderId: order.id,
+      amount: totalAmount,
+      currency: "INR",
+      amcRecordId: amcRecord.id
+    });
+  } catch (error: any) {
+    console.error("Create AMC order error:", error);
+    res.status(500).json({ error: error.message || "Failed to create AMC payment order." });
+  }
+};
+
+export const verifyAmcPayment = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant header is missing." });
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, isMock } = req.body;
+    const rzpDetails = getRazorpayDetails();
+
+    if (!isMock && rzpDetails.client) {
+      const generated_signature = crypto
+        .createHmac('sha256', rzpDetails.keySecret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest('hex');
+
+      if (generated_signature !== razorpay_signature) {
+        return res.status(400).json({ error: "Payment verification failed. Invalid signature." });
+      }
+    }
+
+    const db = getDatabase();
+    const amcRecord = await db.get(
+      "SELECT id, amcCharge, dueDate FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' ORDER BY dueDate ASC LIMIT 1",
+      [tenantId]
+    );
+
+    if (!amcRecord) {
+      return res.status(404).json({ error: "No pending AMC record found." });
+    }
+
+    const paidDateObj = new Date();
+    const paidDateStr = paidDateObj.toISOString().slice(0, 19).replace('T', ' ');
+
+    // Rule: If previous due date is already passed (overdue), set next due date 1 year from paidDate.
+    // Otherwise, set next due date 1 year from previous due date.
+    const prevDueDateObj = amcRecord.dueDate ? new Date(amcRecord.dueDate) : paidDateObj;
+    const isOverdue = prevDueDateObj.getTime() < paidDateObj.getTime();
+    const baseDateForNextDue = isOverdue ? paidDateObj : prevDueDateObj;
+
+    const nextDueDateObj = new Date(baseDateForNextDue);
+    nextDueDateObj.setFullYear(baseDateForNextDue.getFullYear() + 1);
+    const nextDueDateStr = nextDueDateObj.toISOString().slice(0, 10);
+
+    let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+    const nextAmcCharge = pricing ? pricing.amc : amcRecord.amcCharge;
+
+    await db.exec("BEGIN TRANSACTION;");
+    try {
+      // Mark current AMC paid
+      await db.run(
+        "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ? WHERE id = ?",
+        [paidDateStr, amcRecord.id]
+      );
+
+      // Insert next year AMC
+      await db.run(
+        "INSERT INTO amcdetails (tenantId, amcCharge, dueDate, paidDate, paidStatus) VALUES (?, ?, ?, NULL, 'Pending')",
+        [tenantId, nextAmcCharge, nextDueDateStr]
+      );
+
+      await db.exec("COMMIT;");
+    } catch (err) {
+      await db.exec("ROLLBACK;");
+      throw err;
+    }
+
+    // Trigger AMC Payment Receipt Email
+    const tenant = await db.get("SELECT name, subdomain, adminEmail FROM tenants WHERE id = ?", [tenantId]);
+    if (tenant && tenant.adminEmail) {
+      sendAmcPaymentEmail({
+        to: tenant.adminEmail,
+        tenantName: tenant.name,
+        subdomain: tenant.subdomain,
+        amcCharge: Number(amcRecord.amcCharge) || 0,
+        paidDate: paidDateStr.slice(0, 10),
+        nextDueDate: nextDueDateStr
+      }).catch(err => console.error("Failed to send AMC email:", err));
+    }
+
+    res.json({ message: "AMC Payment confirmed successfully! Renewal complete.", success: true });
+  } catch (error: any) {
+    console.error("Verify AMC payment error:", error);
+    res.status(500).json({ error: error.message || "Failed to verify AMC payment." });
+  }
+};
+

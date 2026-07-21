@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials } from '../../authSlice';
-import { Mail, Lock, Eye, EyeOff, Sparkles, Key, UserCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Sparkles, Key, UserCheck, Sun, Moon } from 'lucide-react';
 import { RootState } from '../../store';
 import { getSubdomain } from '../../main';
+import { useTheme } from '../../components/ThemeContext';
 
 interface LoginProps {
   onNavigateToRegister: () => void;
@@ -25,6 +26,7 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { companySettings } = useSelector((state: RootState) => state.auth);
+  const { theme, toggleTheme } = useTheme();
   const registrationMessage = location.state?.message;
 
   const subdomain = getSubdomain();
@@ -82,13 +84,21 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
 
   return (
     <div className="w-full relative flex items-center justify-center min-h-full py-8 sm:py-12 px-4 selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
+      {/* Theme toggle — fixed top-right */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md transition-all cursor-pointer"
+        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      >
+        {theme === 'dark' ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+      </button>
       {/* Decorative Blur Spheres background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] bg-emerald-100 dark:bg-emerald-950/10 opacity-50 blur-[130px] rounded-full" />
         <div className="absolute -bottom-[10%] -left-[5%] w-[35%] h-[35%] bg-blue-100 dark:bg-blue-950/10 opacity-60 blur-[110px] rounded-full" />
       </div>
 
-      <main className="w-full max-w-[420px] sm:max-w-[460px] mx-auto z-10 animate-fade-in">
+      <main className="w-full max-w-[420px] sm:max-w-[460px] mx-auto z-10 animate-fade-in px-2 sm:px-0">
         <div className="mb-6 text-center">
           <div className="flex items-center justify-center gap-3">
             {companySettings?.companyLogo ? (
@@ -110,7 +120,7 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
         </div>
 
         {/* Login Card */}
-        <div className="glass-panel login-card rounded-2xl p-6 flex flex-col gap-4 shadow-xl">
+        <div className="glass-panel login-card rounded-2xl p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 shadow-xl">
           {view === 'login' ? (
             <>
               <header>
@@ -132,7 +142,7 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
                     Click any role below to autofill demo credentials:
                   </p>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -205,7 +215,7 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                     <input required type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username or Email"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100" />
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2.5 sm:py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100" />
                   </div>
                 </div>
 
@@ -219,7 +229,7 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                     <input required type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-3 pl-11 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100" />
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2.5 sm:py-3 pl-11 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

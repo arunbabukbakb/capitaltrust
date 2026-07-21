@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials } from '../../authSlice';
-import { UserCheck, Eye, EyeOff, Shield } from 'lucide-react';
+import { UserCheck, Eye, EyeOff, Shield, Sun, Moon } from 'lucide-react';
 import { RootState } from '../../store';
+import { useTheme } from '../../components/ThemeContext';
 
 interface RegisterProps {
   onNavigateToLogin: () => void;
@@ -22,6 +23,7 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { companySettings } = useSelector((state: RootState) => state.auth);
+  const { theme, toggleTheme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,15 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
   };
 
   return (
-    <div className="w-full max-w-md glass-panel rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col gap-5 animate-fade-in text-slate-900 dark:text-slate-100">
+    <div className="w-full max-w-md glass-panel rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col gap-5 animate-fade-in text-slate-900 dark:text-slate-100 relative">
+      {/* Theme toggle — top right */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      >
+        {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+      </button>
       {/* Brand Header */}
       <div className="flex flex-col items-center text-center">
         <div className="flex items-center gap-2 mb-1">
