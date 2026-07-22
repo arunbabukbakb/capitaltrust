@@ -16,6 +16,18 @@ function getUserIdFromRequest(req: Request): string | null {
   }
 }
 
+function isSuperAdminRequest(req: Request): boolean {
+  const token = req.cookies?.token ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+  if (!token) return false;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { role?: string };
+    return payload.role === 'superadmin';
+  } catch {
+    return false;
+  }
+}
+
 // Fetch menus allowed for the logged in user (supports switching active role via roleId query param)
 export const getUserMenus = async (req: Request, res: Response) => {
   const db = getDatabase();
@@ -65,15 +77,15 @@ export const getUserMenus = async (req: Request, res: Response) => {
 
     let menus: any[] = [];
     if (activeRoleType === 'admin') {
-      // Admin gets all menus
-      menus = await db.all("SELECT * FROM menus ORDER BY menuOrder ASC");
+      // Admin gets all active menus
+      menus = await db.all("SELECT * FROM menus WHERE status = 1 ORDER BY menuOrder ASC");
     } else {
-      // Non-admin gets menus mapped to their active role
+      // Non-admin gets active menus mapped to their active role
       const permitted = await db.all(
         `SELECT m.* FROM menus m
          JOIN role_menu_permissions rmp ON m.id = rmp.menuId
-         WHERE rmp.roleId = ?`,
-        [activeRoleId]
+         WHERE rmp.roleId = ? AND m.status = 1`,
+         [activeRoleId]
       );
 
       // Collect parents
@@ -86,7 +98,7 @@ export const getUserMenus = async (req: Request, res: Response) => {
       const allMenus = [...permitted];
       for (const pId of parentIds) {
         if (!allMenus.some((m: any) => m.menuId === pId)) {
-          const parentMenu = await db.get("SELECT * FROM menus WHERE menuId = ?", [pId]);
+          const parentMenu = await db.get("SELECT * FROM menus WHERE menuId = ? AND status = 1", [pId]);
           if (parentMenu) {
             allMenus.push(parentMenu);
           }
@@ -105,22 +117,31 @@ export const getUserMenus = async (req: Request, res: Response) => {
   }
 };
 
-// CRUD: Get all menus (Admin/Manager only)
+// CRUD: Get all menus (Admin/Manager or Superadmin only)
 export const getMenus = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
-    const userId = getUserIdFromRequest(req);
-    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: "Not authenticated" });
 
+    const payload = jwt.verify(token, JWT_SECRET) as { id: string; role?: string };
+    if (payload.role === 'superadmin') {
+      // Superadmin gets all menus regardless of status
+      const menus = await db.all("SELECT * FROM menus ORDER BY menuOrder ASC");
+      return res.json(menus);
+    }
+
+    // Otherwise, check if user has admin/manager roles under a tenant (only active menus)
     const user = await db.get<{ roleType: string }>(
       "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",
-      [userId]
+      [payload.id]
     );
     if (!user || (user.roleType !== 'admin' && user.roleType !== 'manager')) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const menus = await db.all("SELECT * FROM menus ORDER BY menuOrder ASC");
+    const menus = await db.all("SELECT * FROM menus WHERE status = 1 ORDER BY menuOrder ASC");
     res.json(menus);
   } catch (error) {
     console.error("GetMenus error", error);
@@ -128,29 +149,24 @@ export const getMenus = async (req: Request, res: Response) => {
   }
 };
 
-// CRUD: Create new menu item
+// CRUD: Create new menu item (Superadmin only)
 export const createMenu = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
-    const userId = getUserIdFromRequest(req);
-    if (!userId) return res.status(401).json({ error: "Not authenticated" });
-
-    const user = await db.get<{ roleType: string }>(
-      "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",
-      [userId]
-    );
-    if (!user || (user.roleType !== 'admin' && user.roleType !== 'manager')) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!isSuperAdminRequest(req)) {
+      return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
 
-    const { menuId, name, icon, path, parentId, menuOrder } = req.body;
+    const { menuId, name, icon, path, parentId, menuOrder, status } = req.body;
     if (!menuId || !name) {
       return res.status(400).json({ error: "menuId and name are required" });
     }
 
+    const statusVal = status === false || status === 0 ? 0 : 1;
+
     const result = await db.run(
-      "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
-      [menuId, name, icon || null, path || null, parentId || null, menuOrder || 0]
+      "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [menuId, name, icon || null, path || null, parentId || null, menuOrder || 0, statusVal]
     );
 
     const newMenu = await db.get("SELECT * FROM menus WHERE id = ?", [result.lastID]);
@@ -164,30 +180,24 @@ export const createMenu = async (req: Request, res: Response) => {
   }
 };
 
-// CRUD: Update menu item
+// CRUD: Update menu item (Superadmin only)
 export const updateMenu = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
-    const { id } = req.params;
-    const userId = getUserIdFromRequest(req);
-    if (!userId) return res.status(401).json({ error: "Not authenticated" });
-
-    const user = await db.get<{ roleType: string }>(
-      "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",
-      [userId]
-    );
-    if (!user || (user.roleType !== 'admin' && user.roleType !== 'manager')) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!isSuperAdminRequest(req)) {
+      return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
-
-    const { menuId, name, icon, path, parentId, menuOrder } = req.body;
+    const { id } = req.params;
+    const { menuId, name, icon, path, parentId, menuOrder, status } = req.body;
     if (!menuId || !name) {
       return res.status(400).json({ error: "menuId and name are required" });
     }
 
+    const statusVal = status === false || status === 0 ? 0 : 1;
+
     await db.run(
-      "UPDATE menus SET menuId = ?, name = ?, icon = ?, path = ?, parentId = ?, menuOrder = ? WHERE id = ?",
-      [menuId, name, icon || null, path || null, parentId || null, menuOrder || 0, id]
+      "UPDATE menus SET menuId = ?, name = ?, icon = ?, path = ?, parentId = ?, menuOrder = ?, status = ? WHERE id = ?",
+      [menuId, name, icon || null, path || null, parentId || null, menuOrder || 0, statusVal, id]
     );
 
     const updatedMenu = await db.get("SELECT * FROM menus WHERE id = ?", [id]);
@@ -198,24 +208,14 @@ export const updateMenu = async (req: Request, res: Response) => {
   }
 };
 
-// CRUD: Delete menu item
+// CRUD: Delete menu item (Superadmin only)
 export const deleteMenu = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
-    const { id } = req.params;
-    const userId = getUserIdFromRequest(req);
-    if (!userId) return res.status(401).json({ error: "Not authenticated" });
-
-    const user = await db.get<{ roleType: string }>(
-      "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",
-      [userId]
-    );
-    if (!user || (user.roleType !== 'admin' && user.roleType !== 'manager')) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!isSuperAdminRequest(req)) {
+      return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
-
-    // Since SQLite triggers foreign keys ON DELETE CASCADE (configured in schema),
-    // deleting parent menu will delete children too.
+    const { id } = req.params;
     await db.run("DELETE FROM menus WHERE id = ?", [id]);
     res.status(204).send();
   } catch (error) {

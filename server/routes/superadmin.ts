@@ -16,7 +16,9 @@ import {
   updateSmtpSetting,
   activateSmtpSetting,
   deleteSmtpSetting,
-  sendTenantBroadcastMail
+  testSmtpConnection,
+  sendTenantBroadcastMail,
+  resetFullData
 } from '../controllers/superadmin';
 
 const router = Router();
@@ -32,6 +34,7 @@ router.put('/price', updatePriceDetails);
 router.post('/tenants/:id/confirm-payment', confirmTenantPayment);
 router.get('/tenants/:id/amc', listTenantAmcRecords);
 router.post('/amc/:id/pay', payTenantAmcRecord);
+router.post('/reset-data', resetFullData);
 
 // SMTP Settings & Broadcast Mail Routes
 router.get('/smtp', listSmtpSettings);
@@ -39,6 +42,7 @@ router.post('/smtp', createSmtpSetting);
 router.put('/smtp/:id', updateSmtpSetting);
 router.post('/smtp/:id/activate', activateSmtpSetting);
 router.delete('/smtp/:id', deleteSmtpSetting);
+router.post('/smtp/:id/test', testSmtpConnection);
 router.post('/send-mail', sendTenantBroadcastMail);
 
 export default router;

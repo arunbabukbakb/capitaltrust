@@ -37,6 +37,11 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [resetting, setResetting] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [toast, setToast] = useState('');
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -64,6 +69,41 @@ export default function SuperAdminDashboard() {
       setError(err.message || 'Error loading dashboard data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFullReset = async () => {
+    if (resetConfirmText.trim().toUpperCase() !== 'RESET') {
+      alert('Please type RESET to confirm data purge.');
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/super-admin/reset-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setToast('Full system data has been reset to default initial state!');
+        setShowResetModal(false);
+        setResetConfirmText('');
+        await fetchDashboardData();
+        setTimeout(() => setToast(''), 4000);
+      } else {
+        alert(`Reset failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      console.error('Reset error:', err);
+      alert('An error occurred during system data reset.');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -97,14 +137,23 @@ export default function SuperAdminDashboard() {
           </p>
         </div>
 
-        <button
-          onClick={fetchDashboardData}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg cursor-pointer disabled:opacity-50 z-10 self-end md:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Analytics</span>
-        </button>
+        <div className="flex items-center gap-2 self-end md:self-auto z-10">
+          <button
+            onClick={() => setShowResetModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition shadow-lg cursor-pointer"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
+            <span>Reset System Data</span>
+          </button>
+          <button
+            onClick={fetchDashboardData}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Analytics</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -399,6 +448,77 @@ export default function SuperAdminDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-emerald-500/30 text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in">
+          <CheckCircle className="w-5 h-5 text-emerald-400" />
+          <span className="text-xs font-bold">{toast}</span>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Reset System Data */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-rose-500/30 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative animate-fade-in text-slate-100">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                <AlertTriangle className="w-6 h-6 text-rose-500 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Reset Full System Data</h3>
+                <p className="text-[11px] text-slate-400">SuperAdmin Maintenance Control</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-950/40 border border-rose-500/20 rounded-xl p-3.5 space-y-2 text-xs text-rose-200">
+              <p className="font-bold">⚠️ CRITICAL WARNING:</p>
+              <p className="leading-relaxed">
+                This action will permanently purge all non-demo tenant registrations, AMC records, loans, repayment schedules, dues, member collections, transactions, expenses, custom menus, and non-default users.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Only the primary CapitalTrust Demo tenant will remain, re-seeded to its default initial state.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                Type <span className="text-rose-400 font-mono">RESET</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="RESET"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 uppercase tracking-widest font-mono"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetModal(false);
+                  setResetConfirmText('');
+                }}
+                disabled={resetting}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFullReset}
+                disabled={resetting || resetConfirmText.trim().toUpperCase() !== 'RESET'}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {resetting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Confirm Reset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

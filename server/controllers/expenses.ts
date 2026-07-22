@@ -50,7 +50,8 @@ export const createExpense = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const { expenseDate, amount, paymentMode, referenceNo, description } = req.body;
+    const { expenseDate, amount, paymentMode, referenceNo, description, expenseBy, ExpenseBy } = req.body;
+    const rawExpenseBy = expenseBy || ExpenseBy;
 
     // Validate non-nullable Description
     if (!description || typeof description !== 'string' || description.trim().length === 0) {
@@ -76,10 +77,17 @@ export const createExpense = async (req: Request, res: Response) => {
     // Business Rule: Admin / Manager entries are directly Approved; Member entries are Draft
     const initialStatus: 'Approved' | 'Draft' = userContext.isAdminOrManager ? 'Approved' : 'Draft';
 
+    // ExpenseBy rule:
+    // If admin or manager: use passed expenseBy (optional).
+    // If member (user): set to login user ID automatically.
+    const resolvedExpenseBy = userContext.isAdminOrManager
+      ? (rawExpenseBy ? String(rawExpenseBy).trim() : null)
+      : userContext.user.id;
+
     const count = await ExpenseModel.countByTenant(tenantId);
     const expenseId = `EXP-${10001 + count}`;
 
-    const newExpense: Omit<Expense, 'CreatedAt' | 'createdByName'> = {
+    const newExpense: Omit<Expense, 'CreatedAt' | 'createdByName' | 'expenseByName'> = {
       Id: expenseId,
       TenantId: tenantId,
       ExpenseDate: expenseDate,
@@ -87,6 +95,7 @@ export const createExpense = async (req: Request, res: Response) => {
       PaymentMode: paymentMode,
       ReferenceNo: referenceNo ? String(referenceNo).trim() : null,
       Description: description.trim(),
+      ExpenseBy: resolvedExpenseBy,
       Status: initialStatus,
       CreatedBy: userContext.user.id
     };
@@ -120,17 +129,17 @@ export const approveExpense = async (req: Request, res: Response) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const userContext = await getUserContextFromRequest(req);
 
-    if (!userContext) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    if (!userContext.isAdminOrManager) {
+    if (!userContext || !userContext.isAdminOrManager) {
       return res.status(403).json({ error: "Only administrators or managers can approve expenses." });
     }
 
     const expense = await ExpenseModel.findById(id, tenantId);
     if (!expense) {
       return res.status(404).json({ error: "Expense not found" });
+    }
+
+    if (expense.Status === 'Approved') {
+      return res.status(400).json({ error: "Expense is already approved." });
     }
 
     await ExpenseModel.updateStatus(id, tenantId, 'Approved');
@@ -160,11 +169,7 @@ export const cancelExpense = async (req: Request, res: Response) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const userContext = await getUserContextFromRequest(req);
 
-    if (!userContext) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    if (!userContext.isAdminOrManager) {
+    if (!userContext || !userContext.isAdminOrManager) {
       return res.status(403).json({ error: "Only administrators or managers can cancel expenses." });
     }
 
@@ -173,7 +178,12 @@ export const cancelExpense = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Expense not found" });
     }
 
+    if (expense.Status === 'Cancelled') {
+      return res.status(400).json({ error: "Expense is already cancelled." });
+    }
+
     await ExpenseModel.updateStatus(id, tenantId, 'Cancelled');
+
     const updated = await ExpenseModel.findById(id, tenantId);
     res.json(updated);
   } catch (error) {
@@ -209,7 +219,8 @@ export const updateExpense = async (req: Request, res: Response) => {
       }
     }
 
-    const { expenseDate, amount, paymentMode, referenceNo, description } = req.body;
+    const { expenseDate, amount, paymentMode, referenceNo, description, expenseBy, ExpenseBy } = req.body;
+    const rawExpenseBy = expenseBy !== undefined ? expenseBy : ExpenseBy;
 
     if (description !== undefined) {
       if (typeof description !== 'string' || description.trim().length === 0) {
@@ -228,12 +239,17 @@ export const updateExpense = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Payment mode must be Cash, Bank, or UPI." });
     }
 
+    const updatedExpenseBy = userContext.isAdminOrManager
+      ? (rawExpenseBy !== undefined ? (rawExpenseBy ? String(rawExpenseBy).trim() : null) : undefined)
+      : undefined;
+
     await ExpenseModel.update(id, tenantId, {
       ExpenseDate: expenseDate,
       Amount: amount !== undefined ? Number(amount) : undefined,
       PaymentMode: paymentMode,
       ReferenceNo: referenceNo !== undefined ? (referenceNo ? String(referenceNo).trim() : null) : undefined,
-      Description: description !== undefined ? description.trim() : undefined
+      Description: description !== undefined ? description.trim() : undefined,
+      ExpenseBy: updatedExpenseBy
     });
 
     const updated = await ExpenseModel.findById(id, tenantId);

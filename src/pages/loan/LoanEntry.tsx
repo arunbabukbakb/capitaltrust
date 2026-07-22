@@ -72,6 +72,7 @@ export default function LoanEntry() {
   const [startDate, setStartDate] = useState(today);
   const [interestMode, setInterestMode] = useState<InterestMode>('Fixed');
   const [interestRate, setInterestRate] = useState('12');
+  const [isCompound, setIsCompound] = useState<boolean>(false);
   const [status, setStatus] = useState<LoanStatus>('Pending');
   const [members, setMembers] = useState<MemberShare[]>([]);
   const [slabs, setSlabs] = useState<InterestSlab[]>([
@@ -132,6 +133,7 @@ export default function LoanEntry() {
         setStartDate(loan.startDate || loan.nextDueDate || today);
         setInterestMode(loan.interestMode === 'Variable' ? 'Variable' : 'Fixed');
         setInterestRate(String(loan.interestRate ?? ''));
+        setIsCompound(Boolean(loan.isCompound || loan.IsCompound));
         setStatus((loan.status || 'Pending').charAt(0).toUpperCase() + (loan.status || 'Pending').slice(1).toLowerCase());
         setMembers((loan.members || []).map((member: any) => ({
           userId: member.userId,
@@ -242,6 +244,7 @@ export default function LoanEntry() {
     setStartDate(today);
     setInterestMode('Fixed');
     setInterestRate('12');
+    setIsCompound(false);
     setStatus('Pending');
     setMembers(firstUserId ? [{ userId: firstUserId, loanShareAmount: '100000' }] : []);
     setSlabs([
@@ -293,6 +296,7 @@ export default function LoanEntry() {
           endDate,
           interestMode,
           interestRate: interestMode === 'Fixed' ? Number(interestRate) : null,
+          isCompound,
           status,
           members: members.map((member) => ({
             userId: member.userId,
@@ -533,6 +537,28 @@ export default function LoanEntry() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Compound Interest Toggle Switch */}
+            <div className="flex items-center justify-between gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div>
+                <span className="text-xs font-bold text-slate-900">Compound Interest Method</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">Calculate interest on carryover balances monthly</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCompound(!isCompound)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 border transition cursor-pointer ${
+                  isCompound
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span>{isCompound ? 'Compound ON' : 'Simple Interest'}</span>
+                <span className={`w-7 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out flex items-center ${isCompound ? 'bg-indigo-900 justify-end' : 'bg-slate-300 justify-start'}`}>
+                  <span className="w-3 h-3 rounded-full bg-white shadow-xs" />
+                </span>
+              </button>
             </div>
 
             {interestMode === 'Fixed' ? (

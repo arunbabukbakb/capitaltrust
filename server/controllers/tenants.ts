@@ -59,11 +59,6 @@ export const registerTenant = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "An administrator account with this username or email already exists under this tenant." });
     }
 
-    const adminRole = await RoleModel.findByRoleType('admin');
-    if (!adminRole) {
-      return res.status(500).json({ error: "System roles are not seeded. Please contact system support." });
-    }
-
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(adminPassword, saltRounds);
 
@@ -90,6 +85,62 @@ export const registerTenant = async (req: Request, res: Response) => {
         throw new Error("Failed to retrieve auto-incremented tenant ID");
       }
 
+      // Create default roles for this new tenant
+      const adminRoleResult = await db.run(
+        "INSERT INTO roles (roleName, roleType, tenantId) VALUES (?, ?, ?)",
+        ['Administrator', 'admin', tenantId]
+      );
+      const managerRoleResult = await db.run(
+        "INSERT INTO roles (roleName, roleType, tenantId) VALUES (?, ?, ?)",
+        ['Manager', 'manager', tenantId]
+      );
+      const memberRoleResult = await db.run(
+        "INSERT INTO roles (roleName, roleType, tenantId) VALUES (?, ?, ?)",
+        ['Member', 'user', tenantId]
+      );
+
+      const adminRoleId = adminRoleResult.lastID as number;
+      const managerRoleId = managerRoleResult.lastID as number;
+      const memberRoleId = memberRoleResult.lastID as number;
+
+      // Seed permissions for Administrator: gets all global menus
+      const allMenus = await db.all<{ id: number }[]>("SELECT id FROM menus");
+      for (const menu of allMenus) {
+        await db.run(
+          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+          [adminRoleId, menu.id]
+        );
+      }
+
+      // Seed permissions for Manager
+      const managerMenus = [
+        'dashboard',
+        'liquidity', 'collection-types', 'fund-collection', 'fund-collection-audit',
+        'credit', 'loan-repayment', 'loan-list', 'loan-entry', 'loan-repayments',
+        'users', 'role-management', 'user-management', 'expenses', 'reports', 'transactions', 'member-ledger'
+      ];
+      for (const mId of managerMenus) {
+        const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
+        if (menu) {
+          await db.run(
+            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+            [managerRoleId, menu.id]
+          );
+        }
+      }
+
+      // Seed permissions for Member
+      const memberMenus = ['dashboard', 'liquidity', 'fund-collection-audit', 'credit', 'loan-repayment', 'loan-entry', 'expenses', 'reports', 'transactions', 'member-ledger'];
+      for (const mId of memberMenus) {
+        const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
+        if (menu) {
+          await db.run(
+            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+            [memberRoleId, menu.id]
+          );
+        }
+      }
+
       await UserModel.create({
         id: userId,
         fullName: adminName.trim(),
@@ -98,11 +149,11 @@ export const registerTenant = async (req: Request, res: Response) => {
         role: 'admin',
         password: hashedPassword,
         status: 1,
-        roleId: adminRole.id,
+        roleId: adminRoleId,
         tenantId: String(tenantId)
       });
 
-      await UserModel.assignRole(userId, adminRole.id);
+      await UserModel.assignRole(userId, adminRoleId);
 
       await db.exec("COMMIT;");
     } catch (err) {

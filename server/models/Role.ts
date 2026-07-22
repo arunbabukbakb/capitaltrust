@@ -17,9 +17,9 @@ export interface MenuItem {
 }
 
 export const RoleModel = {
-  async listAll(): Promise<Role[]> {
+  async listAll(tenantId: string | number): Promise<Role[]> {
     const db = getDatabase();
-    return db.all<Role[]>("SELECT id, roleName, roleType FROM roles");
+    return db.all<Role[]>("SELECT id, roleName, roleType FROM roles WHERE tenantId = ?", [tenantId]);
   },
 
   async findById(id: number): Promise<Role | undefined> {
@@ -27,24 +27,24 @@ export const RoleModel = {
     return db.get<Role>("SELECT * FROM roles WHERE id = ?", [id]);
   },
 
-  async findByRoleType(roleType: string): Promise<Role | undefined> {
+  async findByRoleType(roleType: string, tenantId: string | number): Promise<Role | undefined> {
     const db = getDatabase();
-    return db.get<Role>("SELECT id FROM roles WHERE roleType = ?", [roleType]);
+    return db.get<Role>("SELECT id, roleName, roleType FROM roles WHERE roleType = ? AND tenantId = ?", [roleType, tenantId]);
   },
 
-  async create(roleName: string, roleType: 'admin' | 'manager' | 'user'): Promise<{ lastID?: number | string }> {
+  async create(roleName: string, roleType: 'admin' | 'manager' | 'user', tenantId: string | number): Promise<{ lastID?: number | string }> {
     const db = getDatabase();
-    return db.run("INSERT INTO roles (roleName, roleType) VALUES (?, ?)", [roleName, roleType]);
+    return db.run("INSERT INTO roles (roleName, roleType, tenantId) VALUES (?, ?, ?)", [roleName, roleType, tenantId]);
   },
 
-  async update(id: number, roleName: string, roleType: 'admin' | 'manager' | 'user'): Promise<void> {
+  async update(id: number, roleName: string, roleType: 'admin' | 'manager' | 'user', tenantId: string | number): Promise<void> {
     const db = getDatabase();
-    await db.run("UPDATE roles SET roleName = ?, roleType = ? WHERE id = ?", [roleName, roleType, id]);
+    await db.run("UPDATE roles SET roleName = ?, roleType = ? WHERE id = ? AND tenantId = ?", [roleName, roleType, id, tenantId]);
   },
 
-  async delete(id: number): Promise<void> {
+  async delete(id: number, tenantId: string | number): Promise<void> {
     const db = getDatabase();
-    await db.run("DELETE FROM roles WHERE id = ?", [id]);
+    await db.run("DELETE FROM roles WHERE id = ? AND tenantId = ?", [id, tenantId]);
   },
 
   async listMenus(): Promise<MenuItem[]> {

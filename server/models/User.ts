@@ -30,7 +30,7 @@ export const UserModel = {
   async findByUsernameOrEmail(identifier: string, tenantId: string | null): Promise<User | undefined> {
     const db = getDatabase();
     const loginIdentifier = identifier.toLowerCase();
-    
+
     return db.get<User>(
       "SELECT * FROM users WHERE (LOWER(email) = ? OR LOWER(username) = ?) AND tenantId = ?",
       [loginIdentifier, loginIdentifier, tenantId]
@@ -133,7 +133,7 @@ export const UserModel = {
     return !!res;
   },
 
-  async createPasswordResetToken(userId: string, token: string, expiresAt: string): Promise<void> {
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
     const db = getDatabase();
     await db.run(
       "INSERT INTO password_reset_tokens (userId, token, expiresAt) VALUES (?, ?, ?)",

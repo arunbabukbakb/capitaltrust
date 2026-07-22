@@ -10,6 +10,17 @@ interface PaymentRowProps {
   isMobile?: boolean;
 }
 
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
 const PaymentRow: React.FC<PaymentRowProps> = ({
   payment,
   activeTab,
@@ -25,11 +36,42 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
     loanNo,
   } = payment;
 
-  const activeInterestDue = interestDue || 0;
+  const activeInterestDue = (interestDue || 0) + (payment.carryForwardInterest || 0);
 
-  // Split dynamically: first interest, then balance to principal
+  // Split dynamically: first interest (current + carryforward), then balance to principal
   const calculatedInterest = Math.round(Math.min(amountPaid, activeInterestDue));
   const calculatedPrincipal = Math.round(Math.max(0, amountPaid - activeInterestDue));
+
+  // Status Badge Helper Component
+  const renderStatusBadge = () => {
+    const dueStatus = payment.dueStatus || (payment.approved ? 'Paid' : 'Pending');
+    if (dueStatus === 'Overdue') {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shadow-2xs">
+          Overdue
+        </span>
+      );
+    }
+    if (dueStatus === 'Paid' || payment.approved) {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 shadow-2xs">
+          Paid
+        </span>
+      );
+    }
+    if (dueStatus === 'Partial') {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800 shadow-2xs">
+          Partial
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 rounded-md text-[9px] md:text-[10px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        Pending
+      </span>
+    );
+  };
 
   // If already approved/finalized in the database, lock it down
   const isFinalized = payment.approved;
@@ -40,15 +82,21 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         <div className="p-3 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition duration-150 text-[10px] text-slate-700 dark:text-slate-300">
           <div className="space-y-1 flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono font-bold text-slate-900 tracking-tight text-[9px] bg-slate-100 px-1 py-0.5 rounded">{loanNo || '—'}</span>
-              <span className="font-bold text-slate-800 truncate text-[11px]">{userName || '—'}</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100 tracking-tight text-[9px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{loanNo || '—'}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">{userName || '—'}</span>
+              {renderStatusBadge()}
             </div>
+            {payment.startDate && (
+              <div className="text-[9px] text-slate-400 font-sans">
+                Start: <span className="font-medium text-slate-600 dark:text-slate-300">{formatDate(payment.startDate)}</span>
+              </div>
+            )}
             <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
-              <span>Due: <strong className="text-slate-700">₹{Math.round(dueAmount || 0)}</strong></span>
+              <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0)}</strong></span>
               <span>•</span>
-              <span>Rate: <strong className="text-indigo-600">{payment.interestRate}% ({payment.interestMode})</strong></span>
+              <span>Rate: <strong className="text-indigo-600 dark:text-indigo-400">{payment.interestRate}% ({payment.interestMode})</strong></span>
               <span>•</span>
-              <span>Bal: <strong className="text-slate-700">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
+              <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
             </div>
             <div className="flex gap-2 font-mono text-[9px] text-slate-500">
               <span>Int: <strong className="text-amber-600">₹{calculatedInterest}</strong></span>
@@ -87,13 +135,18 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
     return (
       <div className="p-3 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition duration-150 text-[10px] text-slate-700 dark:text-slate-300">
         <div className="space-y-1 flex-1 min-w-0">
-          <h5 className="font-bold text-slate-800 truncate text-[11px]">{userName || '—'}</h5>
+          <h5 className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">{userName || '—'}</h5>
+          {payment.startDate && (
+            <div className="text-[9px] text-slate-400 font-sans">
+              Start: <span className="font-medium text-slate-600 dark:text-slate-300">{formatDate(payment.startDate)}</span>
+            </div>
+          )}
           <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
-            <span>Due: <strong className="text-slate-700">₹{Math.round(dueAmount || 0)}</strong></span>
+            <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0)}</strong></span>
             <span>•</span>
-            <span>Rate: <strong className="text-indigo-600">{payment.interestRate}% ({payment.interestMode})</strong></span>
+            <span>Rate: <strong className="text-indigo-600 dark:text-indigo-400">{payment.interestRate}% ({payment.interestMode})</strong></span>
             <span>•</span>
-            <span>Bal: <strong className="text-slate-700">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
+            <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
           </div>
         </div>
 
@@ -126,19 +179,26 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
   if (activeTab === 'single') {
     return (
       <tr className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 transition duration-200">
-        {/* LoanNo */}
-        <td className="px-4 py-3 text-sm font-semibold text-slate-700 font-mono">
-          {loanNo || '—'}
+        {/* LoanNo & Start Date */}
+        <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 font-mono">
+          <div className="flex flex-col">
+            <span>{loanNo || '—'}</span>
+            {payment.startDate && (
+              <span className="text-[10px] text-slate-400 font-medium font-sans">
+                Start: {formatDate(payment.startDate)}
+              </span>
+            )}
+          </div>
         </td>
         {/* Member */}
-        <td className="px-4 py-3 text-sm font-medium text-slate-800">
+        <td className="px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-200">
           <div className="flex flex-col">
-            <span className="font-semibold text-slate-900">{userName || '—'}</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{userName || '—'}</span>
             <span className="text-xs text-slate-400 font-mono">{userId}</span>
           </div>
         </td>
         {/* Interest Rate */}
-        <td className="px-4 py-3 text-sm font-semibold text-slate-700 font-mono">
+        <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 font-mono">
           {payment.interestRate ? `${payment.interestRate}%` : '—'}
           {payment.interestMode && (
             <span className="block text-[10px] text-slate-400 font-medium font-sans">
@@ -147,7 +207,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
           )}
         </td>
         {/* Outstanding Balance */}
-        <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono font-semibold">
           ₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}
           {payment.loanAmount && (
             <span className="block text-[10px] text-slate-400 font-medium font-sans">
@@ -156,7 +216,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
           )}
         </td>
         {/* Due */}
-        <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono font-semibold">
           ₹{Math.round(dueAmount || 0).toLocaleString()}
         </td>
         {/* Amount */}
@@ -187,14 +247,9 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         <td className="px-4 py-3 text-sm font-mono text-emerald-600">
           ₹{calculatedPrincipal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </td>
-        {/* Processing Indicator */}
+        {/* Processing Indicator / Status Badge */}
         <td className="px-4 py-3 text-sm text-center">
-          {isFinalized && (
-            <span className="text-emerald-655 font-bold flex items-center justify-center gap-1 text-[11px]">
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-              Posted
-            </span>
-          )}
+          {renderStatusBadge()}
         </td>
       </tr>
     );
@@ -204,14 +259,21 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
   return (
     <tr className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/60 transition duration-200">
       {/* Member */}
-      <td className="px-4 py-3 text-sm font-medium text-slate-800">
+      <td className="px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-200">
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-900">{userName || '—'}</span>
-          <span className="text-xs text-slate-400 font-mono">{userId}</span>
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{userName || '—'}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-mono">{userId}</span>
+            {payment.startDate && (
+              <span className="text-[10px] text-slate-400 font-medium font-sans">
+                • Start: {formatDate(payment.startDate)}
+              </span>
+            )}
+          </div>
         </div>
       </td>
       {/* Interest Rate */}
-      <td className="px-4 py-3 text-sm font-semibold text-slate-700 font-mono">
+      <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 font-mono">
         {payment.interestRate ? `${payment.interestRate}%` : '—'}
         {payment.interestMode && (
           <span className="block text-[10px] text-slate-400 font-medium font-sans">
@@ -220,7 +282,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         )}
       </td>
       {/* Outstanding Balance */}
-      <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono font-semibold">
         ₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}
         {payment.loanAmount && (
           <span className="block text-[10px] text-slate-400 font-medium font-sans">
@@ -229,7 +291,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         )}
       </td>
       {/* Due */}
-      <td className="px-4 py-3 text-sm text-slate-600 font-mono font-semibold">
+      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300 font-mono font-semibold">
         ₹{Math.round(dueAmount || 0).toLocaleString()}
       </td>
       {/* Amount */}
@@ -251,12 +313,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
       </td>
       {/* Status */}
       <td className="px-4 py-3 text-sm text-center">
-        {isFinalized && (
-          <span className="text-emerald-655 font-bold flex items-center justify-center gap-1 text-[11px]">
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
-            Posted
-          </span>
-        )}
+        {renderStatusBadge()}
       </td>
     </tr>
   );

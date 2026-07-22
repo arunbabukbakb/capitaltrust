@@ -33,13 +33,16 @@ const LoanRepaymentList: React.FC = () => {
   const getAdminSelectableMonths = () => {
     const list = [];
     const now = new Date();
-    for (let i = -6; i <= 6; i++) {
+    const currentMonthVal = parseInt(`${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`);
+    for (let i = -12; i <= 0; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const val = parseInt(`${yyyy}${mm}`);
-      const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      list.push({ val, label });
+      if (val <= currentMonthVal) {
+        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        list.push({ val, label });
+      }
     }
     return list;
   };
@@ -192,7 +195,7 @@ const LoanRepaymentList: React.FC = () => {
 
       {/* Main Content Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-3 md:p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row gap-4">
+        <div className="p-3 md:p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row items-end sm:items-center gap-4">
           {activeTab === 'group' && (
             <div className="max-w-xs w-full space-y-1">
               <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-500">
@@ -201,7 +204,7 @@ const LoanRepaymentList: React.FC = () => {
               <select
                 value={selectedLoanId}
                 onChange={(e) => setSelectedLoanId(e.target.value)}
-                className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-white border border-slate-200 rounded-lg text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition bg-white"
+                className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-slate-400 focus:border-transparent transition"
               >
                 <option value="">-- Choose Loan Ledger --</option>
                 {loans
@@ -222,7 +225,7 @@ const LoanRepaymentList: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-white border border-slate-200 rounded-lg text-xs md:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition bg-white"
+              className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-slate-400 focus:border-transparent transition"
             >
               {getAdminSelectableMonths().map((m) => (
                 <option key={m.val} value={m.val}>

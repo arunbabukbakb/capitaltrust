@@ -154,13 +154,27 @@ export async function initDatabase(): Promise<Database> {
       // Table doesn't exist yet
     }
 
+    try {
+      const rolesTableExists = await db.get(`
+        SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_NAME = 'roles' AND TABLE_SCHEMA = DATABASE()
+      `);
+      if (rolesTableExists) {
+        const hasTenantIdInRoles = await checkColumnExists('roles', 'tenantId');
+        if (!hasTenantIdInRoles) {
+          schemaUpgradeNeeded = true;
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+
     if (schemaUpgradeNeeded) {
-      console.log("Upgrading database schema to support auto-increment integer tenant IDs...");
+      console.log("Upgrading database schema to support auto-increment integer tenant IDs and tenant-specific roles...");
       await db.exec("SET FOREIGN_KEY_CHECKS = 0;");
       const tables = [
         'user_push_tokens', 'user_roles', 'role_menu_permissions', 'MemberCollection',
         'FundCollectionGroup', 'CollectionType', 'LoanPayment', 'LoanDue',
-        'LoanInterestSlab', 'LoanMember', 'Loan', 'password_reset_tokens', 'users', 'tenants'
+        'LoanInterestSlab', 'LoanMember', 'Loan', 'password_reset_tokens', 'users', 'roles', 'tenants'
       ];
       for (const table of tables) {
         await db.exec(`DROP TABLE IF EXISTS ${table};`);
@@ -220,6 +234,15 @@ export async function initDatabase(): Promise<Database> {
         razorpaySignature VARCHAR(255) DEFAULT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        roleName VARCHAR(255) NOT NULL,
+        roleType VARCHAR(255) NOT NULL CHECK(roleType IN ('admin', 'manager', 'user')),
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        UNIQUE(tenantId, roleName)
+      );
+
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
         fullName VARCHAR(255) NOT NULL,
@@ -232,6 +255,7 @@ export async function initDatabase(): Promise<Database> {
         roleId INT,
         profileImage VARCHAR(255),
         tenantId INT NOT NULL,
+        refreshToken VARCHAR(500) DEFAULT NULL,
         FOREIGN KEY(roleId) REFERENCES roles(id),
         FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
         UNIQUE(tenantId, username),
@@ -246,12 +270,6 @@ export async function initDatabase(): Promise<Database> {
         method VARCHAR(255) NOT NULL,
         status VARCHAR(255) NOT NULL,
         reinvestmentEnabled INT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS roles (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        roleName VARCHAR(255) NOT NULL UNIQUE,
-        roleType VARCHAR(255) NOT NULL CHECK(roleType IN ('admin', 'manager', 'user'))
       );
 
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -273,6 +291,7 @@ export async function initDatabase(): Promise<Database> {
         EndDate VARCHAR(255) NOT NULL,
         InterestMode VARCHAR(255) NOT NULL CHECK(InterestMode IN ('Fixed', 'Variable')),
         InterestRate DOUBLE,
+        IsCompound INT DEFAULT 0,
         Status VARCHAR(255) NOT NULL CHECK(Status IN ('Pending', 'Active', 'Closed', 'Cancelled')),
         CreatedBy VARCHAR(255),
         CreatedDate VARCHAR(255) NOT NULL,
@@ -369,7 +388,8 @@ export async function initDatabase(): Promise<Database> {
         icon VARCHAR(255),
         path VARCHAR(255),
         parentId VARCHAR(255),
-        menuOrder INT DEFAULT 0
+        menuOrder INT DEFAULT 0,
+        status TINYINT NOT NULL DEFAULT 1
       );
 
       CREATE TABLE IF NOT EXISTS role_menu_permissions (
@@ -440,11 +460,13 @@ export async function initDatabase(): Promise<Database> {
         PaymentMode VARCHAR(255) NOT NULL CHECK(PaymentMode IN ('Cash', 'Bank', 'UPI')),
         ReferenceNo VARCHAR(255) NULL,
         Description TEXT NOT NULL,
+        ExpenseBy VARCHAR(255) DEFAULT NULL,
         Status VARCHAR(255) NOT NULL CHECK(Status IN ('Draft', 'Approved', 'Cancelled')),
         CreatedBy VARCHAR(255) NOT NULL,
         CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(TenantId) REFERENCES tenants(id) ON DELETE CASCADE,
-        FOREIGN KEY(CreatedBy) REFERENCES users(id)
+        FOREIGN KEY(CreatedBy) REFERENCES users(id),
+        FOREIGN KEY(ExpenseBy) REFERENCES users(id)
       );
 
       CREATE TABLE IF NOT EXISTS transactions (
@@ -577,6 +599,11 @@ export async function initDatabase(): Promise<Database> {
       await db.exec("ALTER TABLE tenants ADD COLUMN isActive TINYINT NOT NULL DEFAULT 1");
     }
 
+    const hasLoanIsCompound = await checkColumnExists('Loan', 'IsCompound');
+    if (!hasLoanIsCompound) {
+      await db.exec("ALTER TABLE Loan ADD COLUMN IsCompound INT NOT NULL DEFAULT 0");
+    }
+
     const hasPaymentStatus = await checkColumnExists('tenants', 'paymentStatus');
     if (!hasPaymentStatus) {
       await db.exec("ALTER TABLE tenants ADD COLUMN paymentStatus VARCHAR(255) NOT NULL DEFAULT 'Pending'");
@@ -608,6 +635,11 @@ export async function initDatabase(): Promise<Database> {
       await db.exec("UPDATE Loan SET OutstandingPrincipal = Amount WHERE OutstandingPrincipal = 0");
     }
 
+    const hasExpenseBy = await checkColumnExists('expenses', 'ExpenseBy');
+    if (!hasExpenseBy) {
+      await db.exec("ALTER TABLE expenses ADD COLUMN ExpenseBy VARCHAR(255) DEFAULT NULL");
+    }
+
     const hasOutstandingMember = await checkColumnExists('LoanMember', 'OutstandingPrincipal');
     if (!hasOutstandingMember) {
       await db.exec("ALTER TABLE LoanMember ADD COLUMN OutstandingPrincipal DOUBLE NOT NULL DEFAULT 0");
@@ -625,6 +657,11 @@ export async function initDatabase(): Promise<Database> {
     const hasTenantId = await checkColumnExists('users', 'tenantId');
     if (!hasTenantId) {
       await db.exec("ALTER TABLE users ADD COLUMN tenantId VARCHAR(255) NOT NULL DEFAULT 'default'");
+    }
+
+    const hasRefreshToken = await checkColumnExists('users', 'refreshToken');
+    if (!hasRefreshToken) {
+      await db.exec("ALTER TABLE users ADD COLUMN refreshToken VARCHAR(500) DEFAULT NULL");
     }
 
     try {
@@ -712,6 +749,16 @@ export async function initDatabase(): Promise<Database> {
     // Drop legacy loans table if it exists
     try {
       await db.exec("DROP TABLE IF EXISTS loans;");
+    } catch (e) {
+      // Ignored
+    }
+
+    // Migrate menus to add status column if it does not exist
+    try {
+      const hasMenuStatus = await checkColumnExists('menus', 'status');
+      if (!hasMenuStatus) {
+        await db.exec("ALTER TABLE menus ADD COLUMN status TINYINT NOT NULL DEFAULT 1");
+      }
     } catch (e) {
       // Ignored
     }

@@ -68,7 +68,8 @@ router.post('/register-token', async (req: Request, res: Response) => {
 
     const db = getDatabase();
 
-    // SQLite/MySQL compatibility: INSERT OR IGNORE translated to INSERT IGNORE
+    // Reassign token to current logged-in user and remove stale device token links for other user accounts
+    await db.run("DELETE FROM user_push_tokens WHERE token = ? AND userId != ?", [token, userId]);
     await db.run(
       "INSERT OR IGNORE INTO user_push_tokens (userId, token) VALUES (?, ?)",
       [userId, token]

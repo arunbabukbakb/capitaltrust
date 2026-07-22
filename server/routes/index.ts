@@ -18,6 +18,7 @@ import notificationRoutes from './notification';
 import superadminRoutes from './superadmin';
 import expensesRoutes from './expenses';
 import transactionsRoutes from './transactions';
+import reportsRoutes from './reports';
 
 const router = Router();
 
@@ -37,11 +38,11 @@ router.use(async (req, res, next) => {
       if (tenant) {
         req.headers['x-tenant-id'] = String(tenant.id);
       } else {
-        req.headers['x-tenant-id'] = '1'; // Fallback
+        req.headers['x-tenant-id'] = '-1'; // Use -1 to represent non-existent tenant instead of falling back to demo (1)
       }
     } catch (err) {
       console.error("[Tenant Resolution Middleware] Error:", err);
-      req.headers['x-tenant-id'] = '1'; // Fallback
+      req.headers['x-tenant-id'] = '-1'; // Use -1 on error
     }
   }
   next();
@@ -62,7 +63,8 @@ router.use((req, res, next) => {
       path.startsWith('/auth/forgot-password') ||
       path.startsWith('/auth/reset-password') ||
       path.startsWith('/tenants') ||
-      path.startsWith('/super-admin');
+      path.startsWith('/super-admin') ||
+      path.startsWith('/menus');
 
     if (!isExempt) {
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -97,5 +99,6 @@ router.use('/notifications', notificationRoutes);
 router.use('/super-admin', superadminRoutes);
 router.use('/expenses', expensesRoutes);
 router.use('/transactions', transactionsRoutes);
+router.use('/reports', reportsRoutes);
 
 export default router;

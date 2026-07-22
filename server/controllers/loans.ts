@@ -101,7 +101,7 @@ export const getLoans = async (req: Request, res: Response) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const structuredLoans = await LoanModel.listAllLoans(tenantId);
     const structuredLoanIds = structuredLoans.map((loan: any) => loan.Id);
-    
+
     const slabsByLoan = await LoanModel.getSlabsByLoanIds(structuredLoanIds);
     const paymentsByLoan = await LoanModel.getPaymentsCountByLoanIds(structuredLoanIds);
     const membersByLoan = await LoanModel.getMembersByLoanIds(structuredLoanIds);
@@ -122,6 +122,7 @@ export const getLoans = async (req: Request, res: Response) => {
         outstandingBalance: Number(loan.OutstandingPrincipal || 0),
         interestMode: loan.InterestMode,
         interestRate: loan.InterestRate,
+        isCompound: Boolean(loan.IsCompound),
         remainingTerm: Number(loan.TenureMonths),
         tenureMonths: Number(loan.TenureMonths),
         paidToDate,
@@ -152,7 +153,29 @@ export const getLoans = async (req: Request, res: Response) => {
       };
     });
 
-    res.json([...mappedStructuredLoans]);
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    let decodedUserId: string | null = null;
+    let userRole: string | null = null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role?: string };
+        decodedUserId = decoded.id;
+        userRole = decoded.role || null;
+      } catch {
+        decodedUserId = null;
+      }
+    }
+
+    const isMyOnly = req.query.my === 'true' || userRole === 'user';
+    let filteredLoans = mappedStructuredLoans;
+    if (isMyOnly && decodedUserId) {
+      filteredLoans = mappedStructuredLoans.filter((loan: any) =>
+        loan.members.some((m: any) => m.userId === decodedUserId) ||
+        (typeof loan.memberId === 'string' && loan.memberId.includes(decodedUserId))
+      );
+    }
+
+    res.json(filteredLoans);
   } catch (error) {
     console.error("Get loans error", error);
     res.status(500).json({ error: "Error fetching loans list" });
@@ -237,6 +260,7 @@ export const createLoan = async (req: Request, res: Response) => {
         EndDate: computedEndDate,
         InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
         InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
+        IsCompound: req.body.isCompound ? 1 : 0,
         Status: normalizedStatus as any,
         CreatedBy: createdBy || undefined,
         CreatedDate: createdDate
@@ -389,6 +413,7 @@ export const updateLoan = async (req: Request, res: Response) => {
         EndDate: computedEndDate,
         InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
         InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
+        IsCompound: req.body.isCompound ? 1 : 0,
         Status: normalizedStatus as any
       });
 
@@ -425,7 +450,7 @@ export const updateLoan = async (req: Request, res: Response) => {
 
     // If loan status transitions to Active/Approved, notify the members
     const statusChangedToActive = (existingLoan.Status !== 'Active' && existingLoan.Status !== 'ACTIVE') &&
-                                  (normalizedStatus === 'Active' || normalizedStatus === 'ACTIVE');
+      (normalizedStatus === 'Active' || normalizedStatus === 'ACTIVE');
     if (statusChangedToActive) {
       setImmediate(async () => {
         try {
@@ -551,3 +576,120 @@ export const approveLoan = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error approving loan" });
   }
 };
+
+export const requestLoan = async (req: Request, res: Response) => {
+  try {
+    const { amount } = req.body;
+    const parsedAmount = Number(amount);
+
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Please enter a valid loan amount greater than zero" });
+    }
+
+    // Check auth
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required to submit loan request" });
+    }
+
+    let userId: string;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+      userId = decoded.id;
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    const db = getDatabase();
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User profile not found" });
+    }
+
+    const loanId = `LN-REQ-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+
+    // Auto-generate sequence LoanNo
+    const countRes = await db.get("SELECT COUNT(*) as count FROM Loan");
+    const nextSeq = (countRes?.count || 0) + 1;
+    const loanNo = `LN-REQ-${String(nextSeq).padStart(4, '0')}`;
+
+    const currentDate = new Date().toISOString().split('T')[0];
+
+    // Create entry in Loan table with Status='Pending'
+    // TenureMonths, StartDate, EndDate, InterestRate are set to placeholders until Admin configures them
+    await db.run(
+      `INSERT INTO Loan (
+        Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        loanId,
+        loanNo,
+        'Single',
+        parsedAmount,
+        parsedAmount,
+        12, // Default placeholder tenure, not saved from request page
+        currentDate,
+        currentDate,
+        'Fixed',
+        0,
+        'Pending',
+        userId,
+        currentDate
+      ]
+    );
+
+    // Insert into LoanMember
+    await db.run(
+      `INSERT INTO LoanMember (
+        LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate, Status
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        loanId,
+        userId,
+        parsedAmount,
+        parsedAmount,
+        currentDate,
+        'Active'
+      ]
+    );
+
+    const createdLoan = await LoanModel.findById(loanId);
+
+    // Fire push notifications to all Admin & Manager users asynchronously (non-blocking)
+    setImmediate(async () => {
+      try {
+        const adminUsers = await db.all<{ id: string }[]>(
+          `SELECT DISTINCT u.id FROM users u
+           LEFT JOIN user_roles ur ON ur.userId = u.id
+           LEFT JOIN roles r ON (r.id = ur.roleId OR r.id = u.roleId)
+           WHERE (u.role IN ('admin', 'manager') OR r.roleType IN ('admin', 'manager'))
+           AND (u.tenantId = ? OR u.tenantId IS NULL)`,
+          [user.tenantId || 1]
+        );
+        const adminUserIds = adminUsers.map(u => u.id).filter(id => id !== userId);
+        if (adminUserIds.length > 0) {
+          const notifAmount = new Intl.NumberFormat('en-IN').format(parsedAmount);
+          const requesterName = user.fullName || user.username || 'A member';
+          await sendPushNotification(
+            adminUserIds,
+            'New Member Loan Request',
+            `${requesterName} has submitted a new loan request for ₹${notifAmount} (Request ID: ${loanNo})`,
+            '/loan-list'
+          );
+        }
+      } catch (notifError) {
+        console.error('Failed to send loan request notification to admins/managers:', notifError);
+      }
+    });
+
+    return res.status(201).json({
+      message: "Loan request submitted successfully! An administrator will configure your loan terms.",
+      loan: createdLoan
+    });
+  } catch (error) {
+    console.error("Loan request error", error);
+    res.status(500).json({ error: "Error processing loan request" });
+  }
+};
+

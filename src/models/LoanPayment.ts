@@ -23,4 +23,7 @@ export interface LoanPayment {
   interestRate?: number;
   interestMode?: string;
   outstandingBalance?: number;
+  startDate?: string;
+  dueStatus?: 'Overdue' | 'Pending' | 'Paid' | 'Partial';
+  carryForwardInterest?: number;
 }

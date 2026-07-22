@@ -12,6 +12,7 @@ interface AuthState {
     supportEmail: string;
     supportPhone: string;
     paymentStatus?: string;
+    amcRecord?: any;
     pricing?: {
       price: number;
       tax: number;

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, me, logout, forgotPassword, resetPassword, updateProfile, changePassword } from '../controllers/auth';
+import { register, login, me, logout, forgotPassword, resetPassword, updateProfile, changePassword, refresh } from '../controllers/auth';
 
 const router = Router();
 
@@ -100,6 +100,7 @@ router.get('/me', me);
  *         description: Logged out successfully
  */
 router.post('/logout', logout);
+router.post('/refresh', refresh);
 
 /**
  * @swagger

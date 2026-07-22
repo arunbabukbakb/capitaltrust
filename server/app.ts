@@ -13,6 +13,13 @@ export async function createApp() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
   app.use(cookieParser());
 
+  // Serve uploaded profile images
+  const uploadsPath = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsPath));
+
   // Swagger docs
   app.use('/api-docs', swaggerRouter);
 

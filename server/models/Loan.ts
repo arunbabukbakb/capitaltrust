@@ -11,6 +11,7 @@ export interface Loan {
   EndDate: string;
   InterestMode: 'Fixed' | 'Variable';
   InterestRate?: number | null;
+  IsCompound?: number | boolean;
   Status: 'Pending' | 'Active' | 'Closed' | 'Cancelled';
   CreatedBy?: string | null;
   CreatedDate: string;
@@ -79,6 +80,7 @@ export const LoanModel = {
           l.EndDate,
           l.InterestMode,
           l.InterestRate,
+          l.IsCompound,
           l.Status,
           l.CreatedBy,
           l.CreatedDate,
@@ -110,6 +112,7 @@ export const LoanModel = {
         l.EndDate,
         l.InterestMode,
         l.InterestRate,
+        l.IsCompound,
         l.Status,
         l.CreatedBy,
         l.CreatedDate,
@@ -176,9 +179,9 @@ export const LoanModel = {
   async createLoan(loan: Omit<Loan, 'OutstandingPrincipal'>): Promise<void> {
     const db = getDatabase();
     await db.run(
-      `INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, Status, CreatedBy, CreatedDate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [loan.Id, loan.LoanNo, loan.LoanType, loan.Amount, loan.Amount, loan.TenureMonths, loan.StartDate, loan.EndDate, loan.InterestMode, loan.InterestRate || null, loan.Status, loan.CreatedBy || null, loan.CreatedDate]
+      `INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, IsCompound, Status, CreatedBy, CreatedDate)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [loan.Id, loan.LoanNo, loan.LoanType, loan.Amount, loan.Amount, loan.TenureMonths, loan.StartDate, loan.EndDate, loan.InterestMode, loan.InterestRate || null, loan.IsCompound ? 1 : 0, loan.Status, loan.CreatedBy || null, loan.CreatedDate]
     );
   },
 
@@ -212,8 +215,14 @@ export const LoanModel = {
     await db.run("DELETE FROM Loan WHERE Id = ?", [id]);
   },
 
-  async listLoanMembers(loanId: string): Promise<any[]> {
+  async listLoanMembers(loanId: string, tenantId?: string | number): Promise<any[]> {
     const db = getDatabase();
+    if (tenantId) {
+      return db.all<any[]>(
+        "SELECT lm.*, u.fullName, u.email FROM LoanMember lm JOIN users u ON lm.UserId = u.id WHERE lm.LoanId = ? AND u.tenantId = ?",
+        [loanId, tenantId]
+      );
+    }
     return db.all<any[]>(
       "SELECT lm.*, u.fullName, u.email FROM LoanMember lm JOIN users u ON lm.UserId = u.id WHERE lm.LoanId = ?",
       [loanId]
@@ -320,14 +329,15 @@ export const LoanModel = {
     return res?.maxMonth || 0;
   },
 
-  async listSingleLoansByMonth(month: number): Promise<any[]> {
+  async listSingleLoansByMonth(month: number, tenantId: string | number): Promise<any[]> {
     const db = getDatabase();
     return db.all<any[]>(
       `SELECT DISTINCT l.* FROM Loan l
-       LEFT JOIN LoanMember lm ON l.Id = lm.LoanId
+       JOIN LoanMember lm ON l.Id = lm.LoanId
+       JOIN users u ON lm.UserId = u.id AND u.tenantId = ?
        LEFT JOIN LoanPayment lp ON lm.Id = lp.LoanMemberId AND lp.DueMonth = ?
        WHERE l.LoanType = 'Single' AND (l.Status = 'Active' OR (l.Status = 'Closed' AND lp.Id IS NOT NULL))`,
-      [month]
+      [tenantId, month]
     );
   },
 

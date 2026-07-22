@@ -56,9 +56,11 @@ export interface Expense {
   PaymentMode: ExpensePaymentMode;
   ReferenceNo?: string | null;
   Description: string;
+  ExpenseBy?: string | null;
   Status: ExpenseStatus;
   CreatedBy: string;
   CreatedAt?: string;
   createdByName?: string;
+  expenseByName?: string | null;
 }
 

@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import { getDatabase } from '../database';
 import {
   sendRegistrationPaymentEmail,
   sendAmcPaymentEmail,
   sendTenantBroadcastMessageEmail
 } from '../utils/mailer';
+import { runSeeders } from '../seeders';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -714,6 +716,140 @@ export const deleteSmtpSetting = async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to delete SMTP setting.' });
+  }
+};
+
+export const testSmtpConnection = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) return res.status(401).json({ error: 'Not authenticated.' });
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') return res.status(403).json({ error: 'Access denied.' });
+
+    const { id } = req.params;
+    const { testEmail } = req.body;
+    if (!testEmail) {
+      return res.status(400).json({ error: 'Recipient test email address is required.' });
+    }
+
+    const db = getDatabase();
+    const config = await db.get("SELECT * FROM smtp_settings WHERE id = ?", [id]);
+    if (!config) {
+      return res.status(404).json({ error: 'SMTP setting not found.' });
+    }
+
+    const isSsl = Number(config.port) === 465;
+    const transporter = nodemailer.createTransport({
+      host: config.server,
+      port: Number(config.port) || 587,
+      secure: isSsl,
+      auth: {
+        user: config.username,
+        pass: config.password || ''
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const subject = `🧪 SMTP Connection Test - CapitalTrust`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
+        <div style="text-align: center; padding-bottom: 16px; border-b: 1px solid #1e293b;">
+          <h2 style="color: #10b981; margin: 0; font-size: 20px;">SMTP Test Succeeded</h2>
+        </div>
+        <div style="padding: 20px 0;">
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+            This email confirms that your SMTP server configuration on CapitalTrust is correct and able to dispatch messages successfully.
+          </p>
+          <div style="background-color: #111827; border: 1px solid #334155; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 13px; font-family: monospace;">
+            Host: ${config.server}<br/>
+            Port: ${config.port}<br/>
+            User: ${config.username}<br/>
+            Encryption: ${config.encryption}
+          </div>
+        </div>
+        <div style="border-top: 1px solid #1e293b; padding-top: 16px; text-align: center; font-size: 11px; color: #64748b;">
+          &copy; ${new Date().getFullYear()} CapitalTrust Platform.
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"CapitalTrust Test" <${config.username}>`,
+      to: testEmail,
+      subject,
+      html
+    });
+
+    return res.json({ success: true, message: `SMTP connection test succeeded! Test mail dispatched to ${testEmail}.` });
+  } catch (error: any) {
+    console.error('SMTP test connection error:', error);
+    return res.status(500).json({ error: error.message || 'SMTP Connection failed.' });
+  }
+};
+
+export const resetFullData = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: number; role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const db = getDatabase();
+
+    await db.run("BEGIN TRANSACTION");
+    try {
+      // 1. Delete all operational data across all tenants
+      await db.exec("DELETE FROM LoanPayment;");
+      await db.exec("DELETE FROM LoanDue;");
+      await db.exec("DELETE FROM LoanInterestSlab;");
+      await db.exec("DELETE FROM LoanMember;");
+      await db.exec("DELETE FROM Loan;");
+      await db.exec("DELETE FROM MemberCollection;");
+      await db.exec("DELETE FROM FundCollectionGroup;");
+      await db.exec("DELETE FROM CollectionType;");
+      await db.exec("DELETE FROM transactions;");
+      await db.exec("DELETE FROM expenses;");
+      await db.exec("DELETE FROM contributions;");
+      await db.exec("DELETE FROM user_push_tokens;");
+      await db.exec("DELETE FROM password_reset_tokens;");
+      await db.exec("DELETE FROM role_menu_permissions;");
+      await db.exec("DELETE FROM user_roles;");
+      await db.exec("DELETE FROM users;");
+      await db.exec("DELETE FROM roles;");
+      await db.exec("DELETE FROM menus;");
+      await db.exec("DELETE FROM company_settings;");
+
+      // 2. Delete all non-demo tenant details and AMC records
+      await db.exec("DELETE FROM amcdetails WHERE tenantId != 1;");
+      await db.exec("DELETE FROM tenants WHERE id != 1 AND LOWER(subdomain) != 'demo';");
+
+      // 3. Reset demo tenant 1 status
+      await db.exec("UPDATE tenants SET name = 'CapitalTrust Demo', subdomain = 'demo', isActive = 1, paymentStatus = 'Paid' WHERE id = 1 OR LOWER(subdomain) = 'demo';");
+
+      await db.run("COMMIT");
+    } catch (err) {
+      await db.run("ROLLBACK");
+      throw err;
+    }
+
+    // Re-seed default application data for the demo tenant
+    await runSeeders(db);
+
+    return res.json({
+      success: true,
+      message: 'Full system data and all non-demo tenant details have been reset to default initial state.'
+    });
+  } catch (error: any) {
+    console.error('Reset full data error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to reset system data.' });
   }
 };
 

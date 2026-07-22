@@ -8,12 +8,14 @@ import Dashboard from './pages/Dashboard';
 import FundCollection from './pages/collection/FundCollection';
 import LoanRepayment from './pages/loan/LoanRepayment';
 import LoanEntry from './pages/loan/LoanEntry';
+import LoanRequest from './pages/loan/LoanRequest';
 import { getSubdomain } from './main';
 import LandingPage from './pages/LandingPage';
 import TenantRegistration from './pages/tenant/TenantRegistration';
 import LoanList from './pages/loan/LoanList';
 import Register from './pages/auth/Register';
 import Login from './pages/auth/Login';
+import ResetPassword from './pages/auth/ResetPassword';
 import RolesPage from './pages/user/RolesPage';
 import UsersPage from './pages/user/UsersPage';
 import LoanRepaymentList from './pages/loan/LoanRepaymentList';
@@ -36,6 +38,7 @@ import WorkspacePayment from './pages/tenant/WorkspacePayment';
 import AmcPayment from './pages/tenant/AmcPayment';
 import ExpensesPage from './pages/expense/ExpensesPage';
 import TransactionsPage from './pages/reports/TransactionsPage';
+import MemberLedger from './pages/reports/MemberLedger';
 import DocLayout from './pages/documentation/DocLayout';
 import GettingStartedDoc from './pages/documentation/GettingStartedDoc';
 import MemberManagementDoc from './pages/documentation/MemberManagementDoc';
@@ -70,10 +73,20 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Do not call user-menu API when user is on login/register auth pages
+    const isAuthRoute = ['/login', '/register', '/admin/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+    if (isAuthRoute) return;
+
     const fetchUserMenus = async () => {
       try {
         const query = activeRole ? `?roleId=${activeRole.id}` : '';
         const res = await fetch(`/api/menus/user-menu${query}`);
+        if (res.status === 401) {
+          // Token expired or invalid — clear stale session credentials
+          dispatch(logOut());
+          return;
+        }
         if (!res.ok) throw new Error('Failed to fetch user menus');
         const data = await res.json();
         dispatch(setMenus(data));
@@ -82,16 +95,20 @@ export default function App() {
       }
     };
     fetchUserMenus();
-  }, [user, activeRole, dispatch]);
+  }, [user, activeRole, location.pathname, dispatch]);
 
   // Initialize Firebase push notifications when a user session is active
   useEffect(() => {
     if (!user) return;
+
+    const isAuthRoute = ['/login', '/register', '/admin/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+    if (isAuthRoute) return;
+
     initializePushNotifications().catch(err =>
       console.warn('[FCM] Push notification init error:', err)
     );
     registerForegroundMessageHandler();
-  }, [user]);
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const fetchCompanySettings = async () => {
@@ -253,6 +270,7 @@ export default function App() {
             <Route path="/admin/smtp" element={<SmtpSettings />} />
             <Route path="/admin/pricing" element={<AdminPricing />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
+            <Route path="/admin/menus" element={<MenusPage />} />
           </Route>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
@@ -309,6 +327,11 @@ export default function App() {
               <Register onNavigateToLogin={() => navigate('/login')} />
             </div>
         } />
+        <Route path="/reset-password" element={
+          <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center p-4 selection:bg-slate-900 dark:selection:bg-slate-100 dark:selection:text-slate-900 transition-colors duration-200">
+            <ResetPassword />
+          </div>
+        } />
 
         {/* Customer Documentation Module Routes */}
         <Route path="/document" element={<DocLayout />}>
@@ -333,16 +356,17 @@ export default function App() {
             <Route path="/fund-collection" element={hasPermission('fund-collection') ? <FundCollection /> : <Navigate to="/dashboard" replace />} />
             <Route path="/loan-repayment" element={hasPermission('loan-repayment') ? <LoanRepayment /> : <Navigate to="/dashboard" replace />} />
             <Route path="/loan-entry" element={hasPermission('loan-entry') ? <LoanEntry /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/loan-request" element={<LoanRequest />} />
             <Route path="/loan-list" element={hasPermission('loan-list') ? <LoanList /> : <Navigate to="/dashboard" replace />} />
             <Route path="/roles" element={hasPermission('role-management') ? <RolesPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/users" element={hasPermission('user-management') ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
-            <Route path="/menus" element={hasPermission('menu-management') ? <MenusPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/permissions" element={hasPermission('permission-management') ? <PermissionsPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/loan-repayments" element={hasPermission('loan-repayments') ? <LoanRepaymentList /> : <Navigate to="/dashboard" replace />} />
             <Route path="/collection-types" element={hasPermission('collection-types') ? <CollectionTypeMaster /> : <Navigate to="/dashboard" replace />} />
             <Route path="/fund-collection-audit" element={hasPermission('fund-collection-audit') ? <CollectionAuditSummary /> : <Navigate to="/dashboard" replace />} />
             <Route path="/expenses" element={hasPermission('expenses') ? <ExpensesPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/transactions" element={hasPermission('transactions') ? <TransactionsPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/reports/member-ledger" element={hasPermission('member-ledger') ? <MemberLedger /> : <Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

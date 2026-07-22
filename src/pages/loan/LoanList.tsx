@@ -123,7 +123,7 @@ export default function LoanList() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-8 animate-fade-in text-slate-900 mt-16 sm:mt-20 mb-5 px-3 sm:px-0">
+    <div className="space-y-4 sm:space-y-8 animate-fade-in text-slate-900 mt-16 sm:mt-20 mb-20 sm:mb-30 px-3 sm:px-0">
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-950 text-white px-5 py-4 rounded-xl border border-slate-800 shadow-2xl flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-400 animate-pulse" />
@@ -261,12 +261,12 @@ export default function LoanList() {
                     </td>
                     <td className="p-4 text-center">
                       <span className={`inline-block px-2.5 py-1 text-[9px] font-bold rounded-full ${loan.status === 'ACTIVE' || loan.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-800'
-                          : loan.status === 'PENDING' || loan.status === 'Pending'
-                            ? 'bg-blue-50 text-blue-800'
-                            : loan.status === 'CANCELLED' || loan.status === 'Cancelled'
-                              ? 'bg-rose-50 text-rose-800'
-                              : 'bg-slate-100 text-slate-500'
+                        ? 'bg-emerald-50 text-emerald-800'
+                        : loan.status === 'PENDING' || loan.status === 'Pending'
+                          ? 'bg-blue-50 text-blue-800'
+                          : loan.status === 'CANCELLED' || loan.status === 'Cancelled'
+                            ? 'bg-rose-50 text-rose-800'
+                            : 'bg-slate-100 text-slate-500'
                         }`}>
                         {loan.status}
                       </span>
@@ -350,15 +350,14 @@ export default function LoanList() {
                 <div className="space-y-1 max-w-[65%]">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold text-slate-950 text-[10px] text-tnum">#{loan.loanNo || loan.id}</span>
-                    <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full ${
-                      loan.status === 'ACTIVE' || loan.status === 'Active'
-                        ? 'bg-emerald-50 text-emerald-800'
-                        : loan.status === 'PENDING' || loan.status === 'Pending'
-                          ? 'bg-blue-50 text-blue-800'
-                          : loan.status === 'CANCELLED' || loan.status === 'Cancelled'
-                            ? 'bg-rose-50 text-rose-800'
-                            : 'bg-slate-100 text-slate-500'
-                    }`}>
+                    <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded-full ${loan.status === 'ACTIVE' || loan.status === 'Active'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : loan.status === 'PENDING' || loan.status === 'Pending'
+                        ? 'bg-blue-50 text-blue-800'
+                        : loan.status === 'CANCELLED' || loan.status === 'Cancelled'
+                          ? 'bg-rose-50 text-rose-800'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}>
                       {loan.status}
                     </span>
                   </div>

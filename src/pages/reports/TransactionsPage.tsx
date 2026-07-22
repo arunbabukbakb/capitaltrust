@@ -290,7 +290,7 @@ export default function TransactionsPage() {
   );
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in mt-14 sm:mt-16 mb-8 px-2 sm:px-0">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in mt-14 sm:mt-16 mb-20 px-2 sm:px-0">
       {/* Header Section */}
       <div className="hidden sm:flex justify-between items-center bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
@@ -377,9 +377,8 @@ export default function TransactionsPage() {
           <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
             Net Liquidity Balance
           </span>
-          <h3 className={`text-lg sm:text-2xl font-extrabold font-headline mt-1 ${
-            (summary.totalInflow - summary.totalOutflow) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'
-          }`}>
+          <h3 className={`text-lg sm:text-2xl font-extrabold font-headline mt-1 ${(summary.totalInflow - summary.totalOutflow) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'
+            }`}>
             ₹{(summary.totalInflow - summary.totalOutflow).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h3>
           <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">

@@ -10,6 +10,7 @@ interface MenuData {
   path?: string;
   parentId?: string;
   menuOrder: number;
+  status?: number | boolean;
 }
 
 const POPULAR_ICONS = [
@@ -62,7 +63,7 @@ export default function MenusPage() {
     setCurrentMenu(
       menuItem
         ? { ...menuItem }
-        : { menuId: '', name: '', icon: 'HelpCircle', path: '', parentId: '', menuOrder: 0 }
+        : { menuId: '', name: '', icon: 'HelpCircle', path: '', parentId: '', menuOrder: 0, status: 1 }
     );
     setShowModal(true);
   };
@@ -81,7 +82,8 @@ export default function MenusPage() {
       path: currentMenu.path || null,
       parentId: currentMenu.parentId || null,
       icon: currentMenu.icon || 'HelpCircle',
-      menuOrder: Number(currentMenu.menuOrder) || 0
+      menuOrder: Number(currentMenu.menuOrder) || 0,
+      status: currentMenu.status === false || currentMenu.status === 0 ? 0 : 1
     };
 
     const url = currentMenu.id ? `/api/menus/${currentMenu.id}` : '/api/menus';
@@ -161,6 +163,7 @@ export default function MenusPage() {
                 <th className="p-4 uppercase tracking-wider text-[10px]">Route Path</th>
                 <th className="p-4 uppercase tracking-wider text-[10px]">Parent Category</th>
                 <th className="p-4 uppercase tracking-wider text-[10px] text-center">Sort Order</th>
+                <th className="p-4 uppercase tracking-wider text-[10px] text-center">Status</th>
                 <th className="p-4 pr-6 uppercase tracking-wider text-[10px] text-right">Actions</th>
               </tr>
             </thead>
@@ -201,6 +204,15 @@ export default function MenusPage() {
                       )}
                     </td>
                     <td className="p-4 text-center font-mono text-xs font-bold text-slate-800">{menu.menuOrder}</td>
+                    <td className="p-4 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        menu.status === 0 || menu.status === false
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      }`}>
+                        {menu.status === 0 || menu.status === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
                     <td className="p-4 pr-6 text-right">
                       <div className="inline-flex gap-2">
                         <button onClick={() => handleOpenModal(menu)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer">
@@ -262,6 +274,13 @@ export default function MenusPage() {
                     )}
 
                     <span className="font-mono text-[8px] text-slate-400 font-bold">Order: {menu.menuOrder}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold border ${
+                      menu.status === 0 || menu.status === false
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    }`}>
+                      {menu.status === 0 || menu.status === false ? 'Inactive' : 'Active'}
+                    </span>
                   </div>
                 </div>
 
@@ -402,6 +421,25 @@ export default function MenusPage() {
                           {parent.name}
                         </option>
                       ))}
+                  </select>
+                  <Menu className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="status" className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1">
+                  Status
+                </label>
+                <div className="relative">
+                  <select
+                    id="status"
+                    name="status"
+                    value={currentMenu?.status === false || currentMenu?.status === 0 ? '0' : '1'}
+                    onChange={(e) => setCurrentMenu(prev => prev ? { ...prev, status: Number(e.target.value) } : null)}
+                    className="w-full appearance-none px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                  >
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
                   </select>
                   <Menu className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                 </div>

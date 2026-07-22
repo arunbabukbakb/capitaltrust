@@ -51,12 +51,12 @@ const initialRoles = [
 ];
 
 export async function runSeeders(db: Database) {
-  // Seed roles first
+  // Seed roles first for tenant 1
   for (const role of initialRoles) {
-    const exists = await db.get("SELECT id FROM roles WHERE roleType = ?", [role.roleType]);
+    const exists = await db.get("SELECT id FROM roles WHERE roleType = ? AND tenantId = 1", [role.roleType]);
     if (!exists) {
       await db.run(
-        "INSERT INTO roles (roleName, roleType) VALUES (?, ?)",
+        "INSERT INTO roles (roleName, roleType, tenantId) VALUES (?, ?, 1)",
         [role.roleName, role.roleType]
       );
     }
@@ -66,21 +66,21 @@ export async function runSeeders(db: Database) {
   for (const user of initialUsers) {
     const exists = await db.get("SELECT id FROM users WHERE id = ?", [user.id]);
     if (!exists) {
-      const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ?", [user.role]);
+      const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ? AND tenantId = 1", [user.role]);
       if (!role) continue;
 
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash('123', saltRounds);
 
       await db.run(
-        "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [user.id, user.fullName, user.email, user.username, user.role, hashedPassword, 1, user.phoneNumber || null, role.id, 1]
+        "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        [user.id, user.fullName, user.email, user.username, user.role, hashedPassword, 1, user.phoneNumber || null, role.id]
       );
     }
 
     // Map roles in user_roles table
     if (user.id === 'CT-00001') {
-      const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
+      const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles WHERE tenantId = 1");
       for (const r of allRoles) {
         await db.run(
           "INSERT IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
@@ -88,7 +88,7 @@ export async function runSeeders(db: Database) {
         );
       }
     } else {
-      const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ?", [user.role]);
+      const role = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = ? AND tenantId = 1", [user.role]);
       if (role) {
         await db.run(
           "INSERT IGNORE INTO user_roles (userId, roleId) VALUES (?, ?)",
@@ -103,20 +103,25 @@ export async function runSeeders(db: Database) {
   if (menuCount && menuCount.count === 0) {
     const initialMenus = [
       { menuId: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', parentId: null, menuOrder: 10 },
-      { menuId: 'liquidity', name: 'Liquidity Pools', icon: 'Coins', path: null, parentId: null, menuOrder: 20 },
+      { menuId: 'liquidity', name: 'Collection', icon: 'Coins', path: null, parentId: null, menuOrder: 20 },
       { menuId: 'collection-types', name: 'Collection Type', icon: 'Shield', path: '/collection-types', parentId: 'liquidity', menuOrder: 21 },
       { menuId: 'fund-collection', name: 'Fund Collection', icon: 'Coins', path: '/fund-collection', parentId: 'liquidity', menuOrder: 22 },
       { menuId: 'fund-collection-audit', name: 'Collection Summary', icon: 'FileText', path: '/fund-collection-audit', parentId: 'liquidity', menuOrder: 23 },
-      { menuId: 'credit', name: 'Credit Facilities', icon: 'Calculator', path: null, parentId: null, menuOrder: 30 },
+      { menuId: 'credit', name: 'Loans', icon: 'Calculator', path: null, parentId: null, menuOrder: 30 },
       { menuId: 'loan-repayment', name: 'My Loans', icon: 'Calculator', path: '/loan-repayment', parentId: 'credit', menuOrder: 31 },
+      { menuId: 'loan-request', name: 'Loan Request', icon: 'FilePlus', path: '/loan-request', parentId: 'credit', menuOrder: 31.5 },
       { menuId: 'loan-list', name: 'Loan List', icon: 'FileText', path: '/loan-list', parentId: 'credit', menuOrder: 32 },
-      { menuId: 'loan-entry', name: 'Loan Request', icon: 'Users', path: '/loan-entry', parentId: 'credit', menuOrder: 33 },
+      { menuId: 'loan-entry', name: 'Loan Entry', icon: 'Users', path: '/loan-entry', parentId: 'credit', menuOrder: 33 },
       { menuId: 'loan-repayments', name: 'Repayment', icon: 'ShieldCheck', path: '/loan-repayments', parentId: 'credit', menuOrder: 34 },
+      { menuId: 'expenses', name: 'Expenses', icon: 'Receipt', path: '/expenses', parentId: null, menuOrder: 35 },
       { menuId: 'users', name: 'Users', icon: 'Users', path: null, parentId: null, menuOrder: 40 },
       { menuId: 'role-management', name: 'Role Management', icon: 'Shield', path: '/roles', parentId: 'users', menuOrder: 41 },
       { menuId: 'user-management', name: 'User Management', icon: 'Users', path: '/users', parentId: 'users', menuOrder: 42 },
       { menuId: 'menu-management', name: 'Menu Management', icon: 'Menu', path: '/menus', parentId: 'users', menuOrder: 43 },
-      { menuId: 'permission-management', name: 'Permission Management', icon: 'ShieldCheck', path: '/permissions', parentId: 'users', menuOrder: 44 }
+      { menuId: 'permission-management', name: 'Permission Management', icon: 'ShieldCheck', path: '/permissions', parentId: 'users', menuOrder: 44 },
+      { menuId: 'reports', name: 'Reports', icon: 'FileSpreadsheet', path: null, parentId: null, menuOrder: 50 },
+      { menuId: 'transactions', name: 'Transactions', icon: 'Receipt', path: '/reports/transactions', parentId: 'reports', menuOrder: 51 },
+      { menuId: 'member-ledger', name: 'Member Ledger', icon: 'FileText', path: '/reports/member-ledger', parentId: 'reports', menuOrder: 52 }
     ];
 
     for (const menu of initialMenus) {
@@ -130,11 +135,17 @@ export async function runSeeders(db: Database) {
   // Seed default permissions for roles if empty
   const permCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM role_menu_permissions");
   if (permCount && permCount.count === 0) {
-    const memberRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'user'");
-    const managerRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'manager'");
+    const memberRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'user' AND tenantId = 1");
+    const managerRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'manager' AND tenantId = 1");
 
     if (memberRole) {
-      const memberMenus = ['dashboard', 'liquidity', 'fund-collection-audit', 'credit', 'loan-repayment', 'loan-entry'];
+      const memberMenus = [
+        'dashboard',
+        'liquidity', 'fund-collection-audit',
+        'credit', 'loan-repayment', 'loan-request',
+        'expenses',
+        'reports', 'transactions', 'member-ledger'
+      ];
       for (const mId of memberMenus) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
         if (menu) {
@@ -150,8 +161,10 @@ export async function runSeeders(db: Database) {
       const managerMenus = [
         'dashboard',
         'liquidity', 'collection-types', 'fund-collection', 'fund-collection-audit',
-        'credit', 'loan-repayment', 'loan-list', 'loan-entry', 'loan-repayments',
-        'users', 'role-management', 'user-management'
+        'credit', 'loan-repayment', 'loan-request', 'loan-list', 'loan-entry', 'loan-repayments',
+        'expenses',
+        'users', 'role-management', 'user-management',
+        'reports', 'transactions', 'member-ledger'
       ];
       for (const mId of managerMenus) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
@@ -163,71 +176,6 @@ export async function runSeeders(db: Database) {
         }
       }
     }
-  }
-  // Force sync expenses menu item and role permissions
-  try {
-    const existingExpenseMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'expenses'");
-    let expenseMenuId = existingExpenseMenu?.id;
-    if (!expenseMenuId) {
-      const res = await db.run(
-        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
-        ['expenses', 'Expenses', 'Receipt', '/expenses', null, 35]
-      );
-      expenseMenuId = res.lastID as number;
-    }
-
-    if (expenseMenuId) {
-      const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
-      for (const r of allRoles) {
-        await db.run(
-          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
-          [r.id, expenseMenuId]
-        );
-      }
-    }
-  } catch (err) {
-    console.error("Error syncing expenses menu item:", err);
-  }
-
-  // Force sync Reports parent menu & Transactions child menu
-  try {
-    const existingReportsMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'reports'");
-    let reportsParentDbId = existingReportsMenu?.id;
-    if (!reportsParentDbId) {
-      const res = await db.run(
-        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
-        ['reports', 'Reports', 'FileSpreadsheet', null, null, 50]
-      );
-      reportsParentDbId = res.lastID as number;
-    }
-
-    const existingTxnMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'transactions'");
-    let txnMenuDbId = existingTxnMenu?.id;
-    if (!txnMenuDbId) {
-      const res = await db.run(
-        "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
-        ['transactions', 'Transactions', 'Receipt', '/reports/transactions', 'reports', 51]
-      );
-      txnMenuDbId = res.lastID as number;
-    }
-
-    const allRoles = await db.all<{ id: number }[]>("SELECT id FROM roles");
-    for (const r of allRoles) {
-      if (reportsParentDbId) {
-        await db.run(
-          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
-          [r.id, reportsParentDbId]
-        );
-      }
-      if (txnMenuDbId) {
-        await db.run(
-          "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
-          [r.id, txnMenuDbId]
-        );
-      }
-    }
-  } catch (err) {
-    console.error("Error syncing Reports & Transactions menu items:", err);
   }
 
   // Seed company settings if empty
@@ -312,7 +260,7 @@ export async function runSeeders(db: Database) {
         const interestDue = (openingPrincipal * 0.12) / 12;
         const totalDue = principalDue + interestDue;
         const isPaid = month <= 6;
-        
+
         const status = isPaid ? 'Paid' : 'Pending';
         const paidAmount = isPaid ? totalDue : 0;
         const interestPaid = isPaid ? interestDue : 0;

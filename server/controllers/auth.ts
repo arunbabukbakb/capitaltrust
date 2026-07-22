@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { UserModel } from '../models/User';
 import { RoleModel } from '../models/Role';
 import { sendPushNotification } from '../firebaseAdmin';
@@ -16,10 +18,11 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields: fullName, email, username, password" });
     }
 
+    const tenantId = req.headers['x-tenant-id'] as string;
     const emailLower = email.toLowerCase();
-    const existing = await UserModel.findByUsernameOrEmail(username, null) || await UserModel.findByUsernameOrEmail(email, null);
+    const existing = await UserModel.findByUsernameOrEmail(username, tenantId) || await UserModel.findByUsernameOrEmail(email, tenantId);
     if (existing) {
-      return res.status(400).json({ error: "Account with this email/username already exists" });
+      return res.status(400).json({ error: "Account with this email/username already exists under this organization." });
     }
 
     const usersCount = await UserModel.countAll();
@@ -30,15 +33,13 @@ export const register = async (req: Request, res: Response) => {
     const nextIdNumber = 55001 + countPrefix;
     const userId = `CT-${nextIdNumber}`;
 
-    const role = await RoleModel.findByRoleType(initialRole);
+    const role = await RoleModel.findByRoleType(initialRole, tenantId);
     if (!role) {
-      return res.status(500).json({ error: "System role could not be configured" });
+      return res.status(500).json({ error: "System role could not be configured for this organization." });
     }
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const tenantId = req.headers['x-tenant-id'] as string;
 
     await UserModel.create({
       id: userId,
@@ -67,9 +68,19 @@ export const register = async (req: Request, res: Response) => {
       tenantId,
       assignedRoles
     };
-    const token = jwt.sign({ id: userId, role: initialRole }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: userId, role: initialRole }, JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
+
+    const db = getDatabase();
+    await db.run("UPDATE users SET refreshToken = ? WHERE id = ?", [refreshToken, userId]);
 
     res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
@@ -141,8 +152,18 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    await db.run("UPDATE users SET refreshToken = ? WHERE id = ?", [refreshToken, user.id]);
+
     res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
@@ -179,8 +200,27 @@ export const me = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (token) {
+      const payload = jwt.decode(token) as { id: string } | null;
+      if (payload?.id) {
+        const db = getDatabase();
+        await db.run("UPDATE users SET refreshToken = NULL WHERE id = ?", [payload.id]);
+      }
+    }
+  } catch (e) {
+    // Ignore decode/db errors during logout
+  }
+
   res.cookie('token', '', {
+    httpOnly: true,
+    expires: new Date(0),
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.cookie('refreshToken', '', {
     httpOnly: true,
     expires: new Date(0),
     secure: process.env.NODE_ENV === 'production',
@@ -192,22 +232,86 @@ export const logout = (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    const user = await UserModel.findByUsernameOrEmail(email, null);
 
-    if (user) {
-      const token = crypto.randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 3600000).toISOString();
-
-      await UserModel.createPasswordResetToken(user.id, token, expiresAt);
-      console.log(`Password reset link for ${email}: http://localhost:5173/reset-password?token=${token}`);
+    if (!email) {
+      return res.status(400).json({ error: "Email is required." });
     }
 
-    res.status(200).json({ message: "If an account with that email exists, a password reset link has been sent." });
+    const tenantId = req.headers['x-tenant-id'] as string | undefined;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant context is missing." });
+    }
+
+    const user = await UserModel.findByUsernameOrEmail(email, tenantId);
+
+    if (!user) {
+      return res.status(404).json({ error: "No account found with that email address." });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 3600000);
+
+    await UserModel.createPasswordResetToken(user.id, token, expiresAt);
+
+    // Build reset URL from incoming request host
+    const protocol = (req.headers['x-forwarded-proto'] as string) || 'http';
+    const host = (req.headers['x-forwarded-host'] as string) || (req.headers.host as string) || 'localhost:5173';
+    const resetUrl = `${protocol}://${host}/reset-password?token=${token}`;
+
+    // Send password reset email via active SMTP config
+    try {
+      const { createActiveTransporter } = await import('../utils/mailer');
+      const { transporter, fromAddress } = await createActiveTransporter();
+      await transporter.sendMail({
+        from: `"CapitalTrust Support" <${fromAddress}>`,
+        to: user.email,
+        subject: "Password Reset Request",
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
+            <div style="text-align: center; padding-bottom: 20px; border-b: 1px solid #1e293b;">
+              <h2 style="color: #6366f1; margin: 0; font-size: 22px;">CapitalTrust Platform</h2>
+              <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Password Reset Request</p>
+            </div>
+            <div style="padding: 20px 0;">
+              <h3 style="color: #ffffff; font-size: 18px;">Hello, ${user.fullName}!</h3>
+              <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                We received a request to reset the password for your account associated with <strong>${user.email}</strong>.
+              </p>
+              <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                Click the button below to reset your password. This link will expire in <strong>1 hour</strong>.
+              </p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="${resetUrl}" style="background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+                  Reset My Password &rarr;
+                </a>
+              </div>
+              <p style="color: #64748b; font-size: 12px;">
+                If you did not request a password reset, please ignore this email. Your account is safe and no changes have been made.
+              </p>
+              <p style="color: #64748b; font-size: 12px; margin-top: 8px;">
+                If the button above does not work, copy and paste this link into your browser:<br/>
+                <a href="${resetUrl}" style="color: #818cf8; word-break: break-all;">${resetUrl}</a>
+              </p>
+            </div>
+            <div style="border-top: 1px solid #1e293b; padding-top: 16px; text-align: center; font-size: 11px; color: #64748b;">
+              &copy; ${new Date().getFullYear()} CapitalTrust Portal Services. All rights reserved.
+            </div>
+          </div>
+        `
+      });
+      console.log(`Password reset email sent to ${user.email}`);
+    } catch (mailErr) {
+      console.error("Failed to send password reset email:", mailErr);
+    }
+
+    res.status(200).json({ message: `A password reset link has been sent to ${user.email}.` });
   } catch (error) {
     console.error("Forgot password error", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
@@ -249,11 +353,57 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Full name and email are required" });
     }
 
+    let savedProfileImagePath = profileImage;
+
+    if (profileImage && profileImage.startsWith('data:image/')) {
+      const matches = profileImage.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        let ext = 'png';
+        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) {
+          ext = 'jpg';
+        } else if (mimeType.includes('gif')) {
+          ext = 'gif';
+        } else if (mimeType.includes('webp')) {
+          ext = 'webp';
+        }
+
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        // Clean up old image if there was one
+        const existingUser = await UserModel.findById(payload.id);
+        if (existingUser && existingUser.profileImage) {
+          const oldFileUrl = existingUser.profileImage;
+          if (oldFileUrl.startsWith('/uploads/')) {
+            const oldFilePath = path.join(process.cwd(), oldFileUrl.substring(1)); // strip leading slash
+            if (fs.existsSync(oldFilePath)) {
+              try {
+                fs.unlinkSync(oldFilePath);
+              } catch (e) {
+                console.error("Failed to delete old avatar file", e);
+              }
+            }
+          }
+        }
+
+        const fileName = `profile_${payload.id}_${Date.now()}.${ext}`;
+        const filePath = path.join(uploadsDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+        savedProfileImagePath = `/uploads/${fileName}`;
+      }
+    }
+
     await UserModel.update(payload.id, {
       fullName,
       email: email.toLowerCase(),
       phoneNumber: phoneNumber || null,
-      profileImage: profileImage || null
+      profileImage: savedProfileImagePath || null
     });
 
     const user = await UserModel.findById(payload.id);
@@ -304,5 +454,38 @@ export const changePassword = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Change password error", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const refresh = async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({ error: "Refresh token missing" });
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, JWT_SECRET) as { id: string };
+    const db = getDatabase();
+
+    const user = await db.get<{ id: string; role: string; refreshToken: string }>(
+      "SELECT id, role, refreshToken FROM users WHERE id = ?",
+      [payload.id]
+    );
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    const newAccessToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+
+    res.cookie('token', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    res.json({ token: newAccessToken });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    res.status(401).json({ error: "Invalid or expired refresh token" });
   }
 };

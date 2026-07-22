@@ -32,12 +32,19 @@ interface ConfirmDialogState {
   onConfirm: () => void | Promise<void>;
 }
 
+interface UserOption {
+  id: string;
+  fullName: string;
+  username: string;
+}
+
 export default function ExpensesPage() {
   const { user, activeRole } = useSelector((state: RootState) => state.auth);
   const activeRoleType = activeRole?.roleType || user?.role;
   const isAdminOrManager = activeRoleType === 'admin' || activeRoleType === 'manager';
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [usersList, setUsersList] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +69,8 @@ export default function ExpensesPage() {
     amount: '',
     paymentMode: 'Cash' as ExpensePaymentMode,
     referenceNo: '',
-    description: ''
+    description: '',
+    expenseBy: ''
   });
 
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -89,6 +97,19 @@ export default function ExpensesPage() {
     fetchExpenses();
   }, []);
 
+  useEffect(() => {
+    if (isAdminOrManager) {
+      fetch('/api/users')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setUsersList(data);
+          }
+        })
+        .catch(err => console.error('Failed to fetch users list for expenses dropdown:', err));
+    }
+  }, [isAdminOrManager]);
+
   const handleOpenAddModal = () => {
     setEditingExpense(null);
     setFormData({
@@ -96,7 +117,8 @@ export default function ExpensesPage() {
       amount: '',
       paymentMode: 'Cash',
       referenceNo: '',
-      description: ''
+      description: '',
+      expenseBy: ''
     });
     setFormError(null);
     setShowAddModal(true);
@@ -115,7 +137,8 @@ export default function ExpensesPage() {
       amount: String(expense.Amount),
       paymentMode: expense.PaymentMode,
       referenceNo: expense.ReferenceNo || '',
-      description: expense.Description
+      description: expense.Description,
+      expenseBy: expense.ExpenseBy || ''
     });
     setFormError(null);
     setShowAddModal(true);
@@ -157,7 +180,8 @@ export default function ExpensesPage() {
           amount: numAmount,
           paymentMode: formData.paymentMode,
           referenceNo: formData.referenceNo.trim() || null,
-          description: formData.description.trim()
+          description: formData.description.trim(),
+          expenseBy: isAdminOrManager ? (formData.expenseBy || null) : user?.id
         })
       });
 
@@ -173,7 +197,8 @@ export default function ExpensesPage() {
         amount: '',
         paymentMode: 'Cash',
         referenceNo: '',
-        description: ''
+        description: '',
+        expenseBy: ''
       });
       setEditingExpense(null);
       setShowAddModal(false);
@@ -529,6 +554,7 @@ export default function ExpensesPage() {
                     <th className="py-3.5 px-4">Payment Mode</th>
                     <th className="py-3.5 px-4">Reference No</th>
                     <th className="py-3.5 px-4">Amount</th>
+                    <th className="py-3.5 px-4">Expense By</th>
                     <th className="py-3.5 px-4">Created By</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
@@ -564,6 +590,9 @@ export default function ExpensesPage() {
                         </td>
                         <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatCurrency(Number(expense.Amount))}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                          {expense.expenseByName || expense.ExpenseBy || <span className="text-slate-300 dark:text-slate-600">-</span>}
                         </td>
                         <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400">
                           {expense.createdByName || expense.CreatedBy}
@@ -760,6 +789,27 @@ export default function ExpensesPage() {
                   />
                 </div>
               </div>
+
+              {/* Expense By Dropdown - Visible ONLY to Admin / Manager */}
+              {isAdminOrManager && (
+                <div>
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Expense By <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <select
+                    value={formData.expenseBy}
+                    onChange={(e) => setFormData({ ...formData, expenseBy: e.target.value })}
+                    className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="">Select User (Optional)</option>
+                    {usersList.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.fullName || u.username} ({u.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Description (Non-nullable) */}
               <div>

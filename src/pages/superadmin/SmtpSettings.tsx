@@ -47,6 +47,10 @@ export default function SmtpSettings() {
   });
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testSmtpId, setTestSmtpId] = useState<number | null>(null);
+  const [testEmailInput, setTestEmailInput] = useState('');
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     fetchSmtpSettings();
@@ -168,14 +172,38 @@ export default function SmtpSettings() {
     }
   };
 
-  const handleTestConnection = async (id: number) => {
-    setTestingId(id);
+  const handleTestConnection = (id: number) => {
+    setTestSmtpId(id);
+    setTestEmailInput('');
+    setIsTestModalOpen(true);
     setError('');
     setSuccessMsg('');
-    setTimeout(() => {
-      setTestingId(null);
-      setSuccessMsg('SMTP connection test succeeded! Handshake & ping completed.');
-    }, 1200);
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testSmtpId || !testEmailInput.trim()) return;
+
+    setTesting(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(`/api/super-admin/smtp/${testSmtpId}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testEmail: testEmailInput.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'SMTP Connection failed.');
+      }
+      setSuccessMsg(data.message || `SMTP connection test succeeded! Test mail sent to ${testEmailInput}`);
+      setIsTestModalOpen(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setTesting(false);
+    }
   };
 
   const togglePasswordVisibility = (id: number) => {
@@ -305,12 +333,12 @@ export default function SmtpSettings() {
 
                       <button
                         onClick={() => handleTestConnection(smtp.id)}
-                        disabled={testingId === smtp.id}
+                        disabled={testing && testSmtpId === smtp.id}
                         className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 text-[10px] sm:text-xs font-semibold rounded-lg sm:rounded-xl transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
                         title="Test connection"
                       >
-                        <Send className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${testingId === smtp.id ? 'animate-bounce' : ''}`} />
-                        <span>{testingId === smtp.id ? 'Testing...' : 'Test'}</span>
+                        <Send className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${testing && testSmtpId === smtp.id ? 'animate-bounce' : ''}`} />
+                        <span>{testing && testSmtpId === smtp.id ? 'Testing...' : 'Test'}</span>
                       </button>
 
                       <button
@@ -508,6 +536,70 @@ export default function SmtpSettings() {
                     <>
                       <Check className="w-3.5 h-3.5" />
                       <span>{editingId ? 'Update' : 'Save'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isTestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+          <div className="bg-[#0c101b] border border-slate-800 rounded-2xl sm:rounded-3xl w-full max-w-md shadow-2xl p-4 sm:p-6 relative text-slate-200 animate-scale-up">
+            <button
+              onClick={() => setIsTestModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-full transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <header className="mb-4">
+              <h3 className="text-base sm:text-lg font-bold font-headline text-white flex items-center gap-2">
+                <Send className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                Test SMTP Connection
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Send a test email to verify your SMTP parameters.
+              </p>
+            </header>
+
+            <form onSubmit={handleSendTestEmail} className="space-y-3 sm:space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Recipient Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. you@example.com"
+                  value={testEmailInput}
+                  onChange={e => setTestEmailInput(e.target.value)}
+                  className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsTestModalOpen(false)}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={testing}
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {testing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Sending Test...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Mail</span>
                     </>
                   )}
                 </button>

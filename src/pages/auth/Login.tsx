@@ -67,7 +67,10 @@ export default function Login({ onNavigateToRegister }: LoginProps) {
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-tenant-id": subdomain || "demo"
+        },
         body: JSON.stringify({ email: forgotEmail })
       });
       const data = await res.json();

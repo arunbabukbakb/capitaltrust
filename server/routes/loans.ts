@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getLoans, createLoan, updateLoan, deleteLoan, approveLoan } from '../controllers/loans';
+import { getLoans, createLoan, updateLoan, deleteLoan, approveLoan, requestLoan } from '../controllers/loans';
 
 const router = Router();
 
@@ -84,6 +84,7 @@ const router = Router();
  *         description: Validation payload error
  */
 router.get('/', getLoans);
+router.post('/request', requestLoan);
 router.post('/', createLoan);
 
 /**

@@ -24,6 +24,7 @@ export default function SuperAdminLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Tenants Registry', path: '/admin/tenants', icon: Building2 },
+    { label: 'Menu Management', path: '/admin/menus', icon: Layers },
     { label: 'Broadcast Mail', path: '/admin/send-mail', icon: Send },
     { label: 'SMTP Mail Settings', path: '/admin/smtp', icon: Mail },
     { label: 'Pricing Settings', path: '/admin/pricing', icon: Coins },

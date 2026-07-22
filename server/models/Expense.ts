@@ -8,19 +8,22 @@ export interface Expense {
   PaymentMode: 'Cash' | 'Bank' | 'UPI';
   ReferenceNo?: string | null;
   Description: string;
+  ExpenseBy?: string | null;
   Status: 'Draft' | 'Approved' | 'Cancelled';
   CreatedBy: string;
   CreatedAt?: string;
   createdByName?: string;
+  expenseByName?: string | null;
 }
 
 export const ExpenseModel = {
   async listByTenant(tenantId: string | number): Promise<Expense[]> {
     const db = getDatabase();
     return db.all<Expense[]>(
-      `SELECT e.*, u.fullName as createdByName 
+      `SELECT e.*, u.fullName as createdByName, u2.fullName as expenseByName 
        FROM expenses e 
        LEFT JOIN users u ON e.CreatedBy = u.id 
+       LEFT JOIN users u2 ON e.ExpenseBy = u2.id
        WHERE e.TenantId = ? 
        ORDER BY e.CreatedAt DESC, e.ExpenseDate DESC`,
       [tenantId]
@@ -30,19 +33,20 @@ export const ExpenseModel = {
   async findById(id: string, tenantId: string | number): Promise<Expense | undefined> {
     const db = getDatabase();
     return db.get<Expense>(
-      `SELECT e.*, u.fullName as createdByName 
+      `SELECT e.*, u.fullName as createdByName, u2.fullName as expenseByName 
        FROM expenses e 
        LEFT JOIN users u ON e.CreatedBy = u.id 
+       LEFT JOIN users u2 ON e.ExpenseBy = u2.id
        WHERE e.Id = ? AND e.TenantId = ?`,
       [id, tenantId]
     );
   },
 
-  async create(expense: Omit<Expense, 'CreatedAt' | 'createdByName'>): Promise<void> {
+  async create(expense: Omit<Expense, 'CreatedAt' | 'createdByName' | 'expenseByName'>): Promise<void> {
     const db = getDatabase();
     await db.run(
-      `INSERT INTO expenses (Id, TenantId, ExpenseDate, Amount, PaymentMode, ReferenceNo, Description, Status, CreatedBy) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO expenses (Id, TenantId, ExpenseDate, Amount, PaymentMode, ReferenceNo, Description, ExpenseBy, Status, CreatedBy) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         expense.Id,
         expense.TenantId,
@@ -51,6 +55,7 @@ export const ExpenseModel = {
         expense.PaymentMode,
         expense.ReferenceNo || null,
         expense.Description,
+        expense.ExpenseBy || null,
         expense.Status,
         expense.CreatedBy
       ]
@@ -89,6 +94,10 @@ export const ExpenseModel = {
     if (expense.Description !== undefined) {
       fields.push('Description = ?');
       values.push(expense.Description);
+    }
+    if (expense.ExpenseBy !== undefined) {
+      fields.push('ExpenseBy = ?');
+      values.push(expense.ExpenseBy || null);
     }
 
     if (fields.length === 0) return;

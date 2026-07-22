@@ -24,6 +24,12 @@ export const getRolePermissions = async (req: Request, res: Response) => {
     const userId = getUserIdFromRequest(req);
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const roleExists = await db.get("SELECT 1 FROM roles WHERE id = ? AND tenantId = ?", [roleId, tenantId]);
+    if (!roleExists) {
+      return res.status(403).json({ error: "Access denied. Role does not belong to this organization." });
+    }
+
     const user = await db.get<{ roleType: string }>(
       "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",
       [userId]
@@ -55,6 +61,12 @@ export const updateRolePermissions = async (req: Request, res: Response) => {
 
     const userId = getUserIdFromRequest(req);
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const roleExists = await db.get("SELECT 1 FROM roles WHERE id = ? AND tenantId = ?", [roleId, tenantId]);
+    if (!roleExists) {
+      return res.status(403).json({ error: "Access denied. Role does not belong to this organization." });
+    }
 
     const user = await db.get<{ roleType: string }>(
       "SELECT r.roleType FROM users u JOIN roles r ON u.roleId = r.id WHERE u.id = ?",

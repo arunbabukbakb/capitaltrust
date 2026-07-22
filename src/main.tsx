@@ -27,10 +27,36 @@ export function getSubdomain(): string | null {
   return null;
 }
 
-// Override global fetch to automatically inject the JWT token from localStorage.
-// Only intercept same-origin requests (relative paths or same origin).
-// External URLs (e.g. Google Firebase APIs) are passed through unchanged to prevent CORS failures.
 const originalFetch = window.fetch;
+let refreshTokenPromise: Promise<string | null> | null = null;
+
+async function executeTokenRefresh(): Promise<string | null> {
+  try {
+    const headers = new Headers();
+    const subdomain = getSubdomain();
+    if (subdomain) {
+      headers.set('X-Tenant-Id', subdomain);
+    }
+    const res = await originalFetch('/api/auth/refresh', {
+      method: 'POST',
+      headers
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        return data.token;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error("Token refresh failed", err);
+    return null;
+  } finally {
+    refreshTokenPromise = null;
+  }
+}
+
 window.fetch = async (input, init) => {
   // Determine request URL
   const url = typeof input === 'string'
@@ -66,7 +92,27 @@ window.fetch = async (input, init) => {
   try {
     const response = await originalFetch(input, newInit);
     if (response.status === 401) {
+      const isRefreshRequest = url.includes('/api/auth/refresh') || url.includes('/api/auth/login');
       const storedToken = localStorage.getItem('token');
+      
+      if (!isRefreshRequest && storedToken) {
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = executeTokenRefresh();
+        }
+        const newAccessToken = await refreshTokenPromise;
+        if (newAccessToken) {
+          const retryInit = { ...(init || {}) };
+          const retryHeaders = new Headers(retryInit.headers || {});
+          retryHeaders.set('Authorization', `Bearer ${newAccessToken}`);
+          const sub = getSubdomain();
+          if (sub) {
+            retryHeaders.set('X-Tenant-Id', sub);
+          }
+          retryInit.headers = retryHeaders;
+          return originalFetch(input, retryInit);
+        }
+      }
+
       const storedUser = localStorage.getItem('user');
       if (storedToken || storedUser) {
         localStorage.removeItem('token');

@@ -8,7 +8,7 @@ import { recordTransaction } from '../services/transactionService';
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
 // Helper to calculate and generate LoanDue ledger entries consecutively up to targetMonth
-async function getDuesForMember(db: any, member: any, loan: any, targetMonth: number, slabs: any[], saveToDb = false): Promise<any> {
+async function getDuesForMember(db: any, member: any, loan: any, targetMonth: number, slabs: any[], saveToDb = false, isCompound = false): Promise<any> {
   const startDateStr = loan.StartDate;
   const tenureMonths = Number(loan.TenureMonths || 12);
   const interestRate = Number(loan.InterestRate || 0);
@@ -27,52 +27,99 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
 
   let curr = new Date(startYear, startMonth, 1);
   let previousDueRecord: any = null;
+  let elapsedMonths = 0;
 
   while (curr <= targetDate) {
+    elapsedMonths++;
     const yyyy = curr.getFullYear();
     const mm = String(curr.getMonth() + 1).padStart(2, '0');
     const m = parseInt(`${yyyy}${mm}`);
 
-    // Check if LoanDue record exists
-    let dueRecord = await LoanModel.findDueByMemberAndMonth(member.Id, m);
+    // Check if LoanDue record exists in DB
+    let dbDueRecord = await LoanModel.findDueByMemberAndMonth(member.Id, m);
+    // Check if LoanPayment exists in DB for month m
+    const payment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, m);
 
-    if (!dueRecord) {
-      // Determine Opening Principal
-      let openingPrincipal = shareAmount;
-      let carryForwardInterest = 0;
-      if (previousDueRecord) {
-        openingPrincipal = previousDueRecord.ClosingPrincipal;
-        carryForwardInterest = Math.max(0, previousDueRecord.InterestDue + previousDueRecord.CarryForwardInterest - previousDueRecord.InterestPaid);
-      }
+    // Determine Opening Principal & Carry Forward Interest for current month m
+    let openingPrincipal = shareAmount;
+    let carryForwardInterest = 0;
+    let totalPrincipalPaidBefore = 0;
 
-      // Determine rate
-      let rate = interestRate;
-      if (interestMode === 'Variable') {
-        const slab = slabs.find(s => openingPrincipal >= s.FromAmount && openingPrincipal <= s.ToAmount);
-        if (slab) rate = slab.InterestRate;
-      }
+    if (previousDueRecord) {
+      openingPrincipal = previousDueRecord.ClosingPrincipal;
+      carryForwardInterest = Math.max(
+        0,
+        previousDueRecord.InterestDue + previousDueRecord.CarryForwardInterest - previousDueRecord.InterestPaid
+      );
+      totalPrincipalPaidBefore = (previousDueRecord.totalPrincipalPaidBefore || 0) + previousDueRecord.PrincipalPaid;
+    }
 
-      const interestDue = openingPrincipal * (rate / 100) / 12;
-      const principalDue = Math.min(openingPrincipal, shareAmount / tenureMonths);
-      const totalDue = principalDue + interestDue + carryForwardInterest;
+    // Base for interest calculation:
+    // If isCompound is true, all accumulated unpaid interest (carryForwardInterest) is added to openingPrincipal
+    const interestBase = isCompound ? (openingPrincipal + carryForwardInterest) : openingPrincipal;
 
-      dueRecord = {
-        Id: 0,
-        LoanMemberId: member.Id,
-        DueMonth: m,
-        OpeningPrincipal: openingPrincipal,
-        PrincipalDue: principalDue,
-        InterestDue: interestDue,
-        CarryForwardInterest: carryForwardInterest,
-        TotalDue: totalDue,
-        PaidAmount: 0,
-        InterestPaid: 0,
-        PrincipalPaid: 0,
-        ClosingPrincipal: openingPrincipal,
-        Status: 'Pending'
-      };
+    let rate = interestRate;
+    if (interestMode === 'Variable') {
+      const slab = slabs.find(s => interestBase >= s.FromAmount && interestBase <= s.ToAmount);
+      if (slab) rate = slab.InterestRate;
+    }
 
-      if (saveToDb) {
+    const interestDue = interestBase * (rate / 100) / 12;
+    
+    // Principal due accumulated for unpaid elapsed months
+    const monthlyPrincipalShare = shareAmount / tenureMonths;
+    const accumulatedTargetPrincipal = Math.min(shareAmount, elapsedMonths * monthlyPrincipalShare);
+    const principalDue = Math.min(openingPrincipal, Math.max(0, accumulatedTargetPrincipal - totalPrincipalPaidBefore));
+
+    const totalDue = principalDue + interestDue + carryForwardInterest;
+
+    let paidAmount = 0;
+    let interestPaid = 0;
+    let principalPaid = 0;
+    let status = 'Pending';
+
+    if (payment && payment.totalPaid > 0) {
+      paidAmount = payment.totalPaid;
+      interestPaid = payment.interestPaid;
+      principalPaid = payment.principalPaid;
+      status = (openingPrincipal - principalPaid <= 0) ? 'Paid' : 'Partial';
+    } else if (dbDueRecord) {
+      paidAmount = dbDueRecord.PaidAmount || 0;
+      interestPaid = dbDueRecord.InterestPaid || 0;
+      principalPaid = dbDueRecord.PrincipalPaid || 0;
+      status = dbDueRecord.Status || 'Pending';
+    }
+
+    const closingPrincipal = Math.max(0, openingPrincipal - principalPaid);
+
+    let dueRecord: any = {
+      Id: dbDueRecord ? dbDueRecord.Id : 0,
+      LoanMemberId: member.Id,
+      DueMonth: m,
+      OpeningPrincipal: openingPrincipal,
+      PrincipalDue: principalDue,
+      InterestDue: interestDue,
+      CarryForwardInterest: carryForwardInterest,
+      TotalDue: totalDue,
+      PaidAmount: paidAmount,
+      InterestPaid: interestPaid,
+      PrincipalPaid: principalPaid,
+      ClosingPrincipal: closingPrincipal,
+      Status: status,
+      totalPrincipalPaidBefore: totalPrincipalPaidBefore
+    };
+
+    if (saveToDb) {
+      if (dbDueRecord) {
+        await LoanModel.updateLoanDue(dbDueRecord.Id, {
+          OpeningPrincipal: dueRecord.OpeningPrincipal,
+          PrincipalDue: dueRecord.PrincipalDue,
+          InterestDue: dueRecord.InterestDue,
+          CarryForwardInterest: dueRecord.CarryForwardInterest,
+          TotalDue: dueRecord.TotalDue,
+          ClosingPrincipal: dueRecord.ClosingPrincipal
+        });
+      } else {
         const result = await LoanModel.createDueSchedule({
           LoanMemberId: dueRecord.LoanMemberId,
           DueMonth: dueRecord.DueMonth,
@@ -88,8 +135,6 @@ async function getDuesForMember(db: any, member: any, loan: any, targetMonth: nu
           Status: dueRecord.Status as any
         });
         dueRecord.Id = result.lastID ? Number(result.lastID) : 0;
-      } else {
-        dueRecord.Id = 0;
       }
     }
 
@@ -104,6 +149,8 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
   try {
     const { loanId, type, month } = req.query;
     const currentMonth = month ? parseInt(month as string) : parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
+    const currentCalendarMonth = parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Check auth
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
@@ -126,7 +173,7 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
       const l = await LoanModel.findById(loanId as string);
       if (l) loans.push(l);
     } else if (queryType === 'single') {
-      loans = await LoanModel.listSingleLoansByMonth(currentMonth);
+      loans = await LoanModel.listSingleLoansByMonth(currentMonth, tenantId);
     } else if (queryType === 'my') {
       if (!decodedUserId) {
         return res.status(401).json({ error: "Authentication required" });
@@ -137,7 +184,8 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
     const result: any[] = [];
 
     for (const loan of loans) {
-      const members = await LoanModel.listLoanMembers(loan.Id);
+      const isCompound = Boolean(loan.IsCompound === 1 || loan.IsCompound === true || loan.IsCompound === '1' || loan.IsCompound === 'true');
+      const members = await LoanModel.listLoanMembers(loan.Id, tenantId);
       const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
 
       for (const member of members) {
@@ -146,7 +194,10 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
         }
 
         // Ensure historical LoanDue records exist up to the current month in-memory
-        const dueRecord = await getDuesForMember(null, member, loan, currentMonth, slabs, false);
+        const dueRecord = await getDuesForMember(null, member, loan, currentMonth, slabs, false, isCompound);
+        if (!dueRecord) {
+          continue;
+        }
 
         // Fetch cumulative finalized payments in LoanPayment for this month
         const approvedPayment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, currentMonth);
@@ -160,11 +211,21 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
         const lastPaidMonth = await LoanModel.getMaxPaymentMonthByMember(member.Id);
         const canEdit = lastPaidMonth === 0 || currentMonth >= lastPaidMonth;
 
+        const currentInterestBase = isCompound ? (dueRecord.OpeningPrincipal + dueRecord.CarryForwardInterest) : dueRecord.OpeningPrincipal;
         let activeRate = loan.InterestRate || 0;
         if (loan.InterestMode === 'Variable') {
-          const openingPrincipal = dueRecord.OpeningPrincipal;
-          const slab = slabs.find((s: any) => openingPrincipal >= s.FromAmount && openingPrincipal <= s.ToAmount);
+          const slab = slabs.find((s: any) => currentInterestBase >= s.FromAmount && currentInterestBase <= s.ToAmount);
           if (slab) activeRate = slab.InterestRate;
+        }
+
+        // Calculate status and overdue flag
+        let dueStatus: 'Overdue' | 'Pending' | 'Paid' | 'Partial' = 'Pending';
+        if (totalPaid >= dueRecord.TotalDue || dueRecord.Status === 'Paid') {
+          dueStatus = 'Paid';
+        } else if (currentMonth < currentCalendarMonth || dueRecord.CarryForwardInterest > 0) {
+          dueStatus = 'Overdue';
+        } else if (totalPaid > 0) {
+          dueStatus = 'Partial';
         }
 
         result.push({
@@ -174,22 +235,25 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
           userId: member.UserId,
           userName: member.fullName,
           loanAmount: member.LoanShareAmount,
-          outstandingBalance: dueRecord.OpeningPrincipal,
+          outstandingBalance: currentInterestBase,
           dueAmount: dueRecord.TotalDue,
-          interestDue: dueRecord.InterestDue + dueRecord.CarryForwardInterest,
+          interestDue: dueRecord.InterestDue,
+          carryForwardInterest: dueRecord.CarryForwardInterest,
           principalDue: dueRecord.PrincipalDue,
           amountPaid: totalPaid,
           interestAmount: interestPaid,
           principalAmount: principalPaid,
           month: currentMonth,
           approved: isApproved,
+          dueStatus: dueStatus,
           hasRequest: totalPaid > 0,
           requestId: null,
           requestedAmount: 0,
           loanMemberId: member.Id,
           canEdit: canEdit,
           interestRate: activeRate,
-          interestMode: loan.InterestMode
+          interestMode: loan.InterestMode,
+          startDate: loan.StartDate
         });
       }
     }
@@ -240,9 +304,11 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
           if (!loan) continue;
 
           const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
+          const isLoanCompound = Boolean(loan.IsCompound === 1 || loan.IsCompound === true || loan.IsCompound === '1' || loan.IsCompound === 'true');
 
           // Ensure dues records exist and are saved in DB
-          const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, true);
+          const dueRecord = await getDuesForMember(db, member, loan, currentMonth, slabs, true, isLoanCompound);
+          if (!dueRecord) continue;
 
           const amountPaid = Number(item.amountPaid || 0);
 
