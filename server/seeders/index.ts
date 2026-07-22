@@ -190,8 +190,8 @@ export async function runSeeders(db: Database) {
   // Seed Collection Types
   const collectionTypesCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM CollectionType WHERE tenantId = 1");
   if (collectionTypesCount && collectionTypesCount.count === 0) {
-    await db.run("INSERT INTO CollectionType (TypeName, Status, tenantId) VALUES (?, ?, ?)", ["Monthly Contribution", 1, 1]);
-    await db.run("INSERT INTO CollectionType (TypeName, Status, tenantId) VALUES (?, ?, ?)", ["Festival Special Fund", 1, 1]);
+    await db.run("INSERT INTO CollectionType (TypeName, Status, Frequency, Amount, tenantId) VALUES (?, ?, ?, ?, ?)", ["Monthly Contribution", 1, "monthly", 5000, 1]);
+    await db.run("INSERT INTO CollectionType (TypeName, Status, Frequency, Amount, tenantId) VALUES (?, ?, ?, ?, ?)", ["Festival Special Fund", 1, "yearly", null, 1]);
     console.log("Seeded default collection types.");
   }
 

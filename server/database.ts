@@ -358,6 +358,8 @@ export async function initDatabase(): Promise<Database> {
         Id INT AUTO_INCREMENT PRIMARY KEY,
         TypeName VARCHAR(255) NOT NULL,
         Status INT NOT NULL DEFAULT 1,
+        Frequency VARCHAR(50) NOT NULL DEFAULT 'monthly',
+        Amount DOUBLE NULL,
         tenantId INT NOT NULL,
         FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
         UNIQUE(tenantId, TypeName)
@@ -716,6 +718,16 @@ export async function initDatabase(): Promise<Database> {
       `);
       if (!hasNewTypeNameIndex || hasNewTypeNameIndex.count === 0) {
         await db!.exec("ALTER TABLE CollectionType ADD UNIQUE INDEX uq_tenant_typename (tenantId, TypeName);");
+      }
+
+      const hasFrequencyCol = await checkColumnExists('CollectionType', 'Frequency');
+      if (!hasFrequencyCol) {
+        await db.exec("ALTER TABLE CollectionType ADD COLUMN Frequency VARCHAR(50) NOT NULL DEFAULT 'monthly'");
+      }
+
+      const hasAmountCol = await checkColumnExists('CollectionType', 'Amount');
+      if (!hasAmountCol) {
+        await db.exec("ALTER TABLE CollectionType ADD COLUMN Amount DOUBLE NULL");
       }
     } catch (e) {
       // Ignored

@@ -4,6 +4,8 @@ export interface CollectionType {
   id: number;
   typeName: string;
   status: number; // 0 or 1
+  frequency: string; // weekly, monthly, yearly, dynamic
+  amount: number | null;
   tenantId: string;
 }
 
@@ -28,7 +30,7 @@ export const CollectionModel = {
   async listTypes(tenantId: string): Promise<CollectionType[]> {
     const db = getDatabase();
     return db.all<CollectionType[]>(
-      "SELECT Id as id, TypeName as typeName, Status as status, tenantId FROM CollectionType WHERE tenantId = ? ORDER BY Id DESC",
+      "SELECT Id as id, TypeName as typeName, Status as status, Frequency as frequency, Amount as amount, tenantId FROM CollectionType WHERE tenantId = ? ORDER BY Id DESC",
       [tenantId]
     );
   },
@@ -36,7 +38,7 @@ export const CollectionModel = {
   async findTypeByName(typeName: string, tenantId: string): Promise<CollectionType | undefined> {
     const db = getDatabase();
     return db.get<CollectionType>(
-      "SELECT Id as id, TypeName as typeName, Status as status, tenantId FROM CollectionType WHERE TypeName = ? AND tenantId = ?",
+      "SELECT Id as id, TypeName as typeName, Status as status, Frequency as frequency, Amount as amount, tenantId FROM CollectionType WHERE TypeName = ? AND tenantId = ?",
       [typeName, tenantId]
     );
   },
@@ -44,19 +46,19 @@ export const CollectionModel = {
   async findTypeByNameExcludeId(typeName: string, tenantId: string, id: number): Promise<CollectionType | undefined> {
     const db = getDatabase();
     return db.get<CollectionType>(
-      "SELECT Id as id, TypeName as typeName, Status as status, tenantId FROM CollectionType WHERE TypeName = ? AND tenantId = ? AND Id != ?",
+      "SELECT Id as id, TypeName as typeName, Status as status, Frequency as frequency, Amount as amount, tenantId FROM CollectionType WHERE TypeName = ? AND tenantId = ? AND Id != ?",
       [typeName, tenantId, id]
     );
   },
 
-  async createType(typeName: string, tenantId: string, status: number = 1): Promise<{ lastID?: number | string }> {
+  async createType(typeName: string, tenantId: string, status: number = 1, frequency: string = 'monthly', amount: number | null = null): Promise<{ lastID?: number | string }> {
     const db = getDatabase();
-    return db.run("INSERT INTO CollectionType (TypeName, Status, tenantId) VALUES (?, ?, ?)", [typeName, status, tenantId]);
+    return db.run("INSERT INTO CollectionType (TypeName, Status, Frequency, Amount, tenantId) VALUES (?, ?, ?, ?, ?)", [typeName, status, frequency, amount, tenantId]);
   },
 
-  async updateType(id: number, typeName: string, status: number): Promise<void> {
+  async updateType(id: number, typeName: string, status: number, frequency: string = 'monthly', amount: number | null = null): Promise<void> {
     const db = getDatabase();
-    await db.run("UPDATE CollectionType SET TypeName = ?, Status = ? WHERE Id = ?", [typeName, status, id]);
+    await db.run("UPDATE CollectionType SET TypeName = ?, Status = ?, Frequency = ?, Amount = ? WHERE Id = ?", [typeName, status, frequency, amount, id]);
   },
 
   async createGroup(collectionTypeId: number, collectionDate: string, tenantId: string): Promise<{ lastID?: number | string }> {

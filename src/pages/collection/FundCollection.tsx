@@ -24,6 +24,8 @@ interface CollectionType {
   id: number;
   typeName: string;
   status: boolean;
+  frequency?: string;
+  amount?: number | null;
 }
 
 interface CollectionGroup {
@@ -382,7 +384,7 @@ export default function FundCollection() {
                     >
                       {collectionTypes.map((t) => (
                         <option key={t.id} value={t.id} disabled={!t.status && String(t.id) !== selectedTypeId}>
-                          {t.typeName} {!t.status ? '(Inactive)' : ''}
+                          {t.typeName} {t.amount !== null && t.amount !== undefined ? `(₹${Number(t.amount).toLocaleString('en-IN')})` : ''} {!t.status ? '(Inactive)' : ''}
                         </option>
                       ))}
                       {collectionTypes.length === 0 && (

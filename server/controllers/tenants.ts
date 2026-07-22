@@ -116,7 +116,7 @@ export const registerTenant = async (req: Request, res: Response) => {
       const managerMenus = [
         'dashboard',
         'liquidity', 'collection-types', 'fund-collection', 'fund-collection-audit',
-        'credit', 'loan-repayment', 'loan-list', 'loan-entry', 'loan-repayments',
+        'credit', 'loan-repayment', 'loan-request', 'loan-list', 'loan-entry', 'loan-repayments',
         'users', 'role-management', 'user-management', 'expenses', 'reports', 'transactions', 'member-ledger'
       ];
       for (const mId of managerMenus) {
@@ -130,7 +130,7 @@ export const registerTenant = async (req: Request, res: Response) => {
       }
 
       // Seed permissions for Member
-      const memberMenus = ['dashboard', 'liquidity', 'fund-collection-audit', 'credit', 'loan-repayment', 'loan-entry', 'expenses', 'reports', 'transactions', 'member-ledger'];
+      const memberMenus = ['dashboard', 'liquidity', 'fund-collection-audit', 'credit', 'loan-repayment', 'loan-request', 'expenses', 'reports', 'transactions', 'member-ledger'];
       for (const mId of memberMenus) {
         const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
         if (menu) {
@@ -197,7 +197,7 @@ export const payTenant = async (req: Request, res: Response) => {
 
     const paymentDateObj = new Date();
     const paymentDateStr = toMySQLDateTime(paymentDateObj);
-    
+
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
@@ -322,7 +322,7 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
     const db = getDatabase();
     const paymentDateObj = new Date();
     const paymentDateStr = paymentDateObj.toISOString().slice(0, 19).replace('T', ' ');
-    
+
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);

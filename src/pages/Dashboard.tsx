@@ -24,14 +24,8 @@ interface DashboardProps {
 
 export default function Dashboard({ user, onNavigate }: DashboardProps) {
   const { companySettings } = useSelector((state: RootState) => state.auth);
-  const [stats, setStats] = useState<any>(null);
-  const [loans, setLoans] = useState<any[]>([]);
-  const [contributions, setContributions] = useState<any[]>([]);
-  const [todayExpenseSummary, setTodayExpenseSummary] = useState<{ totalAmount: number; count: number; totalLoggedCount: number }>({
-    totalAmount: 0,
-    count: 0,
-    totalLoggedCount: 0
-  });
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
 
   // Calculate AMC Due status
   const amcRecord = companySettings?.amcRecord;
@@ -47,58 +41,52 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
   }
 
   useEffect(() => {
-    // Collect active numbers
-    Promise.all([
-      fetch("/api/dashboard/stats").then(res => res.ok ? res.json() : null),
-      fetch("/api/loans").then(res => res.ok ? res.json() : []),
-      fetch("/api/contributions").then(res => res.ok ? res.json() : []),
-      fetch("/api/expenses/today-summary").then(res => res.ok ? res.json() : { totalAmount: 0, count: 0, totalLoggedCount: 0 })
-    ]).then(([statsData, loansData, contributionsData, todaySummary]) => {
-      setStats(statsData && !statsData.error ? statsData : null);
-      setLoans(Array.isArray(loansData) ? loansData : []);
-      setContributions(Array.isArray(contributionsData) ? contributionsData : []);
-      setTodayExpenseSummary(todaySummary || { totalAmount: 0, count: 0, totalLoggedCount: 0 });
-    }).catch(err => {
-      console.error("Dashboard data load error", err);
-    });
-  }, []);
+    setLoading(true);
+    fetch(`/api/dashboard/summary${user?.id ? `?userId=${user.id}` : ''}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && !data.error) {
+          setDashboardData(data);
+        }
+      })
+      .catch(err => {
+        console.error("Dashboard summary data load error", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [user?.id]);
 
-
-
-  // Find all active loans for the logged-in user
-  const userLoans = loans.filter(l => 
-    l.memberId?.split(',').map((id: string) => id.trim()).includes(user?.id) ||
-    l.members?.some((m: any) => m.userId === user?.id)
-  );
-
-  const activeUserLoans = userLoans.filter(l => l.status === 'ACTIVE' || l.status === 'Active' || l.status === 'OVERDUE' || l.status === 'Overdue');
-
-  const totalOutstandingBalance = activeUserLoans.reduce((sum, l) => sum + l.outstandingBalance, 0);
-  const totalPrincipal = activeUserLoans.reduce((sum, l) => sum + l.principal, 0);
-  const totalPaid = activeUserLoans.reduce((sum, l) => sum + l.paidToDate, 0);
-  const percentPaid = totalPrincipal > 0 ? Math.round((totalPaid / totalPrincipal) * 100) : 0;
-  const totalLoansCount = userLoans.length;
-
-  // Personal contributions total (all returned items are COMPLETED from the new MemberCollection-based API)
-  const personalContributionsSum = contributions.reduce((acc, curr) => acc + curr.amount, 0);
-  const lastCollectionDate = contributions.length > 0 ? contributions[0].date : null;
-
-  const calculateEMI = (principal: number, annualInterestRate: number, tenureMonths: number) => {
-    const monthlyRate = (annualInterestRate || 12) / 12 / 100;
-    if (monthlyRate === 0) {
-      return tenureMonths ? principal / tenureMonths : 0;
-    }
-    const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) /
-      (Math.pow(1 + monthlyRate, tenureMonths) - 1);
-    return Math.round(emi);
+  const loanSummary = dashboardData?.loanSummary || {
+    totalOutstandingBalance: 0,
+    totalPrincipal: 0,
+    totalPaid: 0,
+    percentPaid: 0,
+    totalLoansCount: 0
   };
 
-  const getNextPaymentDueDate = (startDateStr: string, repaymentCount: number) => {
-    if (!startDateStr) return 'TBD';
-    const date = new Date(startDateStr);
-    date.setMonth(date.getMonth() + (repaymentCount || 0) + 1);
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+  const contributionSummary = dashboardData?.contributionSummary || {
+    totalAmount: 0,
+    count: 0,
+    lastCollectionDate: null
   };
+
+  const todayExpenseSummary = dashboardData?.todayExpenseSummary || {
+    totalAmount: 0,
+    count: 0,
+    totalLoggedCount: 0
+  };
+
+  const upcomingLoans = dashboardData?.upcomingLoans || [];
+  const upcomingCollections = dashboardData?.upcomingCollections || [];
+
+  const totalOutstandingBalance = loanSummary.totalOutstandingBalance;
+  const totalPaid = loanSummary.totalPaid;
+  const percentPaid = loanSummary.percentPaid;
+  const totalLoansCount = loanSummary.totalLoansCount;
+
+  const personalContributionsSum = contributionSummary.totalAmount;
+  const lastCollectionDate = contributionSummary.lastCollectionDate;
 
   return (
     <div className="space-y-4 sm:space-y-8 animate-fade-in mt-16 sm:mt-20 mb-5 px-3 sm:px-0">
@@ -173,7 +161,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
                   <TrendingUp className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                  {activeUserLoans.length > 0 ? `${activeUserLoans[0].interestRate}% APR` : "0% APR"}
+                  {upcomingLoans.length > 0 ? `${upcomingLoans[0].interestRate}% APR` : "0% APR"}
                 </span>
                 <span>• {totalLoansCount} Total Loans</span>
               </div>
@@ -182,8 +170,8 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
 
           <div className="mt-4 sm:mt-8 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {activeUserLoans.length > 0 ? (
-                `Next payment due ${activeUserLoans[0].nextDueDate}`
+              {upcomingLoans.length > 0 ? (
+                `Next payment due ${upcomingLoans[0].nextDueDate}`
               ) : (
                 "No active repayments"
               )}
@@ -215,7 +203,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
                 <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold">
-                  {contributions.length} Collection{contributions.length !== 1 ? 's' : ''}
+                  {contributionSummary.count} Collection{contributionSummary.count !== 1 ? 's' : ''}
                 </span>
                 <span>{lastCollectionDate ? `Last: ${lastCollectionDate}` : 'No collections yet'}</span>
               </div>
@@ -282,7 +270,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div className="w-full flex justify-between items-center mb-3 sm:mb-4">
             <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Repayment Progress</span>
             <span className="text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded font-bold uppercase">
-              {activeUserLoans.length === 1 ? `Facility #${activeUserLoans[0].id}` : 'All Active'}
+              {upcomingLoans.length === 1 ? `Facility #${upcomingLoans[0].id}` : 'All Active'}
             </span>
           </div>
 
@@ -343,10 +331,8 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
 
             <div className="space-y-2.5 sm:space-y-3">
               {/* Dynamic Loan Repayments */}
-              {activeUserLoans.map((loan) => {
-                const emi = calculateEMI(loan.principal, loan.interestRate || 12, loan.tenureMonths || 12);
-                const nextDue = getNextPaymentDueDate(loan.startDate, loan.repaymentCount || 0);
-                const isOverdue = loan.status?.toLowerCase() === 'overdue';
+              {upcomingLoans.map((loan: any) => {
+                const isOverdue = loan.isOverdue || loan.status?.toLowerCase() === 'overdue';
 
                 return (
                   <div
@@ -367,13 +353,13 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                           {loan.loanNo || loan.id} EMI Repayment
                         </h5>
                         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                          {loan.type || `${loan.loanType || 'Loan'} Facility`} • Due {nextDue}
+                          {loan.type || 'Loan Facility'} • Due {loan.nextDueDate || 'TBD'}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-50">
-                        ₹{emi.toLocaleString()}
+                        ₹{Number(loan.emi || 0).toLocaleString()}
                       </p>
                       <span className={`inline-block text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                         isOverdue
@@ -388,7 +374,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               })}
 
               {/* Fund Collections */}
-              {contributions.slice(0, 3).map((contrib) => (
+              {upcomingCollections.map((contrib: any) => (
                 <div
                   key={contrib.id}
                   onClick={() => onNavigate('/fund-collection')}
@@ -400,25 +386,29 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                     </div>
                     <div>
                       <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                        Capital Pool Collection
+                        {contrib.typeName || 'Capital Pool Collection'}
                       </h5>
-                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                        {contrib.method || 'Direct Transfer'} • {contrib.date}
+                      <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 capitalize">
+                        {contrib.frequency || 'Monthly'} • {contrib.dueDate || 'Upcoming Cycle'}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-50">
-                      ₹{Number(contrib.amount || 0).toLocaleString()}
+                      {contrib.amount !== null && contrib.amount !== undefined ? (
+                        `₹${Number(contrib.amount).toLocaleString()}`
+                      ) : (
+                        <span className="text-slate-400 font-normal italic text-[11px]">Dynamic</span>
+                      )}
                     </p>
                     <span className="inline-block text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
-                      {contrib.status || 'Completed'}
+                      {contrib.status || 'Pending'}
                     </span>
                   </div>
                 </div>
               ))}
 
-              {activeUserLoans.length === 0 && contributions.length === 0 && (
+              {upcomingLoans.length === 0 && upcomingCollections.length === 0 && (
                 <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 font-medium space-y-1">
                   <Calendar className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto" />
                   <p>No upcoming loan repayments or collections scheduled.</p>

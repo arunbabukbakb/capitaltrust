@@ -118,18 +118,22 @@ export const ExpenseModel = {
     return res?.count || 0;
   },
 
-  async getTodaySummary(tenantId: string | number, dateStr: string): Promise<{ totalAmount: number; count: number; totalLoggedCount: number }> {
+  async getTodaySummary(tenantId: string | number, dateStr: string, userId?: string): Promise<{ totalAmount: number; count: number; totalLoggedCount: number }> {
     const db = getDatabase();
-    const todayRes = await db.get<{ totalAmount: number; count: number }>(
-      `SELECT COALESCE(SUM(Amount), 0) as totalAmount, COUNT(*) as count 
-       FROM expenses 
-       WHERE TenantId = ? AND ExpenseDate = ? AND Status != 'Cancelled'`,
-      [tenantId, dateStr]
-    );
-    const totalRes = await db.get<{ count: number }>(
-      `SELECT COUNT(*) as count FROM expenses WHERE TenantId = ?`,
-      [tenantId]
-    );
+    let todaySql = `SELECT COALESCE(SUM(Amount), 0) as totalAmount, COUNT(*) as count FROM expenses WHERE TenantId = ? AND ExpenseDate = ? AND Status != 'Cancelled'`;
+    let totalSql = `SELECT COUNT(*) as count FROM expenses WHERE TenantId = ?`;
+    const todayParams: any[] = [tenantId, dateStr];
+    const totalParams: any[] = [tenantId];
+
+    if (userId) {
+      todaySql += ` AND (ExpenseBy = ? OR (ExpenseBy IS NULL AND CreatedBy = ?))`;
+      todayParams.push(userId, userId);
+      totalSql += ` AND (ExpenseBy = ? OR (ExpenseBy IS NULL AND CreatedBy = ?))`;
+      totalParams.push(userId, userId);
+    }
+
+    const todayRes = await db.get<{ totalAmount: number; count: number }>(todaySql, todayParams);
+    const totalRes = await db.get<{ count: number }>(totalSql, totalParams);
     return {
       totalAmount: todayRes?.totalAmount || 0,
       count: todayRes?.count || 0,

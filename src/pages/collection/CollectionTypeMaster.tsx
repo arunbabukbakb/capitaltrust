@@ -5,6 +5,8 @@ interface CollectionType {
   id: number;
   typeName: string;
   status: boolean;
+  frequency: 'weekly' | 'monthly' | 'yearly' | 'dynamic';
+  amount: number | null;
 }
 
 export default function CollectionTypeMaster() {
@@ -18,6 +20,8 @@ export default function CollectionTypeMaster() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [typeName, setTypeName] = useState('');
   const [status, setStatus] = useState(true);
+  const [frequency, setFrequency] = useState<'weekly' | 'monthly' | 'yearly' | 'dynamic'>('monthly');
+  const [amount, setAmount] = useState('');
   const [showForm, setShowForm] = useState(false);
 
   const fetchCollectionTypes = async () => {
@@ -47,6 +51,8 @@ export default function CollectionTypeMaster() {
     setEditingId(type.id);
     setTypeName(type.typeName);
     setStatus(type.status);
+    setFrequency(type.frequency || 'monthly');
+    setAmount(type.amount !== null && type.amount !== undefined ? String(type.amount) : '');
     setShowForm(true);
     setError('');
   };
@@ -60,7 +66,9 @@ export default function CollectionTypeMaster() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           typeName: type.typeName,
-          status: updatedStatus
+          status: updatedStatus,
+          frequency: type.frequency || 'monthly',
+          amount: type.amount
         })
       });
 
@@ -85,6 +93,16 @@ export default function CollectionTypeMaster() {
       return;
     }
 
+    let parsedAmount: number | null = null;
+    if (amount !== '') {
+      const num = parseFloat(amount);
+      if (isNaN(num) || num < 0) {
+        setError('Please enter a valid amount or leave it blank.');
+        return;
+      }
+      parsedAmount = num;
+    }
+
     setSubmitting(true);
     setError('');
     try {
@@ -96,7 +114,9 @@ export default function CollectionTypeMaster() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           typeName: typeName.trim(),
-          status
+          status,
+          frequency,
+          amount: parsedAmount
         })
       });
 
@@ -121,6 +141,8 @@ export default function CollectionTypeMaster() {
     setEditingId(null);
     setTypeName('');
     setStatus(true);
+    setFrequency('monthly');
+    setAmount('');
     setShowForm(false);
     setError('');
   };
@@ -144,7 +166,7 @@ export default function CollectionTypeMaster() {
             Collection Type Master
           </h3>
           <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Configure master collection types, such as monthly dues or savings pools.
+            Configure master collection types, default frequencies, and contribution amounts.
           </p>
         </div>
         <button
@@ -187,11 +209,44 @@ export default function CollectionTypeMaster() {
                 <input
                   required
                   type="text"
-                  placeholder="e.g. Q3 Savings Pool"
+                  placeholder="e.g. Monthly Dues"
                   value={typeName}
                   onChange={(e) => setTypeName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-950 dark:focus:border-slate-100"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1 sm:mb-1.5">
+                    Frequency
+                  </label>
+                  <select
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-950 dark:focus:border-slate-100 cursor-pointer"
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="dynamic">Dynamic</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1 sm:mb-1.5">
+                    Amount (₹) <span className="normal-case text-[9px] text-slate-400">(Optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="e.g. 500.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-950 dark:focus:border-slate-100"
+                  />
+                </div>
               </div>
 
               <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-850">
@@ -243,7 +298,7 @@ export default function CollectionTypeMaster() {
         <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40">
             <h4 className="text-xs sm:text-sm font-bold font-headline">Configured Collection Types</h4>
-            <p className="text-[10px] text-slate-500 mt-0.5">Manage existing categories and toggle status parameters.</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Manage existing categories, frequencies, amounts, and toggle status parameters.</p>
           </div>
 
           {loading ? (
@@ -264,6 +319,8 @@ export default function CollectionTypeMaster() {
                     <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold border-b border-slate-100 dark:border-slate-700">
                       <th className="py-3 px-4 pl-6 uppercase tracking-wider text-[9px] sm:text-[10px]">ID</th>
                       <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Collection Type Name</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Frequency</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Default Amount</th>
                       <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">Status</th>
                       <th className="py-3 px-4 pr-6 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Actions</th>
                     </tr>
@@ -276,6 +333,18 @@ export default function CollectionTypeMaster() {
                         </td>
                         <td className="py-3 px-4 font-bold text-slate-905">
                           {type.typeName}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider">
+                            {type.frequency || 'monthly'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                          {type.amount !== null && type.amount !== undefined ? (
+                            `₹${Number(type.amount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                          ) : (
+                            <span className="text-slate-400 font-normal italic text-[11px]">Dynamic</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <button
@@ -313,10 +382,20 @@ export default function CollectionTypeMaster() {
                         <span className="font-mono text-[9px] font-bold text-slate-400">#{type.id}</span>
                         <span className="font-bold text-slate-900">{type.typeName}</span>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase">
+                          {type.frequency || 'monthly'}
+                        </span>
+                        <span className="font-mono text-[10px] font-bold text-slate-700">
+                          {type.amount !== null && type.amount !== undefined ? (
+                            `₹${Number(type.amount).toLocaleString('en-IN')}`
+                          ) : (
+                            <span className="text-slate-400 font-normal italic text-[9px]">Dynamic</span>
+                          )}
+                        </span>
                         <button
                           onClick={() => handleToggleStatus(type)}
-                          className={`px-2 py-0.5 rounded text-[8px] font-bold border transition ${
+                          className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition ${
                             type.status 
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
                               : 'bg-slate-105 text-slate-400 border-slate-200'
@@ -345,3 +424,4 @@ export default function CollectionTypeMaster() {
     </div>
   );
 }
+

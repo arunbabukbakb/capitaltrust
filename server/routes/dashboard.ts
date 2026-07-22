@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { getStats } from '../controllers/dashboard';
+import { getStats, getDashboardSummary } from '../controllers/dashboard';
 
-const router = Router();
+const RouterInstance = Router();
 
 /**
  * @swagger
@@ -13,6 +13,7 @@ const router = Router();
  *       200:
  *         description: Dashboard stats including total outward loans, pool volume, arrears, health indexes
  */
-router.get('/stats', getStats);
+RouterInstance.get('/stats', getStats);
+RouterInstance.get('/summary', getDashboardSummary);
 
-export default router;
+export default RouterInstance;

@@ -14,6 +14,8 @@ interface CollectionType {
   id: number;
   typeName: string;
   status: boolean;
+  frequency?: string;
+  amount?: number | null;
 }
 
 export default function CollectionAuditSummary() {
@@ -105,7 +107,7 @@ export default function CollectionAuditSummary() {
             >
               {collectionTypes.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.typeName} {!t.status ? '(Inactive)' : ''}
+                  {t.typeName} {t.amount !== null && t.amount !== undefined ? `(₹${Number(t.amount).toLocaleString('en-IN')})` : ''} {!t.status ? '(Inactive)' : ''}
                 </option>
               ))}
               {collectionTypes.length === 0 && (
