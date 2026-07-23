@@ -6,10 +6,11 @@ import { RootState } from '../store';
 import { setActiveRole } from '../authSlice';
 import { useTheme } from './ThemeContext';
 import { notificationStore, AppNotification } from '../notificationStore';
+import SearchAutocomplete from './SearchAutocomplete';
 
 interface HeaderProps {
   title: string;
-  onSearch: (query: string) => void;
+  onSearch?: (query: string) => void;
   userRole: string;
   userName: string;
   onToggleSidebar: () => void;
@@ -35,7 +36,8 @@ export default function Header({
   const { theme, toggleTheme } = useTheme();
   const effectiveRoleType = activeRole?.roleType || userRole;
 
-  // ── Notification panel state ───────────────────────────────────────────────
+  // ── Search & Notification panel state ───────────────────────────────────────
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -84,16 +86,33 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-1 md:gap-2 lg:gap-4 flex-shrink-0">
-        {/* Search tool */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
-          <input
-            onChange={(e) => onSearch(e.target.value)}
-            className="pl-9 pr-4 py-1 bg-slate-100 dark:bg-slate-900 border-none rounded-full text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-950 dark:focus:ring-slate-800 w-56 transition-all"
-            placeholder="Search files, loans, members..."
-            type="text"
-          />
-        </div>
+        {/* Search Autocomplete with menus */}
+        <SearchAutocomplete className="hidden md:block" />
+
+        {/* Mobile Search Toggle Button */}
+        <button
+          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          className="md:hidden p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
+          aria-label="Search menus and features"
+          title="Search menus & features"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+
+        {/* Mobile Search Bar Drawer */}
+        {mobileSearchOpen && (
+          <div className="fixed inset-x-0 top-14 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md p-3 border-b border-slate-200 dark:border-slate-800 z-50 md:hidden shadow-xl animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <SearchAutocomplete className="w-full" placeholder="Search menus, features..." />
+              <button
+                onClick={() => setMobileSearchOpen(false)}
+                className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Notifications and controls */}
         <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
