@@ -142,18 +142,27 @@ export async function sendAmcPaymentEmail(data: {
   tenantName: string;
   subdomain: string;
   amcCharge: number;
+  gstPercent?: number;
+  gstAmount?: number;
+  invoiceNo?: string;
   paidDate: string;
   nextDueDate: string;
 }) {
   try {
     const { transporter, fromAddress } = await createActiveTransporter();
 
+    const baseCharge = Number(data.amcCharge) || 0;
+    const gstRate = data.gstPercent ?? 18;
+    const gstAmt = data.gstAmount !== undefined && data.gstAmount !== null ? Number(data.gstAmount) : (baseCharge * (gstRate / 100));
+    const totalAmount = baseCharge + gstAmt;
+    const invoiceNo = data.invoiceNo || 'N/A';
+
     const subject = `💳 AMC Subscription Payment Receipt - ${data.tenantName}`;
     const html = `
       <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
-        <div style="text-align: center; padding-bottom: 20px; border-b: 1px solid #1e293b;">
+        <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #1e293b;">
           <h2 style="color: #6366f1; margin: 0; font-size: 22px;">CapitalTrust Services</h2>
-          <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Annual Maintenance Charge (AMC) Payment Confirmation</p>
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Annual Maintenance Charge (AMC) Tax Receipt</p>
         </div>
 
         <div style="padding: 20px 0;">
@@ -165,19 +174,31 @@ export async function sendAmcPaymentEmail(data: {
           <div style="background-color: #111827; border: 1px solid #334155; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 13px;">
             <table style="width: 100%; color: #cbd5e1;">
               <tr>
-                <td style="padding: 4px 0; color: #94a3b8;">Organization:</td>
+                <td style="padding: 6px 0; color: #94a3b8;">Organization:</td>
                 <td style="font-weight: bold; color: #ffffff; text-align: right;">${data.tenantName}</td>
               </tr>
               <tr>
-                <td style="padding: 4px 0; color: #94a3b8;">AMC Charge Settled:</td>
-                <td style="font-weight: bold; color: #34d399; text-align: right;">₹${(Number(data.amcCharge) || 0).toFixed(2)}</td>
+                <td style="padding: 6px 0; color: #94a3b8;">Invoice Number:</td>
+                <td style="font-weight: bold; color: #818cf8; text-align: right;">${invoiceNo}</td>
               </tr>
               <tr>
-                <td style="padding: 4px 0; color: #94a3b8;">Paid Date:</td>
+                <td style="padding: 6px 0; color: #94a3b8;">Base AMC Charge:</td>
+                <td style="font-weight: bold; color: #ffffff; text-align: right;">₹${baseCharge.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">GST (${gstRate}%):</td>
+                <td style="font-weight: bold; color: #ffffff; text-align: right;">₹${gstAmt.toFixed(2)}</td>
+              </tr>
+              <tr style="border-top: 1px dashed #334155;">
+                <td style="padding: 8px 0; color: #ffffff; font-weight: bold;">Total Amount Paid:</td>
+                <td style="font-weight: bold; color: #34d399; font-size: 15px; text-align: right;">₹${totalAmount.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #94a3b8;">Paid Date:</td>
                 <td style="font-weight: bold; color: #ffffff; text-align: right;">${data.paidDate}</td>
               </tr>
               <tr>
-                <td style="padding: 4px 0; color: #94a3b8;">Next Annual Due Date:</td>
+                <td style="padding: 6px 0; color: #94a3b8;">Next Annual Due Date:</td>
                 <td style="font-weight: bold; color: #818cf8; text-align: right;">${data.nextDueDate}</td>
               </tr>
             </table>
@@ -185,7 +206,7 @@ export async function sendAmcPaymentEmail(data: {
         </div>
 
         <div style="border-top: 1px solid #1e293b; padding-top: 16px; text-align: center; font-size: 11px; color: #64748b;">
-          &copy; ${new Date().getFullYear()} CapitalTrust Management Console.
+          &copy; ${new Date().getFullYear()} CapitalTrust Management Console. This email serves as an official tax receipt.
         </div>
       </div>
     `;

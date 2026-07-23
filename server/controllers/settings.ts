@@ -19,9 +19,31 @@ function getUserIdAndRoleFromRequest(req: Request): { id: string; role: string }
 export const getCompanySettings = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
+    let globalSettings = await db.get("SELECT companyName, companyLogo, supportEmail, supportPhone, address, gstno, ismaintanance, message, resumetime FROM company_settings LIMIT 1");
+    if (!globalSettings) {
+      globalSettings = {
+        companyName: 'CapitalTrust',
+        companyLogo: '',
+        supportEmail: 'support@capitaltrust.com',
+        supportPhone: '916238920219',
+        address: '',
+        gstno: '',
+        ismaintanance: false,
+        message: '',
+        resumetime: ''
+      };
+    } else {
+      globalSettings = {
+        ...globalSettings,
+        ismaintanance: Boolean(globalSettings.ismaintanance),
+        message: globalSettings.message || '',
+        resumetime: globalSettings.resumetime || ''
+      };
+    }
+
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
-      const tenant = await db.get("SELECT name, adminEmail, isActive, paymentStatus, paymentDate FROM tenants WHERE id = ?", [tenantId]);
+      const tenant = await db.get("SELECT id, name, subdomain, adminEmail, phone, address, invoiceno, amount, gst, gstamount, isActive, paymentStatus, paymentDate, logo FROM tenants WHERE id = ?", [tenantId]);
       if (!tenant) {
         return res.status(404).json({ error: "tenant_not_found" });
       }
@@ -35,11 +57,20 @@ export const getCompanySettings = async (req: Request, res: Response) => {
         [tenantId]
       );
 
+      const amcList = await db.all(
+        "SELECT id, tenantId, amcCharge, dueDate, paidDate, paidStatus, invoiceno, gst, gstamount FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Paid' ORDER BY dueDate DESC",
+        [tenantId]
+      );
+
       return res.json({
         companyName: tenant.name,
-        companyLogo: '',
-        supportEmail: tenant.adminEmail,
-        supportPhone: '+1 (555) 555-5555',
+        companyLogo: tenant.logo || globalSettings.companyLogo || '',
+        supportEmail: tenant.adminEmail || globalSettings.supportEmail,
+        supportPhone: tenant.phone || globalSettings.supportPhone || '',
+        address: tenant.address || globalSettings.address || '',
+        ismaintanance: globalSettings.ismaintanance,
+        message: globalSettings.message,
+        resumetime: globalSettings.resumetime,
         paymentStatus: tenant.paymentStatus,
         paymentDate: tenant.paymentDate,
         pricing: pricing ? {
@@ -52,20 +83,38 @@ export const getCompanySettings = async (req: Request, res: Response) => {
           amcCharge: amcRecord.amcCharge,
           dueDate: amcRecord.dueDate,
           paidStatus: amcRecord.paidStatus
-        } : null
+        } : null,
+        globalCompany: {
+          companyName: globalSettings.companyName || 'CapitalTrust',
+          companyLogo: globalSettings.companyLogo || '',
+          supportEmail: globalSettings.supportEmail || 'support@capitaltrust.com',
+          supportPhone: globalSettings.supportPhone || '',
+          address: globalSettings.address || '',
+          gstno: globalSettings.gstno || '',
+          ismaintanance: globalSettings.ismaintanance,
+          message: globalSettings.message,
+          resumetime: globalSettings.resumetime
+        },
+        tenantDetails: {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+          adminEmail: tenant.adminEmail,
+          phone: tenant.phone || '',
+          address: tenant.address || '',
+          invoiceno: tenant.invoiceno || '',
+          amount: tenant.amount || 0,
+          gst: tenant.gst || 0,
+          gstamount: tenant.gstamount || 0,
+          paymentStatus: tenant.paymentStatus,
+          paymentDate: tenant.paymentDate,
+          logo: tenant.logo || ''
+        },
+        amcList: amcList || []
       });
     }
 
-    let settings = await db.get("SELECT companyName, companyLogo, supportEmail, supportPhone FROM company_settings LIMIT 1");
-    if (!settings) {
-      settings = {
-        companyName: 'CapitalTrust',
-        companyLogo: '',
-        supportEmail: 'support@capitaltrust.com',
-        supportPhone: '+1 (555) 555-5555'
-      };
-    }
-    res.json(settings);
+    res.json(globalSettings);
   } catch (error) {
     console.error("Get company settings error", error);
     res.status(500).json({ error: "Error fetching company settings" });
@@ -80,7 +129,7 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Access denied. Only administrators can update company settings." });
     }
 
-    const { companyName, companyLogo, supportEmail, supportPhone } = req.body;
+    const { companyName, companyLogo, supportEmail, supportPhone, address, gstno } = req.body;
     if (!companyName) {
       return res.status(400).json({ error: "Company name is required" });
     }
@@ -88,8 +137,8 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
       await db.run(
-        "UPDATE tenants SET name = ?, adminEmail = ? WHERE id = ?",
-        [companyName, supportEmail || '', tenantId]
+        "UPDATE tenants SET name = ?, adminEmail = ?, phone = ?, address = ?, logo = ? WHERE id = ?",
+        [companyName, supportEmail || '', supportPhone || '', address || '', companyLogo || '', tenantId]
       );
       return res.json({ message: "Company settings updated successfully" });
     }
@@ -97,13 +146,13 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
     const existing = await db.get("SELECT id FROM company_settings LIMIT 1");
     if (existing) {
       await db.run(
-        "UPDATE company_settings SET companyName = ?, companyLogo = ?, supportEmail = ?, supportPhone = ? WHERE id = ?",
-        [companyName, companyLogo || '', supportEmail || '', supportPhone || '', existing.id]
+        "UPDATE company_settings SET companyName = ?, companyLogo = ?, supportEmail = ?, supportPhone = ?, address = ?, gstno = ? WHERE id = ?",
+        [companyName, companyLogo || '', supportEmail || '', supportPhone || '', address || '', gstno || '', existing.id]
       );
     } else {
       await db.run(
-        "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone) VALUES (?, ?, ?, ?)",
-        [companyName, companyLogo || '', supportEmail || '', supportPhone || '']
+        "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone, address, gstno) VALUES (?, ?, ?, ?, ?, ?)",
+        [companyName, companyLogo || '', supportEmail || '', supportPhone || '', address || '', gstno || '']
       );
     }
 
@@ -111,5 +160,33 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Update company settings error", error);
     res.status(500).json({ error: "Error updating company settings" });
+  }
+};
+
+export const uploadTenantLogo = async (req: Request, res: Response) => {
+  const db = getDatabase();
+  try {
+    const auth = getUserIdAndRoleFromRequest(req);
+    if (!auth || auth.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied. Only administrators can upload logo." });
+    }
+
+    const { logo, companyLogo } = req.body;
+    const logoValue = logo || companyLogo || '';
+
+    const tenantId = req.headers['x-tenant-id'] as string || null;
+    if (tenantId) {
+      await db.run("UPDATE tenants SET logo = ? WHERE id = ?", [logoValue, tenantId]);
+      return res.json({ success: true, message: "Tenant logo updated successfully", logo: logoValue });
+    } else {
+      const existing = await db.get("SELECT id FROM company_settings LIMIT 1");
+      if (existing) {
+        await db.run("UPDATE company_settings SET companyLogo = ? WHERE id = ?", [logoValue, existing.id]);
+      }
+      return res.json({ success: true, message: "Company logo updated successfully", logo: logoValue });
+    }
+  } catch (error) {
+    console.error("Upload tenant logo error", error);
+    res.status(500).json({ error: "Error uploading logo" });
   }
 };

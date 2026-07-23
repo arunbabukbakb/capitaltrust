@@ -29,7 +29,7 @@ const getRazorpayDetails = () => {
 
 export const registerTenant = async (req: Request, res: Response) => {
   try {
-    const { companyName, subdomain, adminName, adminEmail, adminUsername, adminPassword } = req.body;
+    const { companyName, subdomain, phone, address, adminName, adminEmail, adminUsername, adminPassword } = req.body;
 
     if (!companyName || !subdomain || !adminName || !adminEmail || !adminUsername || !adminPassword) {
       return res.status(400).json({ error: "Missing required fields: companyName, subdomain, adminName, adminEmail, adminUsername, adminPassword" });
@@ -77,6 +77,8 @@ export const registerTenant = async (req: Request, res: Response) => {
         name: companyName.trim(),
         subdomain: subdomainClean,
         adminEmail: adminEmailClean,
+        phone: phone ? phone.trim() : '',
+        address: address ? address.trim() : '',
         createdDate
       });
 
@@ -203,15 +205,20 @@ export const payTenant = async (req: Request, res: Response) => {
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
     const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
-    // Fetch AMC charge from pricedetails table
-    let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+    // Fetch pricing details to calculate GST and total amount
+    let pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
     const amcCharge = pricing ? pricing.amc : 0;
+    const basePrice = pricing ? Number(pricing.price) || 0 : 0;
+    const gstPercent = pricing ? Number(pricing.tax) || 0 : 0;
+    const gstAmount = basePrice * (gstPercent / 100);
+    const totalAmountPaid = basePrice + gstAmount;
+    const invoiceNo = tenant.invoiceno || `INV-${new Date().getFullYear()}${String(tenantId).padStart(4, '0')}`;
 
     await db.exec("BEGIN TRANSACTION;");
     try {
       await db.run(
-        "UPDATE tenants SET paymentStatus = 'Paid', paymentDate = ? WHERE id = ?",
-        [paymentDateStr, tenantId]
+        "UPDATE tenants SET paymentStatus = 'Paid', paymentDate = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ? WHERE id = ?",
+        [paymentDateStr, totalAmountPaid, gstPercent, gstAmount, invoiceNo, tenantId]
       );
 
       await db.run(
@@ -328,9 +335,16 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
     const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
-    // Fetch AMC charge from pricedetails table
-    let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+    // Fetch pricing details to calculate GST and total amount
+    let pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
     const amcCharge = pricing ? pricing.amc : 0;
+    const basePrice = pricing ? Number(pricing.price) || 0 : 0;
+    const gstPercent = pricing ? Number(pricing.tax) || 0 : 0;
+    const gstAmount = basePrice * (gstPercent / 100);
+    const totalAmountPaid = basePrice + gstAmount;
+
+    const existingTenant = await db.get("SELECT invoiceno FROM tenants WHERE id = ?", [tenantId]);
+    const invoiceNo = existingTenant?.invoiceno || `INV-${new Date().getFullYear()}${String(tenantId).padStart(4, '0')}`;
 
     await db.exec("BEGIN TRANSACTION;");
     try {
@@ -341,9 +355,13 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
              paymentDate = ?, 
              razorpayOrderId = ?, 
              razorpayPaymentId = ?, 
-             razorpaySignature = ? 
+             razorpaySignature = ?,
+             amount = ?,
+             gst = ?,
+             gstamount = ?,
+             invoiceno = ?
          WHERE id = ?`,
-        [paymentDateStr, razorpay_order_id, razorpay_payment_id, razorpay_signature, tenantId]
+        [paymentDateStr, razorpay_order_id, razorpay_payment_id, razorpay_signature, totalAmountPaid, gstPercent, gstAmount, invoiceNo, tenantId]
       );
 
       // 2. Insert next year's AMC
@@ -408,7 +426,12 @@ export const createAmcOrder = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "No pending AMC record found for this organization." });
     }
 
-    const totalAmount = amcRecord.amcCharge || 0;
+    const pricing = await db.get("SELECT tax FROM pricedetails LIMIT 1");
+    const taxPercent = pricing ? (Number(pricing.tax) || 0) : 0;
+    const baseCharge = Number(amcRecord.amcCharge) || 0;
+    const gstAmount = baseCharge * (taxPercent / 100);
+    const totalAmount = baseCharge + gstAmount;
+
     const rzpDetails = getRazorpayDetails();
 
     if (!rzpDetails.client) {
@@ -416,6 +439,9 @@ export const createAmcOrder = async (req: Request, res: Response) => {
         isMock: true,
         orderId: `mock_amc_order_${Date.now()}`,
         amount: totalAmount,
+        baseCharge,
+        gstPercent: taxPercent,
+        gstAmount,
         currency: "INR",
         amcRecordId: amcRecord.id
       });
@@ -437,6 +463,9 @@ export const createAmcOrder = async (req: Request, res: Response) => {
       keyId: rzpDetails.keyId,
       orderId: order.id,
       amount: totalAmount,
+      baseCharge,
+      gstPercent: taxPercent,
+      gstAmount,
       currency: "INR",
       amcRecordId: amcRecord.id
     });
@@ -490,15 +519,18 @@ export const verifyAmcPayment = async (req: Request, res: Response) => {
     nextDueDateObj.setFullYear(baseDateForNextDue.getFullYear() + 1);
     const nextDueDateStr = nextDueDateObj.toISOString().slice(0, 10);
 
-    let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+    let pricing = await db.get("SELECT amc, tax FROM pricedetails LIMIT 1");
     const nextAmcCharge = pricing ? pricing.amc : amcRecord.amcCharge;
+    const amcGstPercent = pricing ? Number(pricing.tax) || 0 : 0;
+    const amcGstAmount = (Number(amcRecord.amcCharge) || 0) * (amcGstPercent / 100);
+    const amcInvoiceNo = `AMC-INV-${new Date().getFullYear()}${String(amcRecord.id).padStart(4, '0')}`;
 
     await db.exec("BEGIN TRANSACTION;");
     try {
-      // Mark current AMC paid
+      // Mark current AMC paid with invoice, gst, and gstamount
       await db.run(
-        "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ? WHERE id = ?",
-        [paidDateStr, amcRecord.id]
+        "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ?, invoiceno = ?, gst = ?, gstamount = ? WHERE id = ?",
+        [paidDateStr, amcInvoiceNo, amcGstPercent, amcGstAmount, amcRecord.id]
       );
 
       // Insert next year AMC
@@ -521,6 +553,9 @@ export const verifyAmcPayment = async (req: Request, res: Response) => {
         tenantName: tenant.name,
         subdomain: tenant.subdomain,
         amcCharge: Number(amcRecord.amcCharge) || 0,
+        gstPercent: amcGstPercent,
+        gstAmount: amcGstAmount,
+        invoiceNo: amcInvoiceNo,
         paidDate: paidDateStr.slice(0, 10),
         nextDueDate: nextDueDateStr
       }).catch(err => console.error("Failed to send AMC email:", err));

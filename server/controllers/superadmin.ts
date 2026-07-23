@@ -102,7 +102,7 @@ export const listTenants = async (req: Request, res: Response) => {
     }
 
     const db = getDatabase();
-    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate FROM tenants ORDER BY createdDate DESC");
+    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount FROM tenants ORDER BY createdDate DESC");
     return res.json(tenants);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
@@ -150,7 +150,7 @@ export const toggleTenantStatus = async (req: Request, res: Response) => {
 export const updateTenantDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, adminEmail, subdomain, paymentStatus, isActive } = req.body;
+    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone } = req.body;
 
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -181,10 +181,28 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     const newSubdomain = subdomain?.toLowerCase().trim() || tenant.subdomain;
     const newPaymentStatus = paymentStatus || tenant.paymentStatus;
     const newIsActive = (isActive === 0 || isActive === 1) ? isActive : tenant.isActive;
+    const newAddress = address !== undefined ? address : (tenant.address || '');
+    const newPhone = phone !== undefined ? phone : (tenant.phone || '');
+
+    let newAmount = tenant.amount || 0;
+    let newGst = tenant.gst || 0;
+    let newGstAmount = tenant.gstamount || 0;
+    let newInvoiceNo = tenant.invoiceno;
+
+    if (newPaymentStatus === 'Paid' && tenant.paymentStatus !== 'Paid') {
+      const pricing = await db.get("SELECT price, tax FROM pricedetails LIMIT 1");
+      const basePrice = pricing ? Number(pricing.price) || 0 : 0;
+      newGst = pricing ? Number(pricing.tax) || 0 : 0;
+      newGstAmount = basePrice * (newGst / 100);
+      newAmount = basePrice + newGstAmount;
+      if (!newInvoiceNo) {
+        newInvoiceNo = `INV-${new Date().getFullYear()}${String(id).padStart(4, '0')}`;
+      }
+    }
 
     await db.run(
-      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ? WHERE id = ?",
-      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, id]
+      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ? WHERE id = ?",
+      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, id]
     );
 
     return res.json({
@@ -196,7 +214,13 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
         adminEmail: newAdminEmail,
         subdomain: newSubdomain,
         paymentStatus: newPaymentStatus,
-        isActive: newIsActive
+        isActive: newIsActive,
+        address: newAddress,
+        phone: newPhone,
+        amount: newAmount,
+        gst: newGst,
+        gstamount: newGstAmount,
+        invoiceno: newInvoiceNo
       }
     });
   } catch (error: any) {
@@ -343,16 +367,21 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
     const dueDateStr = dueDateObj.toISOString().slice(0, 10);
 
-    // Fetch AMC charge from pricedetails table
-    let pricing = await db.get("SELECT amc FROM pricedetails LIMIT 1");
+    // Fetch pricing details to calculate GST and total amount
+    let pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
     const amcCharge = pricing ? pricing.amc : 0;
+    const basePrice = pricing ? Number(pricing.price) || 0 : 0;
+    const gstPercent = pricing ? Number(pricing.tax) || 0 : 0;
+    const gstAmount = basePrice * (gstPercent / 100);
+    const totalAmountPaid = basePrice + gstAmount;
+    const invoiceNo = tenant.invoiceno || `INV-${new Date().getFullYear()}${String(id).padStart(4, '0')}`;
 
     await db.exec("BEGIN TRANSACTION;");
     try {
-      // 1. Update tenant payment fields
+      // 1. Update tenant payment fields with amount, gst, gstamount, invoiceno
       await db.run(
-        "UPDATE tenants SET paymentStatus = 'Paid', paymentDate = ? WHERE id = ?",
-        [paymentDateStr, id]
+        "UPDATE tenants SET paymentStatus = 'Paid', paymentDate = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ? WHERE id = ?",
+        [paymentDateStr, totalAmountPaid, gstPercent, gstAmount, invoiceNo, id]
       );
 
       // 2. Insert new AMC record
@@ -443,9 +472,15 @@ export const payTenantAmcRecord = async (req: Request, res: Response) => {
 
     const paidDateObj = new Date();
     const paidDate = paidDateObj.toISOString().slice(0, 19).replace('T', ' ');
+
+    let pricingDetails = await db.get("SELECT tax FROM pricedetails LIMIT 1");
+    const amcGstPercent = pricingDetails ? Number(pricingDetails.tax) || 0 : 0;
+    const amcGstAmount = (Number(record.amcCharge) || 0) * (amcGstPercent / 100);
+    const amcInvoiceNo = record.invoiceno || `AMC-INV-${new Date().getFullYear()}${String(id).padStart(4, '0')}`;
+
     await db.run(
-      "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ? WHERE id = ?",
-      [paidDate, id]
+      "UPDATE amcdetails SET paidStatus = 'Paid', paidDate = ?, invoiceno = ?, gst = ?, gstamount = ? WHERE id = ?",
+      [paidDate, amcInvoiceNo, amcGstPercent, amcGstAmount, id]
     );
 
     // Rule: If previous due date is already passed (overdue), set next due date 1 year from paidDate.
@@ -480,6 +515,9 @@ export const payTenantAmcRecord = async (req: Request, res: Response) => {
         tenantName: tenant.name,
         subdomain: tenant.subdomain,
         amcCharge: Number(record.amcCharge) || 0,
+        gstPercent: amcGstPercent,
+        gstAmount: amcGstAmount,
+        invoiceNo: amcInvoiceNo,
         paidDate: paidDate.slice(0, 10),
         nextDueDate: nextDueDateStr
       }).catch(err => console.error('Failed to send AMC email:', err));
@@ -850,6 +888,104 @@ export const resetFullData = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Reset full data error:', error);
     return res.status(500).json({ error: error.message || 'Failed to reset system data.' });
+  }
+};
+
+export const getGlobalCompanyDetails = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const db = getDatabase();
+    let settings = await db.get("SELECT companyName, companyLogo, supportEmail, supportPhone, address, gstno, ismaintanance, message, resumetime FROM company_settings LIMIT 1");
+    if (!settings) {
+      settings = {
+        companyName: 'CapitalTrust',
+        companyLogo: '',
+        supportEmail: 'support@capitaltrust.com',
+        supportPhone: '',
+        address: '',
+        gstno: '',
+        ismaintanance: false,
+        message: '',
+        resumetime: ''
+      };
+    } else {
+      settings = {
+        ...settings,
+        ismaintanance: Boolean(settings.ismaintanance),
+        message: settings.message || '',
+        resumetime: settings.resumetime || ''
+      };
+    }
+
+    return res.json(settings);
+  } catch (error) {
+    console.error('Get global company details error:', error);
+    return res.status(500).json({ error: 'Failed to fetch global company details.' });
+  }
+};
+
+export const updateGlobalCompanyDetails = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { companyName, companyLogo, supportEmail, supportPhone, address, gstno, ismaintanance, message, resumetime } = req.body;
+    if (!companyName) {
+      return res.status(400).json({ error: 'Company name is required.' });
+    }
+
+    const isMaintBool = Boolean(ismaintanance) ? 1 : 0;
+    const maintMsg = message ? String(message) : '';
+    const resumeVal = resumetime ? String(resumetime) : '';
+
+    const db = getDatabase();
+    const existing = await db.get("SELECT id FROM company_settings LIMIT 1");
+
+    if (existing) {
+      await db.run(
+        "UPDATE company_settings SET companyName = ?, companyLogo = ?, supportEmail = ?, supportPhone = ?, address = ?, gstno = ?, ismaintanance = ?, message = ?, resumetime = ? WHERE id = ?",
+        [companyName.trim(), companyLogo || '', supportEmail || '', supportPhone || '', address || '', gstno || '', isMaintBool, maintMsg, resumeVal, existing.id]
+      );
+    } else {
+      await db.run(
+        "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone, address, gstno, ismaintanance, message, resumetime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [companyName.trim(), companyLogo || '', supportEmail || '', supportPhone || '', address || '', gstno || '', isMaintBool, maintMsg, resumeVal]
+      );
+    }
+
+    let updated = await db.get("SELECT companyName, companyLogo, supportEmail, supportPhone, address, gstno, ismaintanance, message, resumetime FROM company_settings LIMIT 1");
+    if (updated) {
+      updated = {
+        ...updated,
+        ismaintanance: Boolean(updated.ismaintanance),
+        message: updated.message || '',
+        resumetime: updated.resumetime || ''
+      };
+    }
+    return res.json({
+      success: true,
+      message: 'Global company details updated successfully.',
+      companyDetails: updated
+    });
+  } catch (error: any) {
+    console.error('Update global company details error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update global company details.' });
   }
 };
 

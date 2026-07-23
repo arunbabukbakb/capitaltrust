@@ -11,6 +11,11 @@ interface AuthState {
     companyLogo: string;
     supportEmail: string;
     supportPhone: string;
+    address?: string;
+    gstno?: string;
+    ismaintanance?: boolean;
+    message?: string;
+    resumetime?: string;
     paymentStatus?: string;
     amcRecord?: any;
     pricing?: {

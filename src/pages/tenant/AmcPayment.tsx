@@ -1,36 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
 import { CreditCard, RefreshCw, CheckCircle, HelpCircle, ArrowLeft, Calendar, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
 
 export default function AmcPayment() {
   const navigate = useNavigate();
-  const { companySettings } = useSelector((state: RootState) => state.auth);
   const { theme, toggleTheme } = useTheme();
 
+  const [companyDetails, setCompanyDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState('');
   const [amcData, setAmcData] = useState<any>(null);
 
   useEffect(() => {
-    // If companySettings has amcRecord, set it
-    if (companySettings?.amcRecord) {
-      setAmcData(companySettings.amcRecord);
-    } else {
-      // Fallback: fetch settings again to ensure we have latest AMC info
-      fetch("/api/settings")
-        .then(res => res.json())
-        .then(data => {
+    // Always call API to fetch company details for AMC payment page
+    const fetchCompanyDetails = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/settings/company");
+        if (res.ok) {
+          const data = await res.json();
+          setCompanyDetails(data);
           if (data?.amcRecord) {
             setAmcData(data.amcRecord);
           }
-        })
-        .catch(err => console.error("Failed to load AMC details", err));
-    }
-  }, [companySettings]);
+        }
+      } catch (err) {
+        console.error("Failed to load AMC payment details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanyDetails();
+  }, []);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -70,7 +75,7 @@ export default function AmcPayment() {
         key: orderData.isMock ? "rzp_test_dummyKeyId1234" : orderData.keyId,
         amount: Math.round((orderData.amount || 0) * 100),
         currency: orderData.currency || "INR",
-        name: companySettings?.companyName || "CapitalTrust",
+        name: companyDetails?.companyName || "CapitalTrust",
         description: "Annual Maintenance Charge (AMC) Renewal",
         order_id: orderData.isMock ? undefined : orderData.orderId,
         handler: async function (response: any) {
@@ -104,8 +109,8 @@ export default function AmcPayment() {
           }
         },
         prefill: {
-          name: companySettings?.companyName || "",
-          email: companySettings?.supportEmail || ""
+          name: companyDetails?.companyName || "",
+          email: companyDetails?.supportEmail || ""
         },
         theme: {
           color: "#4f46e5"
@@ -131,7 +136,20 @@ export default function AmcPayment() {
     }
   };
 
-  const amcCharge = amcData?.amcCharge ?? companySettings?.pricing?.amc ?? 0;
+  if (loading || !companyDetails) {
+    return (
+      <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center text-xs font-semibold text-slate-500">
+        <RefreshCw className="w-5 h-5 animate-spin mr-2 text-indigo-400" />
+        Loading AMC payment details...
+      </div>
+    );
+  }
+
+  const baseCharge = Number(amcData?.amcCharge ?? companyDetails?.pricing?.amc ?? 0);
+  const gstPercent = Number(companyDetails?.pricing?.tax ?? 18);
+  const gstAmount = baseCharge * (gstPercent / 100);
+  const totalPayable = baseCharge + gstAmount;
+
   const dueDateRaw = amcData?.dueDate;
   let daysRemaining = 0;
   let dueDateFormatted = 'N/A';
@@ -199,7 +217,7 @@ export default function AmcPayment() {
               🏛️
             </div>
             <h1 className="font-headline font-bold text-2xl text-slate-900 dark:text-white tracking-tight">
-              {companySettings?.companyName || 'CapitalTrust'}
+              {companyDetails.companyName || 'CapitalTrust'}
             </h1>
           </div>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5">Annual Maintenance Charge (AMC) Renewal</p>
@@ -255,7 +273,7 @@ export default function AmcPayment() {
                 <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-left space-y-2.5">
                   <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
                     <span>Organization</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{companySettings?.companyName || 'Workspace'}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{companyDetails.companyName || 'Workspace'}</span>
                   </div>
                   <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
                     <span>Billing Subdomain</span>
@@ -265,9 +283,17 @@ export default function AmcPayment() {
                     <span>Next Due Date (If Paid Now)</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">{nextDueDateFormatted}</span>
                   </div>
+                  <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+                    <span>Base AMC Charge</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{baseCharge.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+                    <span>GST ({gstPercent}%)</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{gstAmount.toFixed(2)}</span>
+                  </div>
                   <div className="flex justify-between text-xs font-bold text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800 pt-2.5">
-                    <span>AMC Amount Payable</span>
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-extrabold text-base">₹{amcCharge.toFixed(2)}</span>
+                    <span>Total Payable</span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-extrabold text-base">₹{totalPayable.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -291,7 +317,7 @@ export default function AmcPayment() {
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
-                      <span>Pay AMC ₹{amcCharge.toFixed(2)} Now</span>
+                      <span>Pay AMC ₹{totalPayable.toFixed(2)} Now</span>
                     </>
                   )}
                 </button>
@@ -319,7 +345,7 @@ export default function AmcPayment() {
             </button>.
           </p>
           <p className="text-[9px] text-slate-500 dark:text-slate-600 tracking-widest leading-relaxed uppercase text-center font-bold">
-            © {new Date().getFullYear()} {(companySettings?.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} {(companyDetails.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
           </p>
         </footer>
       </main>

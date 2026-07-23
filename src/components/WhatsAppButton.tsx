@@ -1,5 +1,6 @@
-import React from 'react';
-import { MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 interface WhatsAppButtonProps {
   includeUrl?: boolean;
@@ -7,7 +8,31 @@ interface WhatsAppButtonProps {
 }
 
 export default function WhatsAppButton({ includeUrl = false, customMessage }: WhatsAppButtonProps) {
-  const phoneNumber = '916238920219';
+  const { companySettings } = useSelector((state: RootState) => state.auth);
+  const [fetchedPhone, setFetchedPhone] = useState<string>('');
+
+  useEffect(() => {
+    // Always fetch company settings API so public/landing page gets latest supportPhone from DB
+    const loadCompanySettings = async () => {
+      try {
+        const res = await fetch('/api/settings/company');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.supportPhone) {
+            setFetchedPhone(data.supportPhone);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch WhatsApp support phone:", err);
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
+
+  const rawPhone = fetchedPhone || companySettings?.supportPhone || '916238920219';
+  // Clean phone number for wa.me URL by removing non-digit characters (+, spaces, hyphens, parens)
+  const phoneNumber = rawPhone.replace(/[^0-9]/g, '') || '916238920219';
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.preventDefault();

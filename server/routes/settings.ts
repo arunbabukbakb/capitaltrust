@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getCompanySettings, updateCompanySettings } from '../controllers/settings';
+import { getCompanySettings, updateCompanySettings, uploadTenantLogo } from '../controllers/settings';
 
 const router = Router();
 
@@ -44,5 +44,7 @@ const router = Router();
  */
 router.get('/company', getCompanySettings);
 router.put('/company', updateCompanySettings);
+router.put('/logo', uploadTenantLogo);
+router.post('/logo', uploadTenantLogo);
 
 export default router;

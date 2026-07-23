@@ -18,7 +18,9 @@ import {
   deleteSmtpSetting,
   testSmtpConnection,
   sendTenantBroadcastMail,
-  resetFullData
+  resetFullData,
+  getGlobalCompanyDetails,
+  updateGlobalCompanyDetails
 } from '../controllers/superadmin';
 
 const router = Router();
@@ -31,6 +33,8 @@ router.put('/tenants/:id', updateTenantDetails);
 router.put('/profile', updateSuperAdminProfile);
 router.get('/price', getPriceDetails);
 router.put('/price', updatePriceDetails);
+router.get('/company-details', getGlobalCompanyDetails);
+router.put('/company-details', updateGlobalCompanyDetails);
 router.post('/tenants/:id/confirm-payment', confirmTenantPayment);
 router.get('/tenants/:id/amc', listTenantAmcRecords);
 router.post('/amc/:id/pay', payTenantAmcRecord);

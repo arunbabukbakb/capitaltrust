@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate, Link, Navigate } from 'react-router-dom';
-import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send } from 'lucide-react';
+import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send, Wrench } from 'lucide-react';
 
 export default function SuperAdminLayout() {
   const location = useLocation();
@@ -24,6 +24,8 @@ export default function SuperAdminLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Tenants Registry', path: '/admin/tenants', icon: Building2 },
+    { label: 'Company Details', path: '/admin/company-details', icon: Building2 },
+    { label: 'Maintenance Notice', path: '/admin/maintenance', icon: Wrench },
     { label: 'Menu Management', path: '/admin/menus', icon: Layers },
     { label: 'Broadcast Mail', path: '/admin/send-mail', icon: Send },
     { label: 'SMTP Mail Settings', path: '/admin/smtp', icon: Mail },

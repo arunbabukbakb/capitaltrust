@@ -1,26 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
 import { CreditCard, RefreshCw, CheckCircle, HelpCircle, AlertTriangle, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
 
 export default function WorkspacePayment() {
   const navigate = useNavigate();
-  const { companySettings } = useSelector((state: RootState) => state.auth);
   const { theme, toggleTheme } = useTheme();
 
-
+  const [companyDetails, setCompanyDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // If settings are loaded and already paid, redirect to login
-    if (companySettings && companySettings.paymentStatus === 'Paid') {
-      navigate('/login', { replace: true });
-    }
-  }, [companySettings, navigate]);
+    // Always call API to fetch company details for payment page
+    const fetchCompanyDetails = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/settings/company');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.paymentStatus === 'Paid') {
+            navigate('/login', { replace: true });
+            return;
+          }
+          setCompanyDetails(data);
+        }
+      } catch (err) {
+        console.error("Failed to load company details for payment:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanyDetails();
+  }, [navigate]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -109,18 +124,18 @@ export default function WorkspacePayment() {
     }
   };
 
-  if (!companySettings) {
+  if (loading || !companyDetails) {
     return (
-      <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center text-xs font-semibold text-slate-550">
+      <div className="min-h-screen bg-[#f7f9fb] dark:bg-[#0b0f19] flex items-center justify-center text-xs font-semibold text-slate-500">
         <RefreshCw className="w-5 h-5 animate-spin mr-2 text-indigo-400" />
-        Loading workspace information...
+        Loading workspace registration details...
       </div>
     );
   }
 
-  const pricing = companySettings.pricing || { price: 0, tax: 0, amc: 0 };
-  const basePrice = pricing.price || 0;
-  const taxPercent = pricing.tax || 0;
+  const pricing = companyDetails.pricing || { price: 0, tax: 0, amc: 0 };
+  const basePrice = Number(pricing.price || 0);
+  const taxPercent = Number(pricing.tax || 0);
   const taxAmount = basePrice * (taxPercent / 100);
   const totalAmount = basePrice + taxAmount;
 
@@ -148,7 +163,7 @@ export default function WorkspacePayment() {
               🏛️
             </div>
             <h1 className="font-headline font-bold text-2xl text-slate-900 dark:text-white tracking-tight">
-              {companySettings.companyName || 'CapitalTrust'}
+              {companyDetails.companyName || 'CapitalTrust'}
             </h1>
           </div>
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5">Secure Institutional Fund Management</p>
@@ -184,7 +199,7 @@ export default function WorkspacePayment() {
                 <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-left space-y-2.5">
                   <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
                     <span>Organization</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{companySettings.companyName}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{companyDetails.companyName}</span>
                   </div>
                   <div className="flex justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1.5">
                     <span>Billing Subdomain</span>
@@ -254,7 +269,7 @@ export default function WorkspacePayment() {
             </button>.
           </p>
           <p className="text-[9px] text-slate-500 dark:text-slate-600 tracking-widest leading-relaxed uppercase text-center font-bold">
-            © {new Date().getFullYear()} {(companySettings.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} {(companyDetails.companyName || 'CapitalTrust').toUpperCase()} GLOBAL MARKETS. ALL RIGHTS RESERVED.
           </p>
         </footer>
       </main>

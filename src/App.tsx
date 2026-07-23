@@ -24,7 +24,7 @@ import CollectionTypeMaster from './pages/collection/CollectionTypeMaster';
 import CollectionAuditSummary from './pages/collection/CollectionAuditSummary';
 import MenusPage from './pages/user/MenusPage';
 import PermissionsPage from './pages/user/PermissionsPage';
-import SettingsPage from './pages/superadmin/SettingsPage';
+import SettingsPage from './pages/tenant/SettingsPage';
 import ProfilePage from './pages/user/ProfilePage';
 import AdminLogin from './pages/superadmin/AdminLogin';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -34,6 +34,9 @@ import SendMailPage from './pages/superadmin/SendMailPage';
 import SuperAdminLayout from './components/SuperAdminLayout';
 import AdminProfile from './pages/superadmin/AdminProfile';
 import AdminPricing from './pages/superadmin/AdminPricing';
+import AdminCompanyDetails from './pages/superadmin/AdminCompanyDetails';
+import AdminMaintenanceNotice from './pages/superadmin/AdminMaintenanceNotice';
+import MaintenanceNoticePage from './pages/MaintenanceNoticePage';
 import WorkspacePayment from './pages/tenant/WorkspacePayment';
 import AmcPayment from './pages/tenant/AmcPayment';
 import ExpensesPage from './pages/expense/ExpensesPage';
@@ -243,6 +246,13 @@ export default function App() {
     );
   }
 
+  const isSuperAdminRoute = location.pathname.startsWith('/admin');
+
+  // If maintenance mode is enabled by SuperAdmin, redirect non-admin routes to MaintenanceNoticePage
+  if (companySettings?.ismaintanance && !isSuperAdminRoute) {
+    return <MaintenanceNoticePage companySettings={companySettings} />;
+  }
+
   if (!subdomain) {
     return (
       <div className="bg-[#090d16] text-[#e2e8f0] selection:bg-indigo-500 selection:text-white antialiased">
@@ -266,6 +276,8 @@ export default function App() {
           <Route element={<SuperAdminLayout />}>
             <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/admin/tenants" element={<TenantManagement />} />
+            <Route path="/admin/company-details" element={<AdminCompanyDetails />} />
+            <Route path="/admin/maintenance" element={<AdminMaintenanceNotice />} />
             <Route path="/admin/send-mail" element={<SendMailPage />} />
             <Route path="/admin/smtp" element={<SmtpSettings />} />
             <Route path="/admin/pricing" element={<AdminPricing />} />
@@ -294,7 +306,6 @@ export default function App() {
     );
   }
 
-  const isSuperAdminRoute = location.pathname.startsWith('/admin');
   const isAllowedUnpaidRoute =
     location.pathname === '/payment' ||
     location.pathname === '/amc-payment' ||

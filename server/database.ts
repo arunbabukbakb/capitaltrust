@@ -231,7 +231,14 @@ export async function initDatabase(): Promise<Database> {
         paymentDate VARCHAR(255) DEFAULT NULL,
         razorpayOrderId VARCHAR(255) DEFAULT NULL,
         razorpayPaymentId VARCHAR(255) DEFAULT NULL,
-        razorpaySignature VARCHAR(255) DEFAULT NULL
+        razorpaySignature VARCHAR(255) DEFAULT NULL,
+        address TEXT DEFAULT NULL,
+        phone VARCHAR(255) DEFAULT NULL,
+        invoiceno VARCHAR(255) DEFAULT NULL,
+        amount DOUBLE DEFAULT 0,
+        gst DOUBLE DEFAULT 0,
+        gstamount DOUBLE DEFAULT 0,
+        logo LONGTEXT DEFAULT NULL
       );
 
       CREATE TABLE IF NOT EXISTS roles (
@@ -423,9 +430,14 @@ export async function initDatabase(): Promise<Database> {
       CREATE TABLE IF NOT EXISTS company_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         companyName VARCHAR(255) NOT NULL,
-        companyLogo VARCHAR(255),
+        companyLogo LONGTEXT,
         supportEmail VARCHAR(255),
-        supportPhone VARCHAR(255)
+        supportPhone VARCHAR(255),
+        address TEXT DEFAULT NULL,
+        gstno VARCHAR(255) DEFAULT NULL,
+        ismaintanance TINYINT(1) DEFAULT 0,
+        message TEXT DEFAULT NULL,
+        resumetime VARCHAR(255) DEFAULT NULL
       );
 
       CREATE TABLE IF NOT EXISTS superadmins (
@@ -444,6 +456,9 @@ export async function initDatabase(): Promise<Database> {
         dueDate DATE NOT NULL,
         paidDate DATETIME DEFAULT NULL,
         paidStatus VARCHAR(255) NOT NULL DEFAULT 'Pending',
+        invoiceno VARCHAR(255) DEFAULT NULL,
+        gst DOUBLE DEFAULT 0,
+        gstamount DOUBLE DEFAULT 0,
         FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
       );
 
@@ -563,6 +578,25 @@ export async function initDatabase(): Promise<Database> {
       console.error('Error seeding default pricing details:', err);
     }
 
+    // Seed default company settings if empty
+    try {
+      const companyCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM company_settings");
+      if (!companyCount || companyCount.count === 0) {
+        await db.run(
+          "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone, address, gstno) VALUES (?, ?, ?, ?, ?, ?)",
+          ['CapitalTrust', '', 'support@capitaltrust.com', '916238920219', '', '']
+        );
+        console.log('Seeded default company settings.');
+      } else {
+        const currentSetting = await db.get("SELECT id, supportPhone FROM company_settings LIMIT 1");
+        if (currentSetting && !currentSetting.supportPhone) {
+          await db.run("UPDATE company_settings SET supportPhone = '916238920219' WHERE id = ?", [currentSetting.id]);
+        }
+      }
+    } catch (err) {
+      console.error('Error seeding default company settings:', err);
+    }
+
     // Seed default superadmin if not exists
     try {
       const superAdminCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM superadmins");
@@ -629,6 +663,74 @@ export async function initDatabase(): Promise<Database> {
     const hasRzpSignature = await checkColumnExists('tenants', 'razorpaySignature');
     if (!hasRzpSignature) {
       await db.exec("ALTER TABLE tenants ADD COLUMN razorpaySignature VARCHAR(255) DEFAULT NULL");
+    }
+
+    const hasTenantAddress = await checkColumnExists('tenants', 'address');
+    if (!hasTenantAddress) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN address TEXT DEFAULT NULL");
+    }
+    const hasTenantPhone = await checkColumnExists('tenants', 'phone');
+    if (!hasTenantPhone) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN phone VARCHAR(255) DEFAULT NULL");
+    }
+    const hasTenantInvoiceNo = await checkColumnExists('tenants', 'invoiceno');
+    if (!hasTenantInvoiceNo) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN invoiceno VARCHAR(255) DEFAULT NULL");
+    }
+    const hasTenantAmount = await checkColumnExists('tenants', 'amount');
+    if (!hasTenantAmount) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN amount DOUBLE DEFAULT 0");
+    }
+    const hasTenantGst = await checkColumnExists('tenants', 'gst');
+    if (!hasTenantGst) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN gst DOUBLE DEFAULT 0");
+    }
+    const hasTenantGstAmount = await checkColumnExists('tenants', 'gstamount');
+    if (!hasTenantGstAmount) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN gstamount DOUBLE DEFAULT 0");
+    }
+    const hasTenantLogo = await checkColumnExists('tenants', 'logo');
+    if (!hasTenantLogo) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN logo LONGTEXT DEFAULT NULL");
+    }
+
+    const hasAmcInvoiceNo = await checkColumnExists('amcdetails', 'invoiceno');
+    if (!hasAmcInvoiceNo) {
+      await db.exec("ALTER TABLE amcdetails ADD COLUMN invoiceno VARCHAR(255) DEFAULT NULL");
+    }
+    const hasAmcGst = await checkColumnExists('amcdetails', 'gst');
+    if (!hasAmcGst) {
+      await db.exec("ALTER TABLE amcdetails ADD COLUMN gst DOUBLE DEFAULT 0");
+    }
+    const hasAmcGstAmount = await checkColumnExists('amcdetails', 'gstamount');
+    if (!hasAmcGstAmount) {
+      await db.exec("ALTER TABLE amcdetails ADD COLUMN gstamount DOUBLE DEFAULT 0");
+    }
+
+    const hasCompanyAddress = await checkColumnExists('company_settings', 'address');
+    if (!hasCompanyAddress) {
+      await db.exec("ALTER TABLE company_settings ADD COLUMN address TEXT DEFAULT NULL");
+    }
+    const hasCompanyGstNo = await checkColumnExists('company_settings', 'gstno');
+    if (!hasCompanyGstNo) {
+      await db.exec("ALTER TABLE company_settings ADD COLUMN gstno VARCHAR(255) DEFAULT NULL");
+    }
+    const hasCompanyIsMaintanance = await checkColumnExists('company_settings', 'ismaintanance');
+    if (!hasCompanyIsMaintanance) {
+      await db.exec("ALTER TABLE company_settings ADD COLUMN ismaintanance TINYINT(1) DEFAULT 0");
+    }
+    const hasCompanyMessage = await checkColumnExists('company_settings', 'message');
+    if (!hasCompanyMessage) {
+      await db.exec("ALTER TABLE company_settings ADD COLUMN message TEXT DEFAULT NULL");
+    }
+    const hasCompanyResumetime = await checkColumnExists('company_settings', 'resumetime');
+    if (!hasCompanyResumetime) {
+      await db.exec("ALTER TABLE company_settings ADD COLUMN resumetime VARCHAR(255) DEFAULT NULL");
+    }
+    try {
+      await db.exec("ALTER TABLE company_settings MODIFY COLUMN companyLogo LONGTEXT DEFAULT NULL");
+    } catch (e) {
+      // Ignored
     }
 
     const hasOutstanding = await checkColumnExists('Loan', 'OutstandingPrincipal');
