@@ -17,7 +17,7 @@ const options: swaggerJSDoc.Options = {
         description: 'Current Application Host (Relative)',
       },
       {
-        url: process.env.APP_URL || 'http://localhost:3000',
+        url: process.env.VITE_APP_URL || 'http://localhost:3000',
         description: 'Configured Environment Server',
       },
     ],

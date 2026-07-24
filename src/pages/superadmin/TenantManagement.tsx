@@ -30,6 +30,35 @@ interface Tenant {
 
 export default function TenantManagement() {
   const navigate = useNavigate();
+
+  const getViteAppUrl = (): string => {
+    return (
+      (import.meta as any).env?.VITE_APP_URL ||
+      (typeof process !== 'undefined' && process.env?.VITE_APP_URL) ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    );
+  };
+
+  const buildTenantUrl = (subdomain: string): string => {
+    const rawAppUrl = getViteAppUrl();
+    if (rawAppUrl) {
+      try {
+        const url = new URL(rawAppUrl);
+        if (!url.hostname.startsWith(`${subdomain}.`)) {
+          url.hostname = `${subdomain}.${url.hostname}`;
+        }
+        return url.toString();
+      } catch (e) {}
+    }
+
+    if (typeof window !== 'undefined') {
+      const protocol = window.location.protocol;
+      const port = window.location.port ? `:${window.location.port}` : '';
+      return `${protocol}//${subdomain}.${window.location.hostname}${port}`;
+    }
+
+    return `http://${subdomain}.localhost`;
+  };
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -309,11 +338,7 @@ export default function TenantManagement() {
           </div>
         ) : (
           filteredTenants.map(t => {
-            const port = window.location.port ? `:${window.location.port}` : '';
-            const domainHost = window.location.hostname.includes('.')
-              ? window.location.hostname.split('.').slice(1).join('.')
-              : window.location.hostname;
-            const tenantUrl = `http://${t.subdomain}.${domainHost}${port}`;
+            const tenantUrl = buildTenantUrl(t.subdomain);
 
             return (
               <div key={t.id} className="bg-[#0d1322] border border-slate-800/90 rounded-xl p-3 shadow-md space-y-2.5">
@@ -335,11 +360,10 @@ export default function TenantManagement() {
                   </div>
 
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${
-                      t.isActive === 1
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${t.isActive === 1
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-red-500/10 text-red-400 border-red-500/20'
-                    }`}
+                      }`}
                   >
                     {t.isActive === 1 ? 'Active' : 'Suspended'}
                   </span>
@@ -396,11 +420,10 @@ export default function TenantManagement() {
                   <button
                     onClick={() => handleToggleStatus(t.id, t.isActive)}
                     disabled={updatingId === t.id}
-                    className={`py-1.5 px-3 rounded-lg border text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
-                      t.isActive === 1
+                    className={`py-1.5 px-3 rounded-lg border text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${t.isActive === 1
                         ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400'
                         : 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20 text-emerald-400'
-                    }`}
+                      }`}
                   >
                     {updatingId === t.id ? (
                       <RefreshCw className="w-3 h-3 animate-spin" />
@@ -491,10 +514,10 @@ export default function TenantManagement() {
                       <td className="px-6 py-4 text-slate-400 whitespace-nowrap">
                         {t.createdDate
                           ? new Date(t.createdDate).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })
                           : 'N/A'}
                       </td>
 
@@ -521,11 +544,10 @@ export default function TenantManagement() {
 
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                            t.isActive === 1
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${t.isActive === 1
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                               : 'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}
+                            }`}
                         >
                           {t.isActive === 1 ? 'Active' : 'Suspended'}
                         </span>
@@ -554,11 +576,10 @@ export default function TenantManagement() {
                           <button
                             onClick={() => handleToggleStatus(t.id, t.isActive)}
                             disabled={updatingId === t.id}
-                            className={`p-1.5 rounded-lg border transition text-[11px] font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50 ${
-                              t.isActive === 1
+                            className={`p-1.5 rounded-lg border transition text-[11px] font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50 ${t.isActive === 1
                                 ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400'
                                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20 text-emerald-400'
-                            }`}
+                              }`}
                             title={t.isActive === 1 ? 'Suspend Workspace' : 'Activate Workspace'}
                           >
                             {updatingId === t.id ? (
@@ -749,11 +770,10 @@ export default function TenantManagement() {
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-white">₹{record.amcCharge.toFixed(2)}</span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                          record.paidStatus === 'Paid'
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${record.paidStatus === 'Paid'
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                             : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        }`}
+                          }`}
                       >
                         {record.paidStatus}
                       </span>
@@ -822,19 +842,18 @@ export default function TenantManagement() {
                         <td className="px-4 py-3 font-mono text-slate-400">
                           {record.paidDate
                             ? new Date(record.paidDate).toLocaleDateString(undefined, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })
                             : '-'}
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              record.paidStatus === 'Paid'
+                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${record.paidStatus === 'Paid'
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            }`}
+                              }`}
                           >
                             {record.paidStatus}
                           </span>

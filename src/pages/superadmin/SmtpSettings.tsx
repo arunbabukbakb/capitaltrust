@@ -295,11 +295,10 @@ export default function SmtpSettings() {
               return (
                 <div
                   key={smtp.id}
-                  className={`relative rounded-xl sm:rounded-2xl p-3.5 sm:p-6 transition border ${
-                    isActive
+                  className={`relative rounded-xl sm:rounded-2xl p-3.5 sm:p-6 transition border ${isActive
                       ? 'bg-[#0f172a]/90 border-indigo-500/50 shadow-xl ring-1 ring-indigo-500/30'
                       : 'bg-[#070b13] border-slate-800/80 hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   {/* Header & Controls */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 mb-3">
@@ -435,7 +434,7 @@ export default function SmtpSettings() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. dryzen.in or smtp.gmail.com"
+                  placeholder="e.g. smtp.gmail.com"
                   value={formData.server}
                   onChange={e => setFormData({ ...formData, server: e.target.value })}
                   className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500"
@@ -447,7 +446,7 @@ export default function SmtpSettings() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. contact@dryzen.in"
+                  placeholder="e.g. contact@trustcaps.in"
                   value={formData.username}
                   onChange={e => setFormData({ ...formData, username: e.target.value })}
                   className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-indigo-500"

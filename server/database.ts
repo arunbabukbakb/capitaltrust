@@ -557,7 +557,7 @@ export async function initDatabase(): Promise<Database> {
       if (smtpCount && (smtpCount.cnt === 0 || smtpCount.cnt === '0')) {
         await db.run(
           "INSERT INTO smtp_settings (server, username, port, encryption, password, status) VALUES (?, ?, ?, ?, ?, ?)",
-          ['dryzen.in', 'contact@dryzen.in', 587, 'STARTTLS', 'samplepassword123', 'Active']
+          ['trustcaps.in', 'contact@trustcaps.in', 587, 'STARTTLS', 'samplepassword123', 'Active']
         );
       }
     } catch (err) {

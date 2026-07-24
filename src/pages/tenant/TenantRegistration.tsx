@@ -50,47 +50,28 @@ export default function TenantRegistration() {
     }
   };
 
-  const getAppUrl = () => {
-    const envUrl =
+  const getViteAppUrl = () => {
+    return (
       (import.meta as any).env?.VITE_APP_URL ||
-      (typeof process !== 'undefined' && process.env?.APP_URL);
-
-    let rawAppUrl = envUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-
-    if (
-      envUrl &&
-      envUrl.includes('localhost') &&
-      typeof window !== 'undefined' &&
-      window.location.hostname !== 'localhost' &&
-      window.location.hostname !== '127.0.0.1'
-    ) {
-      rawAppUrl = window.location.origin;
-    }
-    return rawAppUrl;
+      (typeof process !== 'undefined' && process.env?.VITE_APP_URL) ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    );
   };
 
   const buildTenantUrl = (subdomainStr: string) => {
-    const rawUrl = getAppUrl();
-    if (!rawUrl) return `http://${subdomainStr || 'tenant'}.localhost/login`;
+    const rawUrl = getViteAppUrl();
+    if (!rawUrl) return `/login`;
 
     try {
       const url = new URL(rawUrl);
-      const parts = url.hostname.split('.');
-      let tenantHostname = url.hostname;
-
-      if (parts.length === 2 && parts[1] === 'localhost') {
-        tenantHostname = `${subdomainStr}.${parts[1]}`;
-      } else if (parts.length > 2) {
-        tenantHostname = `${subdomainStr}.${parts.slice(1).join('.')}`;
-      } else {
-        tenantHostname = `${subdomainStr}.${url.hostname}`;
+      const sub = subdomainStr || 'tenant';
+      if (!url.hostname.startsWith(`${sub}.`)) {
+        url.hostname = `${sub}.${url.hostname}`;
       }
-
-      url.hostname = tenantHostname;
       url.pathname = '/login';
       return url.toString();
     } catch (e) {
-      return `http://${subdomainStr || 'tenant'}.localhost:3000/login`;
+      return `/login`;
     }
   };
 

@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const appUrl = process.env.APP_URL || env.APP_URL || env.VITE_APP_URL || 'http://localhost:3000';
+  const viteAppUrl = process.env.VITE_APP_URL || env.VITE_APP_URL || 'http://localhost:3000';
 
   return {
     build: {
@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     define: {
-      'process.env.APP_URL': JSON.stringify(appUrl),
+      'process.env.VITE_APP_URL': JSON.stringify(viteAppUrl),
     },
     plugins: [react(), tailwindcss()],
     resolve: {

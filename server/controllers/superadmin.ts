@@ -361,7 +361,7 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
 
     const paymentDateObj = new Date();
     const paymentDateStr = paymentDateObj.toISOString().slice(0, 19).replace('T', ' ');
-    
+
     // Calculate 1 year from payment date for AMC due date
     const dueDateObj = new Date(paymentDateObj);
     dueDateObj.setFullYear(paymentDateObj.getFullYear() + 1);
@@ -403,9 +403,24 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
       const tax = pricing ? pricing.tax : 0;
       const totalAmount = price + (price * (tax / 100));
 
-      const port = req.headers.host?.includes(':') ? `:${req.headers.host.split(':')[1]}` : '';
-      const domainHost = req.hostname.includes('.') ? req.hostname.split('.').slice(1).join('.') : req.hostname;
-      const loginUrl = `http://${tenant.subdomain}.${domainHost}${port}/user/login`;
+      const envUrl = process.env.VITE_APP_URL;
+      let loginUrl = '';
+      if (envUrl) {
+        try {
+          const url = new URL(envUrl);
+          if (!url.hostname.startsWith(`${tenant.subdomain}.`)) {
+            url.hostname = `${tenant.subdomain}.${url.hostname}`;
+          }
+          url.pathname = '/user/login';
+          loginUrl = url.toString();
+        } catch (e) {}
+      }
+
+      if (!loginUrl) {
+        const protocol = req.protocol || (req.headers['x-forwarded-proto'] ? String(req.headers['x-forwarded-proto']).split(',')[0] : 'http');
+        const host = req.headers.host || req.hostname || 'localhost';
+        loginUrl = `${protocol}://${tenant.subdomain}.${host}/user/login`;
+      }
 
       sendRegistrationPaymentEmail({
         to: tenant.adminEmail,

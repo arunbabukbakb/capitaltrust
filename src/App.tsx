@@ -164,18 +164,21 @@ export default function App() {
 
   const subdomain = getSubdomain();
 
-  const getMainDomainUrl = () => {
+  const getMainDomainUrl = (path: string = '/register-tenant') => {
+    const envUrl =
+      (import.meta as any).env?.VITE_APP_URL ||
+      (typeof process !== 'undefined' && process.env?.VITE_APP_URL);
+    if (envUrl) {
+      try {
+        const url = new URL(envUrl);
+        url.pathname = path;
+        return url.toString();
+      } catch (e) {}
+    }
+
+    const protocol = window.location.protocol;
     const portStr = window.location.port ? `:${window.location.port}` : '';
-    const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    if (parts.length === 2 && parts[1] === 'localhost') {
-      return `http://localhost${portStr}/register-tenant`;
-    }
-    if (parts.length > 2) {
-      const mainHost = parts.slice(1).join('.');
-      return `http://${mainHost}${portStr}/register-tenant`;
-    }
-    return `http://${hostname}${portStr}/register-tenant`;
+    return `${protocol}//${window.location.hostname}${portStr}${path}`;
   };
 
   if (tenantError === 'not_found' && subdomain) {
@@ -259,7 +262,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/register-tenant" element={<TenantRegistration />} />
-          
+
           {/* Customer Documentation Module Routes */}
           <Route path="/document" element={<DocLayout />}>
             <Route index element={<Navigate to="/document/getting-started" replace />} />

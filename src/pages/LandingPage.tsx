@@ -25,49 +25,69 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const handleLoadDemo = () => {
+  const getViteAppUrl = (): string => {
     const envUrl =
       (import.meta as any).env?.VITE_APP_URL ||
-      (typeof process !== 'undefined' && process.env?.APP_URL);
-
-    let rawAppUrl = envUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-
-    // If envUrl is set to localhost but app is running in production browser, fallback to window.location.origin
-    if (
-      envUrl &&
-      envUrl.includes('localhost') &&
-      typeof window !== 'undefined' &&
-      window.location.hostname !== 'localhost' &&
-      window.location.hostname !== '127.0.0.1'
-    ) {
-      rawAppUrl = window.location.origin;
+      (typeof process !== 'undefined' && process.env?.VITE_APP_URL);
+    if (envUrl) {
+      if (
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+        envUrl.includes('localhost')
+      ) {
+        return window.location.origin;
+      }
+      return envUrl;
     }
+    if (typeof window !== 'undefined') return window.location.origin;
+    return '';
+  };
 
-    if (!rawAppUrl) return;
+  const buildSubdomainUrl = (subdomain: string, path: string = '/login'): string => {
+    const rawAppUrl = getViteAppUrl();
+    if (!rawAppUrl) return path;
 
     try {
       const url = new URL(rawAppUrl);
-      const parts = url.hostname.split('.');
-      let demoHostname = url.hostname;
-
-      if (parts.length === 2 && parts[1] === 'localhost') {
-        demoHostname = 'demo.localhost';
-      } else if (parts.length > 2) {
-        if (parts[0] !== 'demo') {
-          demoHostname = `demo.${parts.slice(1).join('.')}`;
-        }
-      } else {
-        demoHostname = `demo.${url.hostname}`;
+      if (!url.hostname.startsWith(`${subdomain}.`)) {
+        url.hostname = `${subdomain}.${url.hostname}`;
       }
-
-      url.hostname = demoHostname;
-      url.pathname = '/login';
-      url.searchParams.set('demo', 'true');
-
-      window.location.href = url.toString();
+      url.pathname = path;
+      if (subdomain === 'demo') {
+        url.searchParams.set('demo', 'true');
+      }
+      return url.toString();
     } catch (e) {
-      const fallbackBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      window.location.href = `${fallbackBase}/login?demo=true`;
+      return path;
+    }
+  };
+
+  const handleLoadDemo = () => {
+    const demoUrl = buildSubdomainUrl('demo', '/login');
+    if (demoUrl && demoUrl !== '/login') {
+      window.location.href = demoUrl;
+    } else {
+      navigate('/login?demo=true');
+    }
+  };
+
+  const getDemoDisplayUrl = (): string => {
+    const fullUrl = buildSubdomainUrl('demo', '/dashboard');
+    try {
+      const url = new URL(fullUrl);
+      return `${url.host}${url.pathname}`;
+    } catch (e) {
+      return 'demo/dashboard';
+    }
+  };
+
+  const getSubdomainExampleDisplay = (): string => {
+    const fullUrl = buildSubdomainUrl('mybranch', '');
+    try {
+      const url = new URL(fullUrl);
+      return url.host;
+    } catch (e) {
+      return 'mybranch';
     }
   };
 
@@ -257,7 +277,7 @@ export default function LandingPage() {
               onClick={handleLoadDemo}
               className="mx-auto bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800/80 border border-slate-300 dark:border-slate-800 hover:border-indigo-500/50 text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 py-0.5 px-6 rounded-md select-none font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <span>demo.localhost:5173/dashboard</span>
+              <span>{getDemoDisplayUrl()}</span>
               <Sparkles className="w-3 h-3 text-indigo-400" />
             </button>
           </div>
@@ -358,7 +378,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             { step: "1", title: "Create Organization", desc: "Fill in the registration form with your preferred subdomain, organization details, and administrator credentials." },
-            { step: "2", title: "Access Custom Subdomain", desc: "Type the custom address in your browser: e.g. <code>mybranch.localhost:5173</code> to open your isolated client login portal." },
+            { step: "2", title: "Access Custom Subdomain", desc: `Type the custom address in your browser: e.g. <code>${getSubdomainExampleDisplay()}</code> to open your isolated client login portal.` },
             { step: "3", title: "Log In & Manage", desc: "Enter your registered credentials to access your organization's custom dashboard, user roles, audit systems, and loans." }
           ].map((item, idx) => (
             <div key={idx} className="space-y-2">
