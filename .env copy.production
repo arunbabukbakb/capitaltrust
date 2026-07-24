@@ -5,8 +5,8 @@ PORT=3002
 GEMINI_API_KEY="MY_GEMINI_API_KEY"
 
 # APP_URL: The URL where this applet is hosted.
-APP_URL="https://dryzen.in"
-VITE_APP_URL="https://dryzen.in"
+APP_URL="https://trustcaps.in"
+VITE_APP_URL="https://trustcaps.in"
 
 # MySQL Database connection configuration parameters
 MYSQL_HOST="127.0.0.1"

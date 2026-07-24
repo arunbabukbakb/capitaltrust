@@ -1,16 +1,22 @@
+trustcaps.in
+
 ssh root@147.93.31.194
 Ftns@ker8332
 
-cd /var/www/dryzen_in_usr85/data/www/dryzen.in
+cd /var/www/trustcaps_in_usr/data/www/trustcaps.in
 
-pm2 restart dryzen -- restart node
-NODE_ENV=production pm2 start server.cjs --name dryzen
+Create service
+***************
+pm2 start server.cjs --name "trustcaps"
+
+pm2 restart trustcaps -- restart node
+NODE_ENV=production pm2 start server.cjs --name trustcaps
 
 pm2 status
 
 Config change
 *************
-nano /etc/nginx/fastpanel2-sites/dryzen_in_usr85/dryzen.in.conf
+nano /etc/nginx/fastpanel2-sites/trustcaps_in_usr/trustcaps.in.conf
 
 proxy_pass http://127.0.0.1:3002;
 proxy_redirect off;
