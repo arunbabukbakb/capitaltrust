@@ -56,7 +56,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData) {
   const sgstAmount = gstAmount / 2;
 
   const issuerName = comp.companyName || 'CapitalTrust';
-  const issuerEmail = comp.supportEmail || 'support@capitaltrust.com';
+  const issuerEmail = comp.supportEmail || 'contact@trustcaps.in';
   const issuerPhone = comp.supportPhone || '+91 62389 20219';
   const issuerAddress = comp.address || 'Corporate Office, Financial District';
   const issuerGst = comp.gstno || 'N/A';

@@ -585,7 +585,7 @@ export async function initDatabase(): Promise<Database> {
       if (!companyCount || companyCount.count === 0) {
         await db.run(
           "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone, address, gstno) VALUES (?, ?, ?, ?, ?, ?)",
-          ['CapitalTrust', '', 'support@capitaltrust.com', '916238920219', '', '']
+          ['CapitalTrust', '', 'contact@trustcaps.in', '916238920219', '', '']
         );
         console.log('Seeded default company settings.');
       } else {

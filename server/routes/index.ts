@@ -59,9 +59,6 @@ router.use((req, res, next) => {
     const isExempt =
       path.startsWith('/auth/login') ||
       path.startsWith('/auth/logout') ||
-      path.startsWith('/auth/register') ||
-      path.startsWith('/auth/forgot-password') ||
-      path.startsWith('/auth/reset-password') ||
       path.startsWith('/tenants') ||
       path.startsWith('/super-admin') ||
       path.startsWith('/menus');

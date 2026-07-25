@@ -112,7 +112,6 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
           <input
             required
             type="text"
-            placeholder="John Doe"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100"
@@ -128,7 +127,6 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
             <input
               required
               type="text"
-              placeholder="johndoe"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100"
@@ -141,7 +139,7 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
             </label>
             <input
               type="tel"
-              placeholder="+1 (555) 000-0000"
+              placeholder="+91 98765 43210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100"
@@ -157,7 +155,7 @@ export default function Register({ onNavigateToLogin }: RegisterProps) {
           <input
             required
             type="email"
-            placeholder="john@capitaltrust.com"
+            placeholder="user@trustcaps.in"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950/5 dark:focus:ring-slate-100/5 focus:border-slate-950 dark:focus:border-slate-700 transition-all font-medium text-slate-900 dark:text-slate-100"

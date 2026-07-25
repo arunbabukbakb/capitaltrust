@@ -183,7 +183,7 @@ export async function runSeeders(db: Database) {
   if (settingsCount && settingsCount.count === 0) {
     await db.run(
       "INSERT INTO company_settings (companyName, companyLogo, supportEmail, supportPhone) VALUES (?, ?, ?, ?)",
-      ['CapitalTrust', '', 'support@capitaltrust.com', '+1 (555) 555-5555']
+      ['CapitalTrust', '', 'contact@trustcaps.in', '+1 (555) 555-5555']
     );
   }
 

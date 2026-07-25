@@ -415,7 +415,7 @@ export const confirmTenantPayment = async (req: Request, res: Response) => {
           }
           url.pathname = '/user/login';
           loginUrl = url.toString();
-        } catch (e) {}
+        } catch (e) { }
       }
 
       if (!loginUrl) {
@@ -926,7 +926,7 @@ export const getGlobalCompanyDetails = async (req: Request, res: Response) => {
       settings = {
         companyName: 'CapitalTrust',
         companyLogo: '',
-        supportEmail: 'support@capitaltrust.com',
+        supportEmail: 'contact@trustcaps.in',
         supportPhone: '',
         address: '',
         gstno: '',

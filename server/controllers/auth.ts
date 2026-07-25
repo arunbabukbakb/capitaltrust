@@ -48,7 +48,7 @@ export const register = async (req: Request, res: Response) => {
       username: username.toLowerCase(),
       role: initialRole,
       password: hashedPassword,
-      status: 1,
+      status: 0,
       phoneNumber: phoneNumber || undefined,
       roleId: role.id,
       tenantId
@@ -91,11 +91,11 @@ export const register = async (req: Request, res: Response) => {
       try {
         const db = getDatabase();
         const admins = await db.all<{ id: string }[]>(
-          `SELECT u.id FROM users u
+          `SELECT DISTINCT u.id FROM users u
            JOIN user_roles ur ON ur.userId = u.id
            JOIN roles r ON r.id = ur.roleId
-           WHERE r.roleType IN ('admin', 'manager')`,
-          []
+           WHERE r.roleType IN ('admin', 'manager') AND u.tenantId = ?`,
+          [tenantId]
         );
         const adminUserIds = admins.map(u => u.id);
         if (adminUserIds.length > 0) {

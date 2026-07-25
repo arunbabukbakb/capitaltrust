@@ -1,17 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowLeft, Coins, Sun, Moon } from 'lucide-react';
+import { Shield, ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { companySettings } = useSelector((state: RootState) => state.auth);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-[#e2e8f0] font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* Background Decorative Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[150px] pointer-events-none" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[150px]" />
+      </div>
 
       {/* Navigation */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/60">
@@ -30,11 +35,20 @@ export default function PrivacyPolicy() {
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-lg">
-              <Coins className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <img
+              src={companySettings?.companyLogo || '/favicon.png'}
+              alt={companySettings?.companyName || 'CapitalTrust Logo'}
+              className="h-8 sm:h-9 w-auto object-contain shrink-0"
+            />
+            <div>
+              <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent font-headline tracking-tight">
+                CapitalTrust
+              </span>
+              <span className="ml-1.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded border border-indigo-500/30">
+                Portal
+              </span>
             </div>
-            <span className="text-sm font-bold text-slate-900 dark:text-white font-headline">CapitalTrust</span>
           </div>
         </div>
       </div>
@@ -126,7 +140,7 @@ export default function PrivacyPolicy() {
               <li>Request deletion of your account and associated data.</li>
               <li>Withdraw consent where processing is based on consent.</li>
             </ul>
-            <p>To exercise these rights, contact us at <span className="text-indigo-600 dark:text-indigo-400">support@capitaltrust.app</span></p>
+            <p>To exercise these rights, contact us at <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{companySettings?.supportEmail || 'contact@trustcaps.in'}</span></p>
           </section>
 
           <section className="space-y-3">
@@ -139,7 +153,7 @@ export default function PrivacyPolicy() {
           <section className="space-y-3">
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">10. Contact</h2>
             <p>
-              For privacy-related queries: <span className="text-indigo-600 dark:text-indigo-400">privacy@capitaltrust.app</span>
+              For privacy-related queries: <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{companySettings?.supportEmail || 'contact@trustcaps.in'}</span>
             </p>
           </section>
 

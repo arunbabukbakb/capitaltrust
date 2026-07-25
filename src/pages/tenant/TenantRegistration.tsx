@@ -261,7 +261,7 @@ export default function TenantRegistration() {
                           value={formData.companyName}
                           onChange={handleChange}
                           required
-                          placeholder="e.g. CapitalTrust Tanzania"
+                          placeholder="e.g. CapitalTrust Organization"
                           className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
@@ -280,13 +280,13 @@ export default function TenantRegistration() {
                           value={formData.subdomain}
                           onChange={handleChange}
                           required
-                          placeholder="e.g. tz-branch"
+                          placeholder="e.g. main-branch"
                           className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
                         />
                       </div>
                       {/* Live Domain Preview */}
                       <div className="text-[10px] text-slate-500 font-mono mt-1">
-                        Preview: <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{buildTenantUrl(formData.subdomain || 'tz-branch')}</span>
+                        Preview: <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{buildTenantUrl(formData.subdomain || 'main-branch')}</span>
                       </div>
                     </div>
 
@@ -303,7 +303,7 @@ export default function TenantRegistration() {
                           value={formData.phone}
                           onChange={handleChange}
                           required
-                          placeholder="e.g. +255 700 000 000"
+                          placeholder="e.g. +91 98765 43210"
                           className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
@@ -322,7 +322,7 @@ export default function TenantRegistration() {
                           value={formData.address}
                           onChange={handleChange}
                           required
-                          placeholder="e.g. 123 Financial Street, Dar es Salaam"
+                          placeholder="e.g. 123 Financial District, Mumbai"
                           className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
@@ -375,7 +375,7 @@ export default function TenantRegistration() {
                             value={formData.adminName}
                             onChange={handleChange}
                             required
-                            placeholder="e.g. James Mwangi"
+                            placeholder="e.g. Arun Kumar"
                             className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                           />
                         </div>
@@ -394,7 +394,7 @@ export default function TenantRegistration() {
                             value={formData.adminEmail}
                             onChange={handleChange}
                             required
-                            placeholder="e.g. james.mwangi@capitaltrust.com"
+                            placeholder="e.g. arun@trustcaps.in"
                             className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                           />
                         </div>

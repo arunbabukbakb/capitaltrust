@@ -115,7 +115,7 @@ export default function AdminCompanyDetails() {
       }
 
       setSuccessMsg('Company details and branding updated successfully!');
-      
+
       // Update global Redux state
       if (data.companyDetails) {
         dispatch(setCompanySettings(data.companyDetails));
@@ -215,7 +215,7 @@ export default function AdminCompanyDetails() {
                 type="email"
                 value={supportEmail}
                 onChange={e => setSupportEmail(e.target.value)}
-                placeholder="support@capitaltrust.com"
+                placeholder="contact@trustcaps.in"
                 className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition font-medium"
               />
             </div>

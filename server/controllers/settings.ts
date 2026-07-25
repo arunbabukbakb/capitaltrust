@@ -24,7 +24,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
       globalSettings = {
         companyName: 'CapitalTrust',
         companyLogo: '',
-        supportEmail: 'support@capitaltrust.com',
+        supportEmail: 'contact@trustcaps.in',
         supportPhone: '916238920219',
         address: '',
         gstno: '',
@@ -50,7 +50,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
       if (tenant.isActive === 0) {
         return res.status(403).json({ error: "tenant_deactivated" });
       }
-      
+
       const pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
       const amcRecord = await db.get(
         "SELECT id, amcCharge, dueDate, paidStatus FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' ORDER BY dueDate ASC LIMIT 1",
@@ -63,12 +63,12 @@ export const getCompanySettings = async (req: Request, res: Response) => {
       );
 
       return res.json({
-        companyName: tenant.name,
-        companyLogo: tenant.logo || globalSettings.companyLogo || '',
-        supportEmail: tenant.adminEmail || globalSettings.supportEmail,
-        supportPhone: tenant.phone || globalSettings.supportPhone || '',
-        address: tenant.address || globalSettings.address || '',
-        gstnumber: tenant.gstnumber || '',
+        companyName: globalSettings.companyName || 'CapitalTrust',
+        companyLogo: globalSettings.companyLogo || '',
+        supportEmail: globalSettings.supportEmail || 'contact@trustcaps.in',
+        supportPhone: globalSettings.supportPhone || '',
+        address: globalSettings.address || '',
+        gstno: globalSettings.gstno || '',
         ismaintanance: globalSettings.ismaintanance,
         message: globalSettings.message,
         resumetime: globalSettings.resumetime,
@@ -85,17 +85,6 @@ export const getCompanySettings = async (req: Request, res: Response) => {
           dueDate: amcRecord.dueDate,
           paidStatus: amcRecord.paidStatus
         } : null,
-        globalCompany: {
-          companyName: globalSettings.companyName || 'CapitalTrust',
-          companyLogo: globalSettings.companyLogo || '',
-          supportEmail: globalSettings.supportEmail || 'support@capitaltrust.com',
-          supportPhone: globalSettings.supportPhone || '',
-          address: globalSettings.address || '',
-          gstno: globalSettings.gstno || '',
-          ismaintanance: globalSettings.ismaintanance,
-          message: globalSettings.message,
-          resumetime: globalSettings.resumetime
-        },
         tenantDetails: {
           id: tenant.id,
           name: tenant.name,

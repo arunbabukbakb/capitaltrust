@@ -24,7 +24,7 @@ interface MaintenanceNoticePageProps {
 export default function MaintenanceNoticePage({ companySettings }: MaintenanceNoticePageProps) {
   const companyName = companySettings?.companyName || 'CapitalTrust';
   const companyLogo = companySettings?.companyLogo;
-  const supportEmail = companySettings?.supportEmail || 'support@capitaltrust.com';
+  const supportEmail = companySettings?.supportEmail || 'contact@trustcaps.in';
   const supportPhone = companySettings?.supportPhone || '';
   const message = companySettings?.message;
   const resumetime = companySettings?.resumetime;

@@ -300,12 +300,13 @@ export const createLoan = async (req: Request, res: Response) => {
       try {
         const db = getDatabase();
         // Fetch all admin and manager user IDs
+        const tenantId = (req.headers['x-tenant-id'] as string) || '1';
         const adminUsers = await db.all<{ id: string }[]>(
-          `SELECT u.id FROM users u
+          `SELECT DISTINCT u.id FROM users u
            JOIN user_roles ur ON ur.userId = u.id
            JOIN roles r ON r.id = ur.roleId
-           WHERE r.roleType IN ('admin', 'manager')`,
-          []
+           WHERE r.roleType IN ('admin', 'manager') AND u.tenantId = ?`,
+          [tenantId]
         );
         const adminUserIds = adminUsers.map(u => u.id);
         if (adminUserIds.length > 0) {

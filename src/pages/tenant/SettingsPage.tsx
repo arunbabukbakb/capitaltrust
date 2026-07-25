@@ -410,7 +410,7 @@ export default function SettingsPage() {
                   onClick={() => {
                     if (fullBillingData) {
                       generateSubscriptionInvoicePDF({
-                        companySettings: fullBillingData.globalCompany,
+                        companySettings: fullBillingData,
                         tenantDetails: fullBillingData.tenantDetails || {
                           id: 1,
                           name: companyName || 'Organization',
@@ -469,7 +469,7 @@ export default function SettingsPage() {
                       <button
                         onClick={() => {
                           generateAmcInvoicePDF({
-                            companySettings: fullBillingData.globalCompany,
+                            companySettings: fullBillingData,
                             tenantDetails: fullBillingData.tenantDetails || {
                               name: companyName || 'Organization',
                               subdomain: 'demo',
