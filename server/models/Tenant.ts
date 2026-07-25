@@ -16,6 +16,7 @@ export interface Tenant {
   gst?: number;
   gstamount?: number;
   logo?: string;
+  gstnumber?: string;
 }
 
 export const TenantModel = {
@@ -29,13 +30,13 @@ export const TenantModel = {
     return db.get<Tenant>("SELECT * FROM tenants WHERE LOWER(subdomain) = ?", [subdomain.toLowerCase()]);
   },
 
-  async create(tenant: Omit<Tenant, 'id' | 'createdDate'> & { createdDate?: string; address?: string; phone?: string }): Promise<{ lastID?: number }> {
+  async create(tenant: Omit<Tenant, 'id' | 'createdDate'> & { createdDate?: string; address?: string; phone?: string; gstnumber?: string }): Promise<{ lastID?: number }> {
     const db = getDatabase();
     const createdDate = tenant.createdDate || new Date().toISOString();
     
     const result = await db.run(
-      "INSERT INTO tenants (name, subdomain, adminEmail, createdDate, address, phone) VALUES (?, ?, ?, ?, ?, ?)",
-      [tenant.name, tenant.subdomain.toLowerCase(), tenant.adminEmail.toLowerCase(), createdDate, tenant.address || '', tenant.phone || '']
+      "INSERT INTO tenants (name, subdomain, adminEmail, createdDate, address, phone, gstnumber) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [tenant.name, tenant.subdomain.toLowerCase(), tenant.adminEmail.toLowerCase(), createdDate, tenant.address || '', tenant.phone || '', tenant.gstnumber || '']
     );
     return { lastID: result.lastID as number };
   },

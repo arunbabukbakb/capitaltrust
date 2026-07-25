@@ -238,7 +238,8 @@ export async function initDatabase(): Promise<Database> {
         amount DOUBLE DEFAULT 0,
         gst DOUBLE DEFAULT 0,
         gstamount DOUBLE DEFAULT 0,
-        logo LONGTEXT DEFAULT NULL
+        logo LONGTEXT DEFAULT NULL,
+        gstnumber VARCHAR(255) DEFAULT NULL
       );
 
       CREATE TABLE IF NOT EXISTS roles (
@@ -692,6 +693,10 @@ export async function initDatabase(): Promise<Database> {
     const hasTenantLogo = await checkColumnExists('tenants', 'logo');
     if (!hasTenantLogo) {
       await db.exec("ALTER TABLE tenants ADD COLUMN logo LONGTEXT DEFAULT NULL");
+    }
+    const hasTenantGstNumber = await checkColumnExists('tenants', 'gstnumber');
+    if (!hasTenantGstNumber) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN gstnumber VARCHAR(255) DEFAULT NULL");
     }
 
     const hasAmcInvoiceNo = await checkColumnExists('amcdetails', 'invoiceno');

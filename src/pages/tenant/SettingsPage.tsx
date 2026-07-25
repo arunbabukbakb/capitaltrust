@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [supportEmail, setSupportEmail] = useState('');
   const [supportPhone, setSupportPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [gstnumber, setGstnumber] = useState('');
   const [fullBillingData, setFullBillingData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -42,6 +43,7 @@ export default function SettingsPage() {
           setSupportEmail(data.tenantDetails.adminEmail || '');
           setSupportPhone(data.tenantDetails.phone || '');
           setAddress(data.tenantDetails.address || '');
+          setGstnumber(data.tenantDetails.gstnumber || data.gstnumber || '');
         }
       }
     } catch (err) {
@@ -131,7 +133,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings/company', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName, companyLogo, supportEmail, supportPhone, address }),
+        body: JSON.stringify({ companyName, companyLogo, supportEmail, supportPhone, address, gstnumber, gstno: gstnumber }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -150,6 +152,7 @@ export default function SettingsPage() {
           setSupportEmail(freshSettings.tenantDetails.adminEmail || '');
           setSupportPhone(freshSettings.tenantDetails.phone || '');
           setAddress(freshSettings.tenantDetails.address || '');
+          setGstnumber(freshSettings.tenantDetails.gstnumber || freshSettings.gstnumber || '');
         }
       }
 
@@ -333,6 +336,21 @@ export default function SettingsPage() {
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="123 Financial District, City"
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-75 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-1">GST Number / Tax ID</label>
+                <div className="relative">
+                  <Receipt className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <input
+                    type="text"
+                    disabled={!isAdmin}
+                    value={gstnumber}
+                    onChange={(e) => setGstnumber(e.target.value)}
+                    placeholder="e.g. 22AAAAA0000A1Z5"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-75 font-mono uppercase"
                   />
                 </div>
               </div>

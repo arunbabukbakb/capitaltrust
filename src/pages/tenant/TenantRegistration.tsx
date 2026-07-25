@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Coins, 
-  ArrowLeft, 
-  Globe, 
-  User, 
-  Mail, 
-  Lock, 
-  Building, 
+import {
+  Coins,
+  ArrowLeft,
+  Globe,
+  User,
+  Mail,
+  Lock,
+  Building,
   ExternalLink,
   Loader2,
   CheckCircle2,
@@ -15,20 +15,25 @@ import {
   Sun,
   Moon,
   Phone,
-  MapPin
+  MapPin,
+  Receipt
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 export default function TenantRegistration() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { companySettings } = useSelector((state: RootState) => state.auth);
 
-  
+
   const [formData, setFormData] = useState({
     companyName: '',
     subdomain: '',
     phone: '',
     address: '',
+    gstnumber: '',
     adminName: '',
     adminEmail: '',
     adminUsername: '',
@@ -128,7 +133,7 @@ export default function TenantRegistration() {
 
       {/* Navigation */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-3.5 sm:py-6 relative z-10 flex items-center justify-between">
-        <button 
+        <button
           onClick={() => navigate('/')}
           className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
         >
@@ -144,11 +149,20 @@ export default function TenantRegistration() {
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-lg">
-              <Coins className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <img
+              src={companySettings?.companyLogo || '/favicon.png'}
+              alt={companySettings?.companyName || 'CapitalTrust Logo'}
+              className="h-8 sm:h-9 w-auto object-contain shrink-0"
+            />
+            <div>
+              <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent font-headline tracking-tight">
+                {'CapitalTrust'}
+              </span>
+              <span className="ml-1.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded border border-indigo-500/30">
+                Portal
+              </span>
             </div>
-            <span className="text-sm font-bold text-slate-900 dark:text-white font-headline">CapitalTrust</span>
           </div>
         </div>
       </div>
@@ -156,14 +170,14 @@ export default function TenantRegistration() {
       {/* Main Registration Container */}
       <main className="flex-1 flex items-start sm:items-center justify-center px-3 sm:p-6 py-3 sm:py-6 relative z-10">
         <div className="max-w-md md:max-w-4xl lg:max-w-5xl w-full bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl sm:rounded-3xl p-5 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-          
+
           {registeredUrl ? (
             /* Success State */
             <div className="text-center space-y-6 py-6 max-w-md mx-auto">
               <div className="mx-auto w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-10 h-10 animate-bounce" />
               </div>
-              
+
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-headline">Workspace Ready!</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -195,6 +209,7 @@ export default function TenantRegistration() {
                       subdomain: '',
                       phone: '',
                       address: '',
+                      gstnumber: '',
                       adminName: '',
                       adminEmail: '',
                       adminUsername: '',
@@ -232,7 +247,7 @@ export default function TenantRegistration() {
                     <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/60 pb-1.5 flex items-center gap-1.5">
                       1. Organization Info
                     </h3>
-                    
+
                     {/* Company Name */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Company / Tenant Name *</label>
@@ -314,86 +329,114 @@ export default function TenantRegistration() {
                     </div>
                   </div>
 
-                  {/* Right Column: Administrator Credentials separated by a vertical line on md+ */}
-                  <div className="space-y-4 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800/80 md:pl-8">
-                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/60 pb-1.5 flex items-center gap-1.5">
-                      2. Workspace Administrator
-                    </h3>
+                  {/* Right Column: Tax info & Administrator Credentials separated by a vertical line on md+ */}
+                  <div className="space-y-6 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800/80 md:pl-8">
+                    {/* 2. Tax Info */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/60 pb-1.5 flex items-center gap-1.5">
+                        2. Tax info
+                      </h3>
 
-                    {/* Admin Name */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Administrator Full Name *</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <User className="w-4 h-4" />
-                        </div>
-                        <input
-                          type="text"
-                          name="adminName"
-                          value={formData.adminName}
-                          onChange={handleChange}
-                          required
-                          placeholder="e.g. James Mwangi"
-                          className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Admin Email */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Admin Email Address *</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <Mail className="w-4 h-4" />
-                        </div>
-                        <input
-                          type="email"
-                          name="adminEmail"
-                          value={formData.adminEmail}
-                          onChange={handleChange}
-                          required
-                          placeholder="e.g. james.mwangi@capitaltrust.com"
-                          className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Admin Username */}
+                      {/* GST Number */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Username *</label>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">GST Number / Tax ID (Optional)</label>
                         <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                            <User className="w-3.5 h-3.5" />
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <Receipt className="w-4 h-4" />
                           </div>
                           <input
                             type="text"
-                            name="adminUsername"
-                            value={formData.adminUsername}
+                            name="gstnumber"
+                            value={formData.gstnumber}
+                            onChange={handleChange}
+                            placeholder="e.g. 22AAAAA0000A1Z5"
+                            className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono uppercase"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Workspace Administrator */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/60 pb-1.5 flex items-center gap-1.5">
+                        3. Workspace Administrator
+                      </h3>
+
+                      {/* Admin Name */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Administrator Full Name *</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            name="adminName"
+                            value={formData.adminName}
                             onChange={handleChange}
                             required
-                            placeholder="e.g. admin"
-                            className="w-full pl-8 pr-3.5 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+                            placeholder="e.g. James Mwangi"
+                            className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                           />
                         </div>
                       </div>
 
-                      {/* Admin Password */}
+                      {/* Admin Email */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Password *</label>
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Admin Email Address *</label>
                         <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                            <Lock className="w-3.5 h-3.5" />
+                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <Mail className="w-4 h-4" />
                           </div>
                           <input
-                            type="password"
-                            name="adminPassword"
-                            value={formData.adminPassword}
+                            type="email"
+                            name="adminEmail"
+                            value={formData.adminEmail}
                             onChange={handleChange}
                             required
-                            placeholder="••••••••"
-                            className="w-full pl-8 pr-3.5 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                            placeholder="e.g. james.mwangi@capitaltrust.com"
+                            className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                           />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Admin Username */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Username *</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <input
+                              type="text"
+                              name="adminUsername"
+                              value={formData.adminUsername}
+                              onChange={handleChange}
+                              required
+                              placeholder="e.g. admin"
+                              className="w-full pl-8 pr-3.5 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Admin Password */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Password *</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                              <Lock className="w-3.5 h-3.5" />
+                            </div>
+                            <input
+                              type="password"
+                              name="adminPassword"
+                              value={formData.adminPassword}
+                              onChange={handleChange}
+                              required
+                              placeholder="••••••••"
+                              className="w-full pl-8 pr-3.5 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -43,7 +43,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
 
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
-      const tenant = await db.get("SELECT id, name, subdomain, adminEmail, phone, address, invoiceno, amount, gst, gstamount, isActive, paymentStatus, paymentDate, logo FROM tenants WHERE id = ?", [tenantId]);
+      const tenant = await db.get("SELECT id, name, subdomain, adminEmail, phone, address, invoiceno, amount, gst, gstamount, isActive, paymentStatus, paymentDate, logo, gstnumber FROM tenants WHERE id = ?", [tenantId]);
       if (!tenant) {
         return res.status(404).json({ error: "tenant_not_found" });
       }
@@ -68,6 +68,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
         supportEmail: tenant.adminEmail || globalSettings.supportEmail,
         supportPhone: tenant.phone || globalSettings.supportPhone || '',
         address: tenant.address || globalSettings.address || '',
+        gstnumber: tenant.gstnumber || '',
         ismaintanance: globalSettings.ismaintanance,
         message: globalSettings.message,
         resumetime: globalSettings.resumetime,
@@ -102,6 +103,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
           adminEmail: tenant.adminEmail,
           phone: tenant.phone || '',
           address: tenant.address || '',
+          gstnumber: tenant.gstnumber || '',
           invoiceno: tenant.invoiceno || '',
           amount: tenant.amount || 0,
           gst: tenant.gst || 0,
@@ -129,16 +131,18 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Access denied. Only administrators can update company settings." });
     }
 
-    const { companyName, companyLogo, supportEmail, supportPhone, address, gstno } = req.body;
+    const { companyName, companyLogo, supportEmail, supportPhone, address, gstno, gstnumber } = req.body;
     if (!companyName) {
       return res.status(400).json({ error: "Company name is required" });
     }
 
+    const tenantGstVal = gstnumber !== undefined ? gstnumber : (gstno !== undefined ? gstno : '');
+
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
       await db.run(
-        "UPDATE tenants SET name = ?, adminEmail = ?, phone = ?, address = ?, logo = ? WHERE id = ?",
-        [companyName, supportEmail || '', supportPhone || '', address || '', companyLogo || '', tenantId]
+        "UPDATE tenants SET name = ?, adminEmail = ?, phone = ?, address = ?, logo = ?, gstnumber = ? WHERE id = ?",
+        [companyName, supportEmail || '', supportPhone || '', address || '', companyLogo || '', tenantGstVal, tenantId]
       );
       return res.json({ message: "Company settings updated successfully" });
     }

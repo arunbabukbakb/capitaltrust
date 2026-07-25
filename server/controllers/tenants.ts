@@ -29,7 +29,7 @@ const getRazorpayDetails = () => {
 
 export const registerTenant = async (req: Request, res: Response) => {
   try {
-    const { companyName, subdomain, phone, address, adminName, adminEmail, adminUsername, adminPassword } = req.body;
+    const { companyName, subdomain, phone, address, gstnumber, adminName, adminEmail, adminUsername, adminPassword } = req.body;
 
     if (!companyName || !subdomain || !adminName || !adminEmail || !adminUsername || !adminPassword) {
       return res.status(400).json({ error: "Missing required fields: companyName, subdomain, adminName, adminEmail, adminUsername, adminPassword" });
@@ -79,6 +79,7 @@ export const registerTenant = async (req: Request, res: Response) => {
         adminEmail: adminEmailClean,
         phone: phone ? phone.trim() : '',
         address: address ? address.trim() : '',
+        gstnumber: gstnumber ? gstnumber.trim() : '',
         createdDate
       });
 

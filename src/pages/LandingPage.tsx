@@ -20,10 +20,13 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../components/ThemeContext';
 import WhatsAppButton from '../components/WhatsAppButton';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { companySettings } = useSelector((state: RootState) => state.auth);
 
   const getViteAppUrl = (): string => {
     const envUrl =
@@ -134,9 +137,11 @@ export default function LandingPage() {
       {/* Header */}
       <header className="relative z-10 px-4 sm:px-6 py-3.5 sm:py-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/60 bg-white/90 dark:bg-[#090d16]/90 backdrop-blur-md sticky top-0">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="p-1.5 sm:p-2 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-xl shadow-lg shadow-indigo-500/20">
-            <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-          </div>
+          <img
+            src={companySettings?.companyLogo || '/favicon.png'}
+            alt={companySettings?.companyName || 'CapitalTrust Logo'}
+            className="h-8 sm:h-9 w-auto object-contain shrink-0"
+          />
           <div>
             <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent font-headline tracking-tight">
               CapitalTrust

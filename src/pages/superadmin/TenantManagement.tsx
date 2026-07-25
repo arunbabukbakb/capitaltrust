@@ -26,6 +26,7 @@ interface Tenant {
   isActive: number; // 0 or 1
   paymentStatus: string;
   paymentDate?: string;
+  gstnumber?: string;
 }
 
 export default function TenantManagement() {
@@ -73,7 +74,8 @@ export default function TenantManagement() {
     subdomain: '',
     adminEmail: '',
     paymentStatus: 'Pending',
-    isActive: 1
+    isActive: 1,
+    gstnumber: ''
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
@@ -165,7 +167,8 @@ export default function TenantManagement() {
       subdomain: tenant.subdomain,
       adminEmail: tenant.adminEmail,
       paymentStatus: tenant.paymentStatus || 'Pending',
-      isActive: tenant.isActive
+      isActive: tenant.isActive,
+      gstnumber: tenant.gstnumber || ''
     });
     setEditError('');
   };
@@ -350,6 +353,7 @@ export default function TenantManagement() {
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs font-bold text-white leading-tight truncate">{t.name}</h4>
+                      {t.gstnumber && <div className="text-[10px] text-slate-400 font-mono truncate">GSTIN: {t.gstnumber}</div>}
                       <div className="flex items-center gap-1 font-mono text-[10px] text-indigo-400 mt-0.5">
                         <span className="truncate">{t.subdomain}</span>
                         <a href={tenantUrl} target="_blank" rel="noopener noreferrer" className="p-0.5 hover:text-white shrink-0">
@@ -490,7 +494,10 @@ export default function TenantManagement() {
                           <span className="w-7 h-7 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center text-xs">
                             🏛️
                           </span>
-                          <span>{t.name}</span>
+                          <div>
+                            <div>{t.name}</div>
+                            {t.gstnumber && <div className="text-[10px] text-slate-400 font-mono font-normal">GSTIN: {t.gstnumber}</div>}
+                          </div>
                         </div>
                       </td>
 
@@ -666,6 +673,17 @@ export default function TenantManagement() {
                   value={editForm.adminEmail}
                   onChange={e => setEditForm({ ...editForm, adminEmail: e.target.value })}
                   className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">GST Number / Tax ID</label>
+                <input
+                  type="text"
+                  value={editForm.gstnumber}
+                  onChange={e => setEditForm({ ...editForm, gstnumber: e.target.value })}
+                  placeholder="e.g. 22AAAAA0000A1Z5"
+                  className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500 uppercase"
                 />
               </div>
 

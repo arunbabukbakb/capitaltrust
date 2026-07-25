@@ -102,7 +102,7 @@ export const listTenants = async (req: Request, res: Response) => {
     }
 
     const db = getDatabase();
-    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount FROM tenants ORDER BY createdDate DESC");
+    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount, gstnumber FROM tenants ORDER BY createdDate DESC");
     return res.json(tenants);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
@@ -150,7 +150,7 @@ export const toggleTenantStatus = async (req: Request, res: Response) => {
 export const updateTenantDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone } = req.body;
+    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone, gstnumber } = req.body;
 
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -183,6 +183,7 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     const newIsActive = (isActive === 0 || isActive === 1) ? isActive : tenant.isActive;
     const newAddress = address !== undefined ? address : (tenant.address || '');
     const newPhone = phone !== undefined ? phone : (tenant.phone || '');
+    const newGstNumber = gstnumber !== undefined ? gstnumber : (tenant.gstnumber || '');
 
     let newAmount = tenant.amount || 0;
     let newGst = tenant.gst || 0;
@@ -201,8 +202,8 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     }
 
     await db.run(
-      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ? WHERE id = ?",
-      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, id]
+      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ?, gstnumber = ? WHERE id = ?",
+      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, newGstNumber, id]
     );
 
     return res.json({
@@ -220,7 +221,8 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
         amount: newAmount,
         gst: newGst,
         gstamount: newGstAmount,
-        invoiceno: newInvoiceNo
+        invoiceno: newInvoiceNo,
+        gstnumber: newGstNumber
       }
     });
   } catch (error: any) {

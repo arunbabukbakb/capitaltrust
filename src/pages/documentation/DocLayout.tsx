@@ -19,10 +19,13 @@ import {
   Moon
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 export default function DocLayout() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { companySettings } = useSelector((state: RootState) => state.auth);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [docSearch, setDocSearch] = useState('');
 
@@ -98,14 +101,21 @@ export default function DocLayout() {
 
           <div
             onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 sm:gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
           >
-            <div className="p-1 sm:p-1.5 bg-gradient-to-tr from-indigo-500 to-cyan-500 rounded-lg sm:rounded-xl shadow-md group-hover:scale-105 transition-transform">
-              <BookOpen className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
-            </div>
+            <img
+              src={companySettings?.companyLogo || '/favicon.png'}
+              alt={companySettings?.companyName || 'CapitalTrust Logo'}
+              className="h-7 sm:h-8 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+            />
             <div>
-              <div className="text-xs sm:text-base md:text-lg font-bold font-headline text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5">
-                CapitalTrust <span className="text-[10px] sm:text-xs text-indigo-600 dark:text-indigo-400 font-mono font-normal">Docs</span>
+              <div className="flex items-center">
+                <span className="text-sm sm:text-lg font-bold bg-gradient-to-r from-indigo-600 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent font-headline tracking-tight">
+                  CapitalTrust
+                </span>
+                <span className="ml-1.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded border border-indigo-500/30">
+                  Docs
+                </span>
               </div>
               <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block">User Guide & Module Documentation</p>
             </div>

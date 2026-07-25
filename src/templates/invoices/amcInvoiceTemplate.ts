@@ -16,6 +16,7 @@ export interface AmcInvoiceData {
     adminEmail?: string;
     phone?: string;
     address?: string;
+    gstnumber?: string;
   };
   amcRecord: {
     id: number | string;
@@ -63,6 +64,9 @@ export function generateAmcInvoicePDF(data: AmcInvoiceData) {
   const customerEmail = tenant.adminEmail || 'N/A';
   const customerPhone = tenant.phone || 'N/A';
   const customerAddress = tenant.address || 'N/A';
+  const customerGst = tenant.gstnumber || 'N/A';
+
+  const logoUrl = comp.companyLogo || (typeof window !== 'undefined' ? `${window.location.origin}/logo-white.png` : '/logo-white.png');
 
   const docDefinition: TDocumentDefinitions = {
     pageSize: 'A4',
@@ -72,10 +76,24 @@ export function generateAmcInvoicePDF(data: AmcInvoiceData) {
       {
         columns: [
           [
-            comp.companyLogo && comp.companyLogo.startsWith('data:image/')
-              ? { image: comp.companyLogo, width: 130, margin: [0, 0, 0, 8] }
-              : { text: issuerName, fontSize: 18, bold: true, color: '#1e1b4b', margin: [0, 0, 0, 4] },
-            { text: issuerName, fontSize: 12, bold: true, color: '#0f172a' },
+            {
+              columns: [
+                {
+                  image: logoUrl,
+                  width: 26,
+                  height: 26,
+                  margin: [0, 0, 8, 0]
+                },
+                {
+                  text: issuerName,
+                  fontSize: 18,
+                  bold: true,
+                  color: '#1e1b4b',
+                  margin: [0, 2, 0, 0]
+                }
+              ],
+              margin: [0, 0, 0, 6]
+            },
             { text: issuerAddress, fontSize: 9, color: '#475569', margin: [0, 2, 0, 0] },
             { text: `Email: ${issuerEmail}  |  WhatsApp: ${issuerPhone}`, fontSize: 9, color: '#475569', margin: [0, 2, 0, 0] },
             { text: `GSTIN: ${issuerGst}`, fontSize: 9, bold: true, color: '#0284c7', margin: [0, 2, 0, 0] }
@@ -109,7 +127,8 @@ export function generateAmcInvoicePDF(data: AmcInvoiceData) {
             { text: `Subdomain: ${customerSubdomain}`, fontSize: 9, color: '#475569' },
             { text: `Email: ${customerEmail}`, fontSize: 9, color: '#475569' },
             { text: `Phone: ${customerPhone}`, fontSize: 9, color: '#475569' },
-            { text: `Address: ${customerAddress}`, fontSize: 9, color: '#475569' }
+            { text: `Address: ${customerAddress}`, fontSize: 9, color: '#475569' },
+            { text: `GSTIN: ${customerGst}`, fontSize: 9, bold: true, color: '#0284c7', margin: [0, 1, 0, 0] }
           ],
           [
             { text: 'SERVICE DETAILS', fontSize: 10, bold: true, color: '#0284c7', margin: [0, 0, 0, 4] },
