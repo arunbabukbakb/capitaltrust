@@ -58,8 +58,13 @@ export default function LoanRepayment() {
     ...userLoans.map(l => l.loanId)
   ]);
 
-  // Payments related to the user's loans
-  const userPayments = payments.filter(p => userLoanIds.has(p.loanId));
+  // Payments related to the user's loans and logged-in user
+  const userPayments = payments.filter(p => {
+    const userIdStr = String(user?.id || '');
+    const isUserLoan = userLoanIds.has(p.loanId);
+    const matchesUser = !p.userId || String(p.userId) === userIdStr;
+    return isUserLoan && matchesUser;
+  });
 
   // Helper functions to get user-specific share and outstanding principal
   const getMemberShare = (loan: any) => {

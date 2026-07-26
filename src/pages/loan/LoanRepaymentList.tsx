@@ -208,12 +208,17 @@ const LoanRepaymentList: React.FC = () => {
               >
                 <option value="">-- Choose Loan Ledger --</option>
                 {loans
-                  .filter((l) => l.LoanType === 'Group')
-                  .map((loan) => (
-                    <option key={loan.Id} value={loan.Id}>
-                      {loan.LoanNo} (Pool Limit: ₹{loan.Amount.toLocaleString()})
-                    </option>
-                  ))}
+                  .filter((l) => (l.loanType || l.LoanType) === 'Group')
+                  .map((loan) => {
+                    const id = loan.loanId || loan.Id || loan.id || '';
+                    const loanNo = loan.loanNo || loan.LoanNo || id;
+                    const amount = loan.amount ?? loan.Amount ?? 0;
+                    return (
+                      <option key={id} value={id}>
+                        {loanNo} (Pool Limit: ₹{amount.toLocaleString()})
+                      </option>
+                    );
+                  })}
               </select>
             </div>
           )}

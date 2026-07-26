@@ -98,33 +98,34 @@ export async function runSeeders(db: Database) {
     }
   }
 
-  // Seed menus if empty
-  const menuCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM menus");
-  if (menuCount && menuCount.count === 0) {
-    const initialMenus = [
-      { menuId: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', parentId: null, menuOrder: 10 },
-      { menuId: 'liquidity', name: 'Collection', icon: 'Coins', path: null, parentId: null, menuOrder: 20 },
-      { menuId: 'collection-types', name: 'Collection Type', icon: 'Shield', path: '/collection-types', parentId: 'liquidity', menuOrder: 21 },
-      { menuId: 'fund-collection', name: 'Fund Collection', icon: 'Coins', path: '/fund-collection', parentId: 'liquidity', menuOrder: 22 },
-      { menuId: 'fund-collection-audit', name: 'Collection Summary', icon: 'FileText', path: '/fund-collection-audit', parentId: 'liquidity', menuOrder: 23 },
-      { menuId: 'credit', name: 'Loans', icon: 'Calculator', path: null, parentId: null, menuOrder: 30 },
-      { menuId: 'loan-repayment', name: 'My Loans', icon: 'Calculator', path: '/loan-repayment', parentId: 'credit', menuOrder: 31 },
-      { menuId: 'loan-request', name: 'Loan Request', icon: 'FilePlus', path: '/loan-request', parentId: 'credit', menuOrder: 31.5 },
-      { menuId: 'loan-list', name: 'Loan List', icon: 'FileText', path: '/loan-list', parentId: 'credit', menuOrder: 32 },
-      { menuId: 'loan-entry', name: 'Loan Entry', icon: 'Users', path: '/loan-entry', parentId: 'credit', menuOrder: 33 },
-      { menuId: 'loan-repayments', name: 'Repayment', icon: 'ShieldCheck', path: '/loan-repayments', parentId: 'credit', menuOrder: 34 },
-      { menuId: 'expenses', name: 'Expenses', icon: 'Receipt', path: '/expenses', parentId: null, menuOrder: 35 },
-      { menuId: 'users', name: 'Users', icon: 'Users', path: null, parentId: null, menuOrder: 40 },
-      { menuId: 'role-management', name: 'Role Management', icon: 'Shield', path: '/roles', parentId: 'users', menuOrder: 41 },
-      { menuId: 'user-management', name: 'User Management', icon: 'Users', path: '/users', parentId: 'users', menuOrder: 42 },
-      { menuId: 'menu-management', name: 'Menu Management', icon: 'Menu', path: '/menus', parentId: 'users', menuOrder: 43 },
-      { menuId: 'permission-management', name: 'Permission Management', icon: 'ShieldCheck', path: '/permissions', parentId: 'users', menuOrder: 44 },
-      { menuId: 'reports', name: 'Reports', icon: 'FileSpreadsheet', path: null, parentId: null, menuOrder: 50 },
-      { menuId: 'transactions', name: 'Transactions', icon: 'Receipt', path: '/reports/transactions', parentId: 'reports', menuOrder: 51 },
-      { menuId: 'member-ledger', name: 'Member Ledger', icon: 'FileText', path: '/reports/member-ledger', parentId: 'reports', menuOrder: 52 }
-    ];
+  // Seed menus if missing
+  const initialMenus = [
+    { menuId: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', parentId: null, menuOrder: 10 },
+    { menuId: 'liquidity', name: 'Collection', icon: 'Coins', path: null, parentId: null, menuOrder: 20 },
+    { menuId: 'collection-types', name: 'Collection Type', icon: 'Shield', path: '/collection-types', parentId: 'liquidity', menuOrder: 21 },
+    { menuId: 'fund-collection', name: 'Fund Collection', icon: 'Coins', path: '/fund-collection', parentId: 'liquidity', menuOrder: 22 },
+    { menuId: 'fund-collection-audit', name: 'Collection Summary', icon: 'FileText', path: '/fund-collection-audit', parentId: 'liquidity', menuOrder: 23 },
+    { menuId: 'credit', name: 'Loans', icon: 'Calculator', path: null, parentId: null, menuOrder: 30 },
+    { menuId: 'loan-repayment', name: 'My Loans', icon: 'Calculator', path: '/loan-repayment', parentId: 'credit', menuOrder: 31 },
+    { menuId: 'loan-request', name: 'Loan Request', icon: 'FilePlus', path: '/loan-request', parentId: 'credit', menuOrder: 31.5 },
+    { menuId: 'loan-list', name: 'Loan List', icon: 'FileText', path: '/loan-list', parentId: 'credit', menuOrder: 32 },
+    { menuId: 'loan-entry', name: 'Loan Entry', icon: 'Users', path: '/loan-entry', parentId: 'credit', menuOrder: 33 },
+    { menuId: 'loan-repayments', name: 'Repayment', icon: 'ShieldCheck', path: '/loan-repayments', parentId: 'credit', menuOrder: 34 },
+    { menuId: 'expenses', name: 'Expenses', icon: 'Receipt', path: '/expenses', parentId: null, menuOrder: 35 },
+    { menuId: 'users', name: 'Users', icon: 'Users', path: null, parentId: null, menuOrder: 40 },
+    { menuId: 'role-management', name: 'Role Management', icon: 'Shield', path: '/roles', parentId: 'users', menuOrder: 41 },
+    { menuId: 'user-management', name: 'User Management', icon: 'Users', path: '/users', parentId: 'users', menuOrder: 42 },
+    { menuId: 'menu-management', name: 'Menu Management', icon: 'Menu', path: '/menus', parentId: 'users', menuOrder: 43 },
+    { menuId: 'permission-management', name: 'Permission Management', icon: 'ShieldCheck', path: '/permissions', parentId: 'users', menuOrder: 44 },
+    { menuId: 'reports', name: 'Reports', icon: 'FileSpreadsheet', path: null, parentId: null, menuOrder: 50 },
+    { menuId: 'transactions', name: 'Transactions', icon: 'Receipt', path: '/reports/transactions', parentId: 'reports', menuOrder: 51 },
+    { menuId: 'member-ledger', name: 'Member Ledger', icon: 'FileText', path: '/reports/member-ledger', parentId: 'reports', menuOrder: 52 },
+    { menuId: 'due-report', name: 'Due Report', icon: 'Calendar', path: '/reports/due-report', parentId: 'reports', menuOrder: 53 }
+  ];
 
-    for (const menu of initialMenus) {
+  for (const menu of initialMenus) {
+    const existing = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [menu.menuId]);
+    if (!existing) {
       await db.run(
         "INSERT INTO menus (menuId, name, icon, path, parentId, menuOrder) VALUES (?, ?, ?, ?, ?, ?)",
         [menu.menuId, menu.name, menu.icon, menu.path, menu.parentId, menu.menuOrder]
@@ -132,49 +133,15 @@ export async function runSeeders(db: Database) {
     }
   }
 
-  // Seed default permissions for roles if empty
-  const permCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM role_menu_permissions");
-  if (permCount && permCount.count === 0) {
-    const memberRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'user' AND tenantId = 1");
-    const managerRole = await db.get<{ id: number }>("SELECT id FROM roles WHERE roleType = 'manager' AND tenantId = 1");
-
-    if (memberRole) {
-      const memberMenus = [
-        'dashboard',
-        'liquidity', 'fund-collection-audit',
-        'credit', 'loan-repayment', 'loan-request',
-        'expenses',
-        'reports', 'transactions', 'member-ledger'
-      ];
-      for (const mId of memberMenus) {
-        const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
-        if (menu) {
-          await db.run(
-            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
-            [memberRole.id, menu.id]
-          );
-        }
-      }
-    }
-
-    if (managerRole) {
-      const managerMenus = [
-        'dashboard',
-        'liquidity', 'collection-types', 'fund-collection', 'fund-collection-audit',
-        'credit', 'loan-repayment', 'loan-request', 'loan-list', 'loan-entry', 'loan-repayments',
-        'expenses',
-        'users', 'role-management', 'user-management',
-        'reports', 'transactions', 'member-ledger'
-      ];
-      for (const mId of managerMenus) {
-        const menu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = ?", [mId]);
-        if (menu) {
-          await db.run(
-            "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
-            [managerRole.id, menu.id]
-          );
-        }
-      }
+  // Ensure due-report permission for manager roles across all tenants
+  const dueReportMenu = await db.get<{ id: number }>("SELECT id FROM menus WHERE menuId = 'due-report'");
+  if (dueReportMenu) {
+    const managerRoles = await db.all<{ id: number }[]>("SELECT id FROM roles WHERE roleType = 'manager'");
+    for (const r of managerRoles) {
+      await db.run(
+        "INSERT IGNORE INTO role_menu_permissions (roleId, menuId) VALUES (?, ?)",
+        [r.id, dueReportMenu.id]
+      );
     }
   }
 

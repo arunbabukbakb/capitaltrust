@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link, Navigate } from 'react-router-dom';
 import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send, Wrench } from 'lucide-react';
+import { initializeSuperAdminPushNotifications, registerForegroundMessageHandler } from '../firebase';
 
 export default function SuperAdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const token = localStorage.getItem('token');
   const adminUser = localStorage.getItem('superadmin_user')
     ? JSON.parse(localStorage.getItem('superadmin_user')!)
     : null;
 
-  if (!localStorage.getItem('token') || !adminUser) {
+  useEffect(() => {
+    if (token && adminUser) {
+      initializeSuperAdminPushNotifications();
+      registerForegroundMessageHandler();
+    }
+  }, [token]);
+
+  if (!token || !adminUser) {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -28,19 +37,20 @@ export default function SuperAdminLayout() {
     { label: 'Maintenance Notice', path: '/admin/maintenance', icon: Wrench },
     { label: 'Menu Management', path: '/admin/menus', icon: Layers },
     { label: 'Broadcast Mail', path: '/admin/send-mail', icon: Send },
+    { label: 'Support Mailbox', path: '/admin/support-inbox', icon: Mail },
     { label: 'SMTP Mail Settings', path: '/admin/smtp', icon: Mail },
     { label: 'Pricing Settings', path: '/admin/pricing', icon: Coins },
     { label: 'SuperAdmin Profile', path: '/admin/profile', icon: User }
   ];
 
   return (
-    <div className="min-h-screen bg-[#070b13] text-[#e2e8f0] font-sans antialiased flex w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#070b13] text-[#f8fafc] font-sans antialiased flex w-full max-w-full overflow-x-hidden superadmin-root">
       {/* Background Glows */}
       <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none z-0" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/5 blur-[150px] pointer-events-none z-0" />
 
       {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800/80 bg-[#070b13]/60 backdrop-blur-xl fixed top-0 bottom-0 left-0 z-30 p-6 justify-between">
+      <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800/80 bg-[#070b13]/80 backdrop-blur-xl fixed top-0 bottom-0 left-0 z-30 p-6 justify-between">
         <div className="space-y-8">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
@@ -49,7 +59,7 @@ export default function SuperAdminLayout() {
             </div>
             <div>
               <h1 className="text-sm font-extrabold tracking-tight text-white font-headline">CapitalTrust</h1>
-              <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">Platform Admin</p>
+              <p className="text-[9px] uppercase tracking-widest text-indigo-300 font-bold">Platform Admin</p>
             </div>
           </div>
 
@@ -64,11 +74,11 @@ export default function SuperAdminLayout() {
                   to={item.path}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                     isActive
-                      ? 'bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 border border-indigo-500/20 text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-900/40 border border-transparent'
+                      ? 'bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 border border-indigo-500/30 text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-900/60 border border-transparent font-medium'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -84,7 +94,7 @@ export default function SuperAdminLayout() {
             </div>
             <div className="overflow-hidden">
               <p className="text-xs font-bold text-white truncate">{adminUser?.fullName}</p>
-              <p className="text-[9px] font-medium text-slate-500 truncate">{adminUser?.email}</p>
+              <p className="text-[10px] font-medium text-slate-300 truncate">{adminUser?.email}</p>
             </div>
           </div>
           <button

@@ -525,4 +525,42 @@
   background-color: rgba(148, 163, 184, 0.6);
 }
 
+/* ── SuperAdmin Global High-Contrast Bright Text & Readability Enhancements ── */
+.superadmin-root {
+  color: #f8fafc !important;
+}
+
+.superadmin-root .text-slate-500 {
+  color: #cbd5e1 !important; /* Elevate dim text to slate-300 for high readability */
+}
+
+.superadmin-root .text-slate-400 {
+  color: #e2e8f0 !important; /* Elevate dark slate-400 to crisp slate-200 */
+}
+
+.superadmin-root .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.superadmin-root .text-slate-300 {
+  color: #f1f5f9 !important; /* Elevate to bright white slate-100 */
+}
+
+.superadmin-root ::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.superadmin-root label {
+  color: #e2e8f0 !important;
+  font-weight: 600 !important;
+}
+
+.superadmin-root input, 
+.superadmin-root select, 
+.superadmin-root textarea {
+  color: #ffffff !important;
+}
+
+
 

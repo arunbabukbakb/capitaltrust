@@ -6,8 +6,11 @@ import { getDatabase } from '../database';
 import {
   sendRegistrationPaymentEmail,
   sendAmcPaymentEmail,
-  sendTenantBroadcastMessageEmail
+  sendTenantBroadcastMessageEmail,
+  sendSupportReplyEmail,
+  createActiveTransporter
 } from '../utils/mailer';
+import { fetchLiveIncomingEmails, deleteLiveInboxMessage } from '../utils/imapReader';
 import { runSeeders } from '../seeders';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
@@ -1003,6 +1006,135 @@ export const updateGlobalCompanyDetails = async (req: Request, res: Response) =>
   } catch (error: any) {
     console.error('Update global company details error:', error);
     return res.status(500).json({ error: error.message || 'Failed to update global company details.' });
+  }
+};
+
+export const getLiveInboxMessages = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const result = await fetchLiveIncomingEmails(40);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || 'Failed to fetch incoming emails via IMAP.' });
+    }
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('getLiveInboxMessages error:', error);
+    return res.status(500).json({ error: error.message || 'Error loading live inbox emails.' });
+  }
+};
+
+export const replyToInboxEmail = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { toEmail, toName, subject, messageBody } = req.body;
+    if (!toEmail || !messageBody) {
+      return res.status(400).json({ error: 'Recipient email and message body are required.' });
+    }
+
+    const emailResult = await sendSupportReplyEmail({
+      toEmail,
+      toName,
+      subject,
+      messageBody
+    });
+
+    if (!emailResult.success) {
+      return res.status(500).json({ error: emailResult.error || 'Failed to send reply email via SMTP.' });
+    }
+
+    return res.json({
+      success: true,
+      message: `Reply email successfully sent to ${toEmail}!`,
+      messageId: emailResult.messageId
+    });
+  } catch (error: any) {
+    console.error('replyToInboxEmail error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to send reply email via SMTP.' });
+  }
+};
+
+export const deleteInboxMessage = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { uid } = req.params;
+    if (!uid) {
+      return res.status(400).json({ error: 'Message UID parameter is required.' });
+    }
+
+    const result = await deleteLiveInboxMessage(Number(uid));
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || 'Failed to delete email from mailbox.' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Email deleted successfully from mailbox.'
+    });
+  } catch (error: any) {
+    console.error('deleteInboxMessage error:', error);
+    return res.status(500).json({ error: error.message || 'Error deleting email message.' });
+  }
+};
+
+export const updateSuperAdminPushToken = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: number; role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { pushToken } = req.body;
+    if (!pushToken) {
+      return res.status(400).json({ error: 'pushToken parameter is required.' });
+    }
+
+    const db = getDatabase();
+    await db.run("UPDATE superadmins SET pushToken = ? WHERE id = ?", [pushToken.trim(), decoded.id]);
+
+    return res.json({
+      success: true,
+      message: 'SuperAdmin push token saved successfully in superadmins table.'
+    });
+  } catch (error: any) {
+    console.error('updateSuperAdminPushToken error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update push token.' });
   }
 };
 

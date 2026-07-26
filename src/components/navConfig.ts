@@ -10,6 +10,7 @@ import {
   FileText,
   Receipt,
   FileSpreadsheet,
+  Calendar,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -98,6 +99,18 @@ export const navConfig: NavItem[] = [
         name: 'Transactions',
         icon: Receipt,
         path: '/reports/transactions',
+      },
+      {
+        id: 'member-ledger',
+        name: 'Member Ledger',
+        icon: FileText,
+        path: '/reports/member-ledger',
+      },
+      {
+        id: 'due-report',
+        name: 'Due Report',
+        icon: Calendar,
+        path: '/reports/due-report',
       },
     ],
   },

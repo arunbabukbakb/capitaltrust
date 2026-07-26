@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database';
+import { LoanModel } from '../models/Loan';
+import { getDuesForMember } from './loanPayments';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -147,17 +149,18 @@ export const getLoanRepaymentHistory = async (req: Request, res: Response) => {
 
     const history = await db.all(
       `SELECT 
-         Id as id, 
-         DueMonth as dueMonth, 
-         PaymentDate as paymentDate, 
-         Amount as amount, 
-         InterestPaid as interestPaid, 
-         PrincipalPaid as principalPaid, 
-         ApprovedBy as approvedBy, 
-         ApprovedDate as approvedDate 
-       FROM LoanPayment 
-       WHERE LoanMemberId = ? 
-       ORDER BY DueMonth ASC`,
+         lp.Id as id, 
+         lp.DueMonth as dueMonth, 
+         lp.PaymentDate as paymentDate, 
+         lp.Amount as amount, 
+         lp.InterestPaid as interestPaid, 
+         lp.PrincipalPaid as principalPaid, 
+         COALESCE(u.fullName, u.username, lp.ApprovedBy) as approvedBy, 
+         lp.ApprovedDate as approvedDate 
+       FROM LoanPayment lp
+       LEFT JOIN users u ON lp.ApprovedBy = u.id
+       WHERE lp.LoanMemberId = ? 
+       ORDER BY lp.DueMonth ASC`,
       [loanMemberId]
     );
     res.json(history);
@@ -192,5 +195,165 @@ export const getCollectionTypeHistory = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("GetCollectionTypeHistory error:", error);
     res.status(500).json({ error: error.message || "Failed to load collection type history" });
+  }
+};
+
+export const getDueReportData = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+    
+    // Auth & Permission check (Only Admin or Manager)
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    let userRole: string | null = null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role?: string };
+        userRole = decoded.role || null;
+      } catch {
+        userRole = null;
+      }
+    }
+    
+    if (userRole !== 'admin' && userRole !== 'manager') {
+      return res.status(403).json({ error: "Access denied. Due Report is accessible only for administrators and managers." });
+    }
+
+    const monthQuery = req.query.month ? parseInt(req.query.month as string) : parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
+    const filterLoanId = (req.query.loanId as string) || '';
+    const filterUserId = (req.query.userId as string) || '';
+    const currentCalendarMonth = parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
+
+    const structuredLoans = await LoanModel.listAllLoans(tenantId);
+    
+    const items: any[] = [];
+    const loansFilterListMap = new Map<string, any>();
+    const usersFilterListMap = new Map<string, any>();
+
+    for (const loan of structuredLoans) {
+      loansFilterListMap.set(loan.Id, { loanId: loan.Id, loanNo: loan.LoanNo, loanType: loan.LoanType });
+
+      const isCompound = Boolean(loan.IsCompound === 1 || loan.IsCompound === true || loan.IsCompound === '1' || loan.IsCompound === 'true');
+      const members = await LoanModel.listLoanMembers(loan.Id, tenantId);
+      const slabs = await LoanModel.getSlabsByLoanIds([loan.Id]);
+
+      for (const member of members) {
+        usersFilterListMap.set(member.UserId, { userId: member.UserId, userName: member.fullName || member.UserId });
+
+        if (filterLoanId && loan.Id !== filterLoanId && loan.LoanNo !== filterLoanId) {
+          continue;
+        }
+
+        if (filterUserId && member.UserId !== filterUserId) {
+          continue;
+        }
+
+        const dueRecord = await getDuesForMember(null, member, loan, monthQuery, slabs, false, isCompound);
+        if (!dueRecord) continue;
+
+        const approvedPayment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, monthQuery);
+        const totalPaid = approvedPayment.totalPaid || 0;
+        const netDue = Math.max(0, dueRecord.TotalDue - totalPaid);
+
+        let dueStatus: 'Overdue' | 'Pending' | 'Paid' | 'Partial' = 'Pending';
+        if (totalPaid >= dueRecord.TotalDue || dueRecord.Status === 'Paid') {
+          dueStatus = 'Paid';
+        } else if (monthQuery < currentCalendarMonth || dueRecord.CarryForwardInterest > 0) {
+          dueStatus = 'Overdue';
+        } else if (totalPaid > 0) {
+          dueStatus = 'Partial';
+        }
+
+        // Strictly include ONLY due items (exclude fully Paid items or netDue <= 0)
+        if (dueStatus === 'Paid' || netDue <= 0) {
+          continue;
+        }
+
+        const currentInterestBase = isCompound ? (dueRecord.OpeningPrincipal + dueRecord.CarryForwardInterest) : dueRecord.OpeningPrincipal;
+        let activeRate = loan.InterestRate || 0;
+        if (loan.InterestMode === 'Variable') {
+          const slab = slabs.find((s: any) => currentInterestBase >= s.FromAmount && currentInterestBase <= s.ToAmount);
+          if (slab) activeRate = slab.InterestRate;
+        }
+
+        items.push({
+          id: `due_${loan.Id}_${member.UserId}_${monthQuery}`,
+          loanId: loan.Id,
+          loanNo: loan.LoanNo,
+          loanType: loan.LoanType,
+          userId: member.UserId,
+          userName: member.fullName || member.UserId,
+          loanShareAmount: member.LoanShareAmount,
+          openingPrincipal: dueRecord.OpeningPrincipal,
+          outstandingBalance: currentInterestBase,
+          principalDue: dueRecord.PrincipalDue,
+          interestDue: dueRecord.InterestDue,
+          carryForwardInterest: dueRecord.CarryForwardInterest,
+          totalDue: dueRecord.TotalDue,
+          amountPaid: totalPaid,
+          netDue: netDue,
+          dueStatus: dueStatus,
+          month: monthQuery,
+          startDate: loan.StartDate,
+          endDate: loan.EndDate,
+          interestRate: activeRate,
+          interestMode: loan.InterestMode
+        });
+      }
+    }
+
+    // Group items by loan facility
+    const groupedMap = new Map<string, any>();
+    for (const item of items) {
+      if (!groupedMap.has(item.loanId)) {
+        groupedMap.set(item.loanId, {
+          loanId: item.loanId,
+          loanNo: item.loanNo,
+          loanType: item.loanType,
+          interestMode: item.interestMode,
+          interestRate: item.interestRate,
+          totalLoanDue: 0,
+          totalPrincipalDue: 0,
+          totalInterestDue: 0,
+          dueMembersCount: 0,
+          members: []
+        });
+      }
+      const group = groupedMap.get(item.loanId);
+      group.totalLoanDue += item.netDue;
+      group.totalPrincipalDue += item.principalDue;
+      group.totalInterestDue += (item.interestDue + item.carryForwardInterest);
+      group.dueMembersCount += 1;
+      group.members.push(item);
+    }
+
+    const grouped = Array.from(groupedMap.values());
+
+    // Consolidated summaries
+    const totalDueAmount = items.reduce((sum, i) => sum + i.netDue, 0);
+    const totalPrincipalDue = items.reduce((sum, i) => sum + i.principalDue, 0);
+    const totalInterestDue = items.reduce((sum, i) => sum + (i.interestDue + i.carryForwardInterest), 0);
+    const totalFacilitiesCount = grouped.length;
+    const totalMembersCount = new Set(items.map(i => i.userId)).size;
+
+    return res.json({
+      month: monthQuery,
+      summary: {
+        totalDueAmount,
+        totalPrincipalDue,
+        totalInterestDue,
+        totalFacilitiesCount,
+        totalMembersCount,
+        totalItemsCount: items.length
+      },
+      grouped,
+      items,
+      filters: {
+        loans: Array.from(loansFilterListMap.values()),
+        users: Array.from(usersFilterListMap.values())
+      }
+    });
+  } catch (error: any) {
+    console.error("getDueReportData error:", error);
+    res.status(500).json({ error: error.message || "Failed to generate due report" });
   }
 };

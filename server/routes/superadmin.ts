@@ -20,7 +20,11 @@ import {
   sendTenantBroadcastMail,
   resetFullData,
   getGlobalCompanyDetails,
-  updateGlobalCompanyDetails
+  updateGlobalCompanyDetails,
+  getLiveInboxMessages,
+  replyToInboxEmail,
+  deleteInboxMessage,
+  updateSuperAdminPushToken
 } from '../controllers/superadmin';
 
 const router = Router();
@@ -40,7 +44,7 @@ router.get('/tenants/:id/amc', listTenantAmcRecords);
 router.post('/amc/:id/pay', payTenantAmcRecord);
 router.post('/reset-data', resetFullData);
 
-// SMTP Settings & Broadcast Mail Routes
+// SMTP Settings, Live Inbox, Push Tokens & Broadcast Mail Routes
 router.get('/smtp', listSmtpSettings);
 router.post('/smtp', createSmtpSetting);
 router.put('/smtp/:id', updateSmtpSetting);
@@ -48,5 +52,9 @@ router.post('/smtp/:id/activate', activateSmtpSetting);
 router.delete('/smtp/:id', deleteSmtpSetting);
 router.post('/smtp/:id/test', testSmtpConnection);
 router.post('/send-mail', sendTenantBroadcastMail);
+router.get('/inbox', getLiveInboxMessages);
+router.post('/inbox/reply', replyToInboxEmail);
+router.delete('/inbox/:uid', deleteInboxMessage);
+router.post('/push-token', updateSuperAdminPushToken);
 
 export default router;

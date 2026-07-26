@@ -94,3 +94,40 @@ export async function sendPushNotification(userIds: string[], title: string, bod
     console.error('Error in sendPushNotification process:', error);
   }
 }
+
+export async function sendDirectPushToTokens(tokens: string[], title: string, body: string, url?: string): Promise<void> {
+  if (!tokens || tokens.length === 0) return;
+
+  console.log(`[Push Notification] Sending direct push to ${tokens.length} device token(s) | Title: "${title}"`);
+
+  const messaging = isFirebaseInitialized ? adminGetMessaging() : null;
+
+  for (const token of tokens) {
+    if (messaging) {
+      try {
+        const payload: any = {
+          token,
+          notification: { title, body },
+          webpush: {
+            headers: { Urgency: 'high' },
+            notification: {
+              icon: '/favicon.png',
+              badge: '/favicon.png'
+            }
+          }
+        };
+
+        if (url) {
+          payload.data = { url };
+        }
+
+        await messaging.send(payload);
+        console.log(`[Push Notification] Direct push sent successfully to token: ${token.substring(0, 15)}...`);
+      } catch (fcmError: any) {
+        console.error(`[Push Notification] FCM direct token push failed:`, fcmError?.message || fcmError);
+      }
+    } else {
+      console.log(`[MOCK PUSH] Direct Token: ${token.substring(0, 15)}... | Title: "${title}" | Body: "${body}" | URL: "${url || ''}"`);
+    }
+  }
+}

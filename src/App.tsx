@@ -6,7 +6,7 @@ import { logOut, setCredentials, setMenus, setCompanySettings } from './authSlic
 import MainLayout from './components/MainLayout';
 import Dashboard from './pages/Dashboard';
 import FundCollection from './pages/collection/FundCollection';
-import LoanRepayment from './pages/loan/LoanRepayment';
+import LoanRepayment from './pages/loan/MyLoans';
 import LoanEntry from './pages/loan/LoanEntry';
 import LoanRequest from './pages/loan/LoanRequest';
 import { getSubdomain } from './main';
@@ -25,12 +25,14 @@ import CollectionAuditSummary from './pages/collection/CollectionAuditSummary';
 import MenusPage from './pages/user/MenusPage';
 import PermissionsPage from './pages/user/PermissionsPage';
 import SettingsPage from './pages/tenant/SettingsPage';
+import ContactPage from './pages/tenant/ContactPage';
 import ProfilePage from './pages/user/ProfilePage';
 import AdminLogin from './pages/superadmin/AdminLogin';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import TenantManagement from './pages/superadmin/TenantManagement';
 import SmtpSettings from './pages/superadmin/SmtpSettings';
 import SendMailPage from './pages/superadmin/SendMailPage';
+import SupportInboxPage from './pages/superadmin/SupportInboxPage';
 import SuperAdminLayout from './components/SuperAdminLayout';
 import AdminProfile from './pages/superadmin/AdminProfile';
 import AdminPricing from './pages/superadmin/AdminPricing';
@@ -42,6 +44,7 @@ import AmcPayment from './pages/tenant/AmcPayment';
 import ExpensesPage from './pages/expense/ExpensesPage';
 import TransactionsPage from './pages/reports/TransactionsPage';
 import MemberLedger from './pages/reports/MemberLedger';
+import DueReport from './pages/reports/DueReport';
 import DocLayout from './pages/documentation/DocLayout';
 import GettingStartedDoc from './pages/documentation/GettingStartedDoc';
 import MemberManagementDoc from './pages/documentation/MemberManagementDoc';
@@ -173,7 +176,7 @@ export default function App() {
         const url = new URL(envUrl);
         url.pathname = path;
         return url.toString();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const protocol = window.location.protocol;
@@ -283,6 +286,7 @@ export default function App() {
             <Route path="/admin/maintenance" element={<AdminMaintenanceNotice />} />
             <Route path="/admin/send-mail" element={<SendMailPage />} />
             <Route path="/admin/smtp" element={<SmtpSettings />} />
+            <Route path="/admin/support-inbox" element={<SupportInboxPage />} />
             <Route path="/admin/pricing" element={<AdminPricing />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
             <Route path="/admin/menus" element={<MenusPage />} />
@@ -381,7 +385,9 @@ export default function App() {
             <Route path="/expenses" element={hasPermission('expenses') ? <ExpensesPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/transactions" element={hasPermission('transactions') ? <TransactionsPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/member-ledger" element={hasPermission('member-ledger') ? <MemberLedger /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/reports/due-report" element={hasPermission('due-report') ? <DueReport /> : <Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/contact" element={(user?.role === 'admin' || user?.role === 'manager' || activeRole?.roleType === 'admin' || activeRole?.roleType === 'manager') ? <ContactPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>

@@ -207,7 +207,7 @@ export default function AdminCompanyDetails() {
           {/* Support Email */}
           <div>
             <label className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Support Email Address
+              Support Email Address <span className="text-slate-500 font-normal lowercase">(receives incoming contact enquiries)</span>
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />

@@ -19,6 +19,7 @@ import superadminRoutes from './superadmin';
 import expensesRoutes from './expenses';
 import transactionsRoutes from './transactions';
 import reportsRoutes from './reports';
+import contactRoutes from './contact';
 
 const router = Router();
 
@@ -61,6 +62,7 @@ router.use((req, res, next) => {
       path.startsWith('/auth/logout') ||
       path.startsWith('/tenants') ||
       path.startsWith('/super-admin') ||
+      path.startsWith('/contact') ||
       path.startsWith('/menus');
 
     if (!isExempt) {
@@ -97,5 +99,6 @@ router.use('/super-admin', superadminRoutes);
 router.use('/expenses', expensesRoutes);
 router.use('/transactions', transactionsRoutes);
 router.use('/reports', reportsRoutes);
+router.use('/contact', contactRoutes);
 
 export default router;

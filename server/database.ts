@@ -517,6 +517,27 @@ export async function initDatabase(): Promise<Database> {
       );
     `);
 
+    // Ensure smtp_settings has imapServer and imapPort columns
+    try {
+      const hasImapServer = await checkColumnExists('smtp_settings', 'imapServer');
+      if (!hasImapServer) {
+        await db.exec("ALTER TABLE smtp_settings ADD COLUMN imapServer VARCHAR(255) NULL");
+        await db.exec("ALTER TABLE smtp_settings ADD COLUMN imapPort INT DEFAULT 993");
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    // Ensure superadmins table has pushToken column
+    try {
+      const hasSuperAdminPushToken = await checkColumnExists('superadmins', 'pushToken');
+      if (!hasSuperAdminPushToken) {
+        await db.exec("ALTER TABLE superadmins ADD COLUMN pushToken VARCHAR(500) NULL");
+      }
+    } catch (e) {
+      // Ignored
+    }
+
     // Ensure amcdetails.dueDate and amcdetails.paidDate are DATETIME
     try {
       const amcCol = await db.get(`

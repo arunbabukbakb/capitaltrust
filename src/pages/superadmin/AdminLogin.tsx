@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Key, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { initializeSuperAdminPushNotifications } from '../../firebase';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -29,6 +30,9 @@ export default function AdminLogin() {
       // Save token and super admin details
       localStorage.setItem('token', data.token);
       localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+
+      // Trigger SuperAdmin push token registration
+      initializeSuperAdminPushNotifications().catch(() => {});
 
       navigate('/admin/dashboard');
     } catch (err: any) {

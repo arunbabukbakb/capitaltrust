@@ -6,7 +6,8 @@ import {
   PlusCircle,
   X,
   ChevronDown,
-  Download
+  Download,
+  Mail
 } from 'lucide-react';
 import { navConfig } from './navConfig';
 import * as Icons from 'lucide-react';
@@ -316,6 +317,18 @@ export default function Sidebar({
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
               </button>
+              {(effectiveRoleType === 'admin' || effectiveRoleType === 'manager') && (
+                <button
+                  onClick={() => {
+                    onNavigate('/contact');
+                    onClose();
+                  }}
+                  className="w-full flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Contact Support</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   onLogout();

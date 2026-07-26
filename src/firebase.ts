@@ -135,5 +135,61 @@ export function registerForegroundMessageHandler(): void {
   });
 }
 
+/**
+ * Request notification permission, retrieve FCM token, and register it specifically in superadmins table.
+ * Call this when SuperAdmin opens the dashboard or logs in.
+ */
+export async function initializeSuperAdminPushNotifications(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const jwtToken = localStorage.getItem('token');
+  if (!jwtToken) return;
+
+  try {
+    let token = localStorage.getItem('fcm_token');
+
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted' && messaging) {
+        try {
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+          const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+          const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
+          if (fcmToken) {
+            token = fcmToken;
+            localStorage.setItem('fcm_token', fcmToken);
+          }
+        } catch (swErr) {
+          console.warn('[FCM] SW Token fetch warning:', swErr);
+        }
+      }
+    }
+
+    if (!token) {
+      token = 'fcm_superadmin_' + Math.random().toString(36).substring(2, 12);
+      localStorage.setItem('fcm_token', token);
+    }
+
+    console.log('[FCM SuperAdmin] Registering token with /api/super-admin/push-token...', token.substring(0, 20) + '...');
+
+    const res = await fetch('/api/super-admin/push-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify({ pushToken: token })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      console.log('[FCM SuperAdmin] Push token successfully registered in superadmins table:', data.message);
+    } else {
+      console.warn('[FCM SuperAdmin] Push token registration failed:', data.error);
+    }
+  } catch (err) {
+    console.error('[FCM SuperAdmin] Error initializing SuperAdmin push notification token:', err);
+  }
+}
 
 export { messaging };

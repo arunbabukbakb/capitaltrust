@@ -19,6 +19,7 @@ export const getPayments = async (req: Request, res: Response) => {
           'Manual Collection' as type,
           'Processed' as status,
           lm.LoanId as loanId,
+          lm.UserId as userId,
           lp.InterestPaid as interestPaid,
           lp.PrincipalPaid as principalPaid,
           l.InterestMode as interestMode,
@@ -40,6 +41,7 @@ export const getPayments = async (req: Request, res: Response) => {
           'Manual Collection' as type,
           'Processed' as status,
           lm.LoanId as loanId,
+          lm.UserId as userId,
           lp.InterestPaid as interestPaid,
           lp.PrincipalPaid as principalPaid,
           l.InterestMode as interestMode,
@@ -70,6 +72,7 @@ export const getPayments = async (req: Request, res: Response) => {
         type: payment.type,
         status: payment.status,
         loanId: payment.loanId,
+        userId: payment.userId,
         interestPaid: Number(payment.interestPaid || 0),
         principalPaid: Number(payment.principalPaid || 0),
         interestRate: Number(interestRate)

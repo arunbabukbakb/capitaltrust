@@ -8,7 +8,7 @@ import { recordTransaction } from '../services/transactionService';
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
 // Helper to calculate and generate LoanDue ledger entries consecutively up to targetMonth
-async function getDuesForMember(db: any, member: any, loan: any, targetMonth: number, slabs: any[], saveToDb = false, isCompound = false): Promise<any> {
+export async function getDuesForMember(db: any, member: any, loan: any, targetMonth: number, slabs: any[], saveToDb = false, isCompound = false): Promise<any> {
   const startDateStr = loan.StartDate;
   const tenureMonths = Number(loan.TenureMonths || 12);
   const interestRate = Number(loan.InterestRate || 0);

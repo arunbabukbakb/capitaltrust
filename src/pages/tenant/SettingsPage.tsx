@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
 import { setCompanySettings } from '../../authSlice';
@@ -166,9 +167,20 @@ export default function SettingsPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-6 animate-fade-in mt-16 max-w-6xl mx-auto">
-      <div>
-        <h3 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-white">Workspace & Organization Settings</h3>
-        <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-1">Configure tenant organization profile, custom logo, support contact details, and tax invoices.</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-white">Workspace & Organization Settings</h3>
+          <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-1">Configure tenant organization profile, custom logo, support contact details, and tax invoices.</p>
+        </div>
+        {(activeRoleType === 'admin' || activeRoleType === 'manager') && (
+          <Link
+            to="/contact"
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs flex-shrink-0 cursor-pointer"
+          >
+            <Mail className="w-4 h-4" />
+            <span>Contact Support</span>
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
