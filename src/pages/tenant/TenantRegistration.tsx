@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Coins,
@@ -21,11 +21,16 @@ import {
 import { useTheme } from '../../components/ThemeContext';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { pageView } from '../../utils/analytics';
 
 export default function TenantRegistration() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { companySettings } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    pageView('/register-tenant');
+  }, []);
 
 
   const [formData, setFormData] = useState({

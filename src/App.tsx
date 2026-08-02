@@ -77,6 +77,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [tenantError, setTenantError] = useState<string | null>(null);
 
+
   useEffect(() => {
     if (!user) return;
 

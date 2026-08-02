@@ -1,5 +1,5 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
@@ -7,23 +7,27 @@ import App from './App.tsx';
 import './index.css';
 import { ThemeProvider } from './components/ThemeContext.tsx';
 import { logOut } from './authSlice';
+import { initGA } from "./utils/analytics.js";
+
+// Initialize Google Analytics
+initGA();
 
 export function getSubdomain(): string | null {
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
-  
+
   // If running on localhost: e.g. "tenant.localhost"
   if (parts.length === 2 && parts[1] === 'localhost') {
     return parts[0];
   }
-  
+
   // If running on a standard domain: e.g. "tenant.capitaltrust.com"
   if (parts.length > 2) {
     if (parts[0] !== 'www') {
       return parts[0];
     }
   }
-  
+
   return null;
 }
 
@@ -94,7 +98,7 @@ window.fetch = async (input, init) => {
     if (response.status === 401) {
       const isRefreshRequest = url.includes('/api/auth/refresh') || url.includes('/api/auth/login');
       const storedToken = localStorage.getItem('token');
-      
+
       if (!isRefreshRequest && storedToken) {
         if (!refreshTokenPromise) {
           refreshTokenPromise = executeTokenRefresh();

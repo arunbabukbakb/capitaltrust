@@ -34,6 +34,7 @@
     "razorpay": "^2.9.8",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-ga4": "^3.0.1",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.0",
     "swagger-jsdoc": "^6.3.0",
