@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Layers,
   Search,
@@ -48,6 +49,7 @@ const getDefaultDateRange = () => {
 };
 
 export default function TransactionsPage() {
+  const { t } = useTranslation();
   const { defaultStartDate, defaultEndDate } = getDefaultDateRange();
 
   // Filter States
@@ -296,10 +298,10 @@ export default function TransactionsPage() {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <FileSpreadsheet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            Transaction Audit Ledger
+            {t('reportPage.transactionsTitle')}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Centralized financial audit trail of Collections, Approved Loan Facilities, Repayments, and Expenses.
+            {t('reportPage.transactionsSub')}
           </p>
         </div>
         <button
@@ -307,7 +309,7 @@ export default function TransactionsPage() {
           className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh</span>
+          <span>{t('common.refresh')}</span>
         </button>
       </div>
 
@@ -330,13 +332,13 @@ export default function TransactionsPage() {
         {/* Total Volume */}
         <div className="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Total Volume
+            {t('reportPage.totalVolume')}
           </span>
           <h3 className="text-lg sm:text-2xl font-extrabold font-headline text-slate-950 dark:text-slate-50 mt-1">
             ₹{summary.totalVolume.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h3>
           <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Matching Filter Set
+            {t('reportPage.matchingFilterSet')}
           </p>
         </div>
 
@@ -344,7 +346,7 @@ export default function TransactionsPage() {
         <div className="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex justify-between items-center">
             <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Total Inflow
+              {t('reportPage.totalInflow')}
             </span>
             <ArrowDownRight className="w-4 h-4 text-emerald-500" />
           </div>
@@ -352,7 +354,7 @@ export default function TransactionsPage() {
             ₹{summary.totalInflow.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h3>
           <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Collections & Repayments
+            {t('reportPage.collectionsRepayments')}
           </p>
         </div>
 
@@ -360,7 +362,7 @@ export default function TransactionsPage() {
         <div className="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex justify-between items-center">
             <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-              Total Outflow
+              {t('reportPage.totalOutflow')}
             </span>
             <ArrowUpRight className="w-4 h-4 text-amber-500" />
           </div>
@@ -368,21 +370,21 @@ export default function TransactionsPage() {
             ₹{summary.totalOutflow.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h3>
           <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Loan Issues & Expenses
+            {t('reportPage.loanIssuesExpenses')}
           </p>
         </div>
 
         {/* Net Liquidity Balance */}
         <div className="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-            Net Liquidity Balance
+            {t('reportPage.netLiquidityBalance')}
           </span>
           <h3 className={`text-lg sm:text-2xl font-extrabold font-headline mt-1 ${(summary.totalInflow - summary.totalOutflow) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'
             }`}>
             ₹{(summary.totalInflow - summary.totalOutflow).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </h3>
           <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Inflow minus Outflow
+            {t('reportPage.inflowMinusOutflow')}
           </p>
         </div>
       </div>
@@ -395,7 +397,7 @@ export default function TransactionsPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search TXN No, Narration, Ref..."
+              placeholder={t('reportPage.searchTxnPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-900 dark:text-slate-100"
@@ -409,7 +411,7 @@ export default function TransactionsPage() {
               onChange={(e) => setSelectedType(e.target.value)}
               className="w-full sm:w-auto px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-none cursor-pointer"
             >
-              <option value="All">All Types</option>
+              <option value="All">{t('reportPage.allTypes')}</option>
               <option value="Collection">Collection</option>
               <option value="LoanIssue">Loan Issue</option>
               <option value="LoanRepayment">Loan Repayment</option>
@@ -422,7 +424,7 @@ export default function TransactionsPage() {
           {/* 3. From Date */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              From:
+              {t('reportPage.from')}
             </span>
             <input
               type="date"
@@ -435,7 +437,7 @@ export default function TransactionsPage() {
           {/* 4. To Date */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              To:
+              {t('reportPage.to')}
             </span>
             <input
               type="date"

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle,
   Edit3,
@@ -21,6 +22,7 @@ function currency(value: number) {
 }
 
 export default function LoanList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, menus } = useSelector((state: RootState) => state.auth);
   const [loans, setLoans] = useState<any[]>([]);
@@ -136,12 +138,12 @@ export default function LoanList() {
 
       <div className="flex justify-between items-center gap-3">
         <div>
-          <h3 className="text-lg sm:text-2xl font-bold font-headline">Loan Register</h3>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 hidden sm:block">
-            Browse and manage all credit facilities underwritten by the institution.
+          <h3 className="text-lg sm:text-2xl font-bold font-headline dark:text-slate-100">{t('loanPage.loanList')}</h3>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">
+            {t('loanPage.loanListSub')}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-slate-600 shadow-sm flex-shrink-0">
+        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 shadow-sm flex-shrink-0">
           <FileText className="w-3.5 h-3.5 text-slate-500" />
           <span>{loans.length} Loans</span>
         </div>
@@ -197,10 +199,10 @@ export default function LoanList() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center gap-3">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center gap-3">
           <div>
-            <h4 className="text-sm sm:text-base font-bold font-headline">Saved Loans Ledger</h4>
-            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden sm:block">Edit details or delete loans before repayment starts.</p>
+            <h4 className="text-sm sm:text-base font-bold font-headline text-slate-900 dark:text-slate-100">{t('loanPage.loanList')}</h4>
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">{t('loanPage.loanListSub')}</p>
           </div>
           {isAuthorized && (
             <button
@@ -209,7 +211,7 @@ export default function LoanList() {
               className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Loan</span>
+              <span>{t('loanPage.createNewLoan')}</span>
             </button>
           )}
         </div>

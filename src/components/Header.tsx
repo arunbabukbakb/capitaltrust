@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Bell, Grid, Menu, Sun, Moon, X, CheckCheck, Trash2, Clock } from 'lucide-react';
+import { Search, Bell, Grid, Menu, Sun, Moon, X, CheckCheck, Trash2, Clock, Globe } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { RootState } from '../store';
@@ -7,6 +7,7 @@ import { setActiveRole } from '../authSlice';
 import { useTheme } from './ThemeContext';
 import { notificationStore, AppNotification } from '../notificationStore';
 import SearchAutocomplete from './SearchAutocomplete';
+import { useTranslation } from 'react-i18next';
 
 interface HeaderProps {
   title: string;
@@ -35,20 +36,23 @@ export default function Header({
   const dispatch = useDispatch();
   const { theme, toggleTheme } = useTheme();
   const effectiveRoleType = activeRole?.roleType || userRole;
+  const { t, i18n } = useTranslation();
 
   // ── Search & Notification panel state ───────────────────────────────────────
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
 
   // Keep in sync with the notification store
   useEffect(() => {
     return notificationStore.subscribe(setNotifications);
   }, []);
 
-  // Close on outside click
+  // Close notification panel on outside click
   useEffect(() => {
     if (!panelOpen) return;
     const handler = (e: MouseEvent) => {
@@ -62,6 +66,23 @@ export default function Header({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [panelOpen]);
+
+  // Close language dropdown on outside click
+  useEffect(() => {
+    if (!langOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [langOpen]);
+
+  const languages = [
+    { code: 'en', label: 'English', nativeLabel: 'English' },
+    { code: 'ml', label: 'Malayalam', nativeLabel: 'മലയാളം' },
+  ];
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -120,10 +141,22 @@ export default function Header({
           <button
             onClick={toggleTheme}
             className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
-            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            title={theme === 'light' ? t('header.switchDark') : t('header.switchLight')}
           >
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
+
+          {/* ── Language Switcher (Direct 1-Click Toggle) ──────────────────── */}
+          <button
+            id="header-language-switcher"
+            onClick={() => i18n.changeLanguage(i18n.language?.startsWith('ml') ? 'en' : 'ml')}
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition-all cursor-pointer text-[11px] font-bold"
+            title={i18n.language?.startsWith('ml') ? 'Switch to English' : 'മലയാളത്തിലേക്ക് മാറുക'}
+          >
+            <Globe className="w-3.5 h-3.5 text-indigo-500" />
+            <span>{i18n.language?.startsWith('ml') ? 'മലയാളം' : 'English'}</span>
+          </button>
+          {/* ────────────────────────────────────────────────────────────── */}
 
           {/* ── Bell Button + Notification Panel ─────────────────────────── */}
           <div className="relative">

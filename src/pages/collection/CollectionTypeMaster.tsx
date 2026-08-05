@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Shield, CheckCircle, AlertCircle, Save, X, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface CollectionType {
   id: number;
@@ -10,6 +11,7 @@ interface CollectionType {
 }
 
 export default function CollectionTypeMaster() {
+  const { t } = useTranslation();
   const [collectionTypes, setCollectionTypes] = useState<CollectionType[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -163,10 +165,10 @@ export default function CollectionTypeMaster() {
         <div>
           <h3 className="text-base sm:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
             <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 dark:text-slate-100" />
-            Collection Type Master
+            {t('collectionPage.masterTitle')}
           </h3>
           <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Configure master collection types, default frequencies, and contribution amounts.
+            {t('collectionPage.masterSub')}
           </p>
         </div>
         <button
@@ -174,7 +176,7 @@ export default function CollectionTypeMaster() {
           className="w-full sm:w-auto px-3.5 py-2 bg-slate-950 hover:bg-slate-900 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 text-white rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Add Collection Type</span>
+          <span>{t('collectionPage.newTypeBtn')}</span>
         </button>
       </div>
 
@@ -204,7 +206,7 @@ export default function CollectionTypeMaster() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1 sm:mb-1.5">
-                  Type Name
+                  {t('collectionPage.typeNameLabel')}
                 </label>
                 <input
                   required
@@ -219,23 +221,23 @@ export default function CollectionTypeMaster() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1 sm:mb-1.5">
-                    Frequency
+                    {t('collectionPage.frequencyLabel')}
                   </label>
                   <select
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value as any)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-slate-950 dark:focus:border-slate-100 cursor-pointer"
                   >
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                    <option value="dynamic">Dynamic</option>
+                    <option value="weekly">{t('collectionPage.weekly')}</option>
+                    <option value="monthly">{t('collectionPage.monthly')}</option>
+                    <option value="yearly">{t('collectionPage.yearly')}</option>
+                    <option value="dynamic">{t('collectionPage.dynamic')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1 sm:mb-1.5">
-                    Amount (₹) <span className="normal-case text-[9px] text-slate-400">(Optional)</span>
+                    {t('collectionPage.fixedAmountLabel')}
                   </label>
                   <input
                     type="number"
@@ -259,10 +261,10 @@ export default function CollectionTypeMaster() {
                 />
                 <div>
                   <label htmlFor="status" className="text-xs font-bold text-slate-900 dark:text-slate-100 block select-none cursor-pointer">
-                    Active Status
+                    {t('collectionPage.statusLabel')}
                   </label>
                   <label htmlFor="status" className="text-[10px] text-slate-505 dark:text-slate-400 select-none cursor-pointer block mt-0.5 font-medium">
-                    If inactive, this type will be hidden from new entry dropdown lists.
+                    {t('collectionPage.blankNotice')}
                   </label>
                 </div>
               </div>
@@ -273,7 +275,7 @@ export default function CollectionTypeMaster() {
                   onClick={resetForm}
                   className="flex-1 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition cursor-pointer"
                 >
-                  Cancel
+                  {t('collectionPage.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -285,7 +287,7 @@ export default function CollectionTypeMaster() {
                   ) : (
                     <Save className="w-3.5 h-3.5" />
                   )}
-                  <span>Save</span>
+                  <span>{editingId ? t('collectionPage.updateType') : t('collectionPage.saveType')}</span>
                 </button>
               </div>
             </form>
@@ -316,34 +318,34 @@ export default function CollectionTypeMaster() {
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold border-b border-slate-100 dark:border-slate-700">
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-700">
                       <th className="py-3 px-4 pl-6 uppercase tracking-wider text-[9px] sm:text-[10px]">ID</th>
-                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Collection Type Name</th>
-                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Frequency</th>
-                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Default Amount</th>
-                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">Status</th>
-                      <th className="py-3 px-4 pr-6 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Actions</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.typeNameLabel')}</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.frequencyLabel')}</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">{t('collectionPage.defaultAmount')}</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">{t('collectionPage.statusLabel')}</th>
+                      <th className="py-3 px-4 pr-6 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">{t('collectionPage.action')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                     {collectionTypes.map((type) => (
                       <tr key={type.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                         <td className="py-3 px-4 pl-6 font-semibold font-mono text-slate-500">
                           #{type.id}
                         </td>
-                        <td className="py-3 px-4 font-bold text-slate-905">
+                        <td className="py-3 px-4 font-bold text-slate-905 dark:text-slate-100">
                           {type.typeName}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider">
+                          <span className="inline-block px-2 py-0.5 rounded text-[9px] font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 uppercase tracking-wider">
                             {type.frequency || 'monthly'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
                           {type.amount !== null && type.amount !== undefined ? (
                             `₹${Number(type.amount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
                           ) : (
-                            <span className="text-slate-400 font-normal italic text-[11px]">Dynamic</span>
+                            <span className="text-slate-400 font-normal italic text-[11px]">{t('collectionPage.flexible')}</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -351,20 +353,20 @@ export default function CollectionTypeMaster() {
                             onClick={() => handleToggleStatus(type)}
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold border cursor-pointer transition ${
                               type.status 
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-100 hover:bg-emerald-100' 
-                                : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-100' 
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
                             }`}
                           >
-                            {type.status ? 'ACTIVE' : 'INACTIVE'}
+                            {type.status ? t('collectionPage.active').toUpperCase() : t('collectionPage.inactive').toUpperCase()}
                           </button>
                         </td>
                         <td className="py-3 px-4 pr-6 text-right">
                           <button
                             onClick={() => handleEdit(type)}
-                            className="p-1 px-2 border border-slate-200 hover:bg-slate-50 rounded-md text-[10px] font-bold text-slate-700 hover:text-slate-950 inline-flex items-center gap-1 transition cursor-pointer"
+                            className="p-1 px-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white inline-flex items-center gap-1 transition cursor-pointer"
                           >
                             <Edit3 className="w-3 h-3" />
-                            <span>Edit</span>
+                            <span>{t('collectionPage.edit')}</span>
                           </button>
                         </td>
                       </tr>

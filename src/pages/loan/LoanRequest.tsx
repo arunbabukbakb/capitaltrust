@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useTranslation } from 'react-i18next';
 import {
   Calculator,
   Send,
@@ -24,6 +25,7 @@ interface LoanRequestItem {
 }
 
 export default function LoanRequest() {
+  const { t } = useTranslation();
   const { user } = useSelector((state: RootState) => state.auth);
 
   // Form State - Members input AMOUNT only to submit
@@ -171,10 +173,10 @@ export default function LoanRequest() {
           </div>
           <div>
             <h2 className="text-base md:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight">
-              Loan Request
+              {t('loanPage.loanRequest')}
             </h2>
             <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Apply for funding directly. Specify your required amount below — an administrator will review and configure approved tenure and terms.
+              {t('loanPage.loanRequestSub')}
             </p>
           </div>
         </div>
@@ -196,7 +198,7 @@ export default function LoanRequest() {
             <form onSubmit={handleSubmitRequest} className="space-y-3">
               <div>
                 <label className="block text-[10px] md:text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                  Loan Amount (₹)
+                  {t('loanPage.requestedAmount')}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-mono text-base md:text-lg font-bold">

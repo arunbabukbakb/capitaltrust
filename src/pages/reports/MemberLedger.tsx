@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useTranslation } from 'react-i18next';
 import {
   User,
   Calculator,
@@ -95,6 +96,7 @@ interface UserListItem {
 }
 
 export default function MemberLedger() {
+  const { t } = useTranslation();
   const { user, activeRole } = useSelector((state: RootState) => state.auth);
 
   const isAdminOrManager = activeRole?.roleType === 'admin' || activeRole?.roleType === 'manager' || user?.role === 'admin' || user?.role === 'manager';
@@ -199,8 +201,8 @@ export default function MemberLedger() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-white">Member Ledger Report</h3>
-          <p className="hidden md:block text-xs text-slate-500 mt-1 dark:text-slate-400">Comprehensive overview of profiles, loan histories, savings, and expense ledgers.</p>
+          <h3 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-white">{t('reportPage.memberLedgerTitle')}</h3>
+          <p className="hidden md:block text-xs text-slate-500 mt-1 dark:text-slate-400">{t('reportPage.memberLedgerSub')}</p>
         </div>
 
         {/* Member Selector (Admin/Manager only) */}
@@ -211,7 +213,7 @@ export default function MemberLedger() {
               onChange={(e) => setSelectedUserId(e.target.value)}
               className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition text-slate-700 dark:text-white"
             >
-              <option value="">-- Choose Member --</option>
+              <option value="">-- {t('reportPage.selectMember')} --</option>
               {usersList.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.fullName} (ID: {u.id})
@@ -262,13 +264,13 @@ export default function MemberLedger() {
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
                   : 'bg-slate-50 text-slate-450 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                   }`}>
-                  {ledgerData.memberDetails.status === 1 ? 'Active Member' : 'Inactive'}
+                  {ledgerData.memberDetails.status === 1 ? t('reportPage.activeMember') : t('reportPage.inactive')}
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-2 text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-semibold font-mono">
-                <div>User ID: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.id}</span></div>
-                <div>Email: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.email}</span></div>
-                <div>Phone: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.phoneNumber || 'Not Provided'}</span></div>
+                <div>{t('reportPage.userId')}: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.id}</span></div>
+                <div>{t('reportPage.email')}: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.email}</span></div>
+                <div>{t('reportPage.phone')}: <span className="text-slate-700 dark:text-slate-200 font-bold">{ledgerData.memberDetails.phoneNumber || 'Not Provided'}</span></div>
               </div>
             </div>
           </div>
@@ -280,7 +282,7 @@ export default function MemberLedger() {
                 <Calculator className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">Loans / Outstanding</p>
+                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">{t('reportPage.loansOutstanding')}</p>
                 <h4 className="text-[10px] sm:text-sm md:text-base font-black text-slate-900 dark:text-white mt-0.5 truncate">
                   {ledgerData.loans.summary.activeCount} / <span className="text-red-500 font-bold">₹{Math.round(ledgerData.loans.summary.totalOutstanding)}</span>
                 </h4>
@@ -292,7 +294,7 @@ export default function MemberLedger() {
                 <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">Total Savings</p>
+                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">{t('reportPage.totalSavings')}</p>
                 <h4 className="text-[10px] sm:text-sm md:text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
                   ₹{Math.round(ledgerData.collections.summary.totalCollected)}
                 </h4>
@@ -304,7 +306,7 @@ export default function MemberLedger() {
                 <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">Total Expenses</p>
+                <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 truncate">{t('reportPage.totalExpenses')}</p>
                 <h4 className="text-[10px] sm:text-sm md:text-base font-black text-amber-600 dark:text-amber-450 mt-0.5 truncate">
                   ₹{Math.round(ledgerData.expenses.summary.totalAmount)}
                 </h4>
@@ -317,12 +319,12 @@ export default function MemberLedger() {
             <header className="p-3 md:px-6 md:py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-slate-400" />
-                Loans Ledger
+                {t('reportPage.loansLedger')}
               </h4>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-550 dark:text-slate-400">
-                <div>Total Share: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalShare.toFixed(2)}</span></div>
-                <div>Principal Paid: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalPrincipalPaid.toFixed(2)}</span></div>
-                <div>Interest Paid: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalInterestPaid.toFixed(2)}</span></div>
+                <div>{t('reportPage.totalShare')}: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalShare.toFixed(2)}</span></div>
+                <div>{t('reportPage.principalPaid')}: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalPrincipalPaid.toFixed(2)}</span></div>
+                <div>{t('reportPage.interestPaid')}: <span className="text-slate-800 dark:text-white">₹{ledgerData.loans.summary.totalInterestPaid.toFixed(2)}</span></div>
               </div>
             </header>
 
@@ -331,20 +333,20 @@ export default function MemberLedger() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">Loan No</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Type</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Share Amount</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Outstanding Principal</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px] text-center">Status</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Start Date</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">End Date</th>
-                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-right">Actions</th>
+                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">{t('reportPage.loanNo')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('reportPage.type')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">{t('reportPage.shareAmount')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">{t('reportPage.outstandingPrincipal')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-center">{t('reportPage.status')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('reportPage.startDate')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('reportPage.endDate')}</th>
+                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-right">{t('collectionPage.action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-250 font-semibold">
                   {ledgerData.loans.list.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400 italic">No loans mapped to this member.</td>
+                      <td colSpan={8} className="p-8 text-center text-slate-400 italic">{t('reportPage.noLoansMapped')}</td>
                     </tr>
                   ) : (
                     ledgerData.loans.list.map((loan) => (
@@ -376,7 +378,7 @@ export default function MemberLedger() {
                             className="px-2.5 py-1 bg-slate-950 text-white hover:bg-slate-900 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded text-[10px] transition font-bold flex items-center gap-1 ml-auto cursor-pointer"
                           >
                             <Eye className="w-3 h-3" />
-                            <span>Repayments</span>
+                            <span>{t('reportPage.repayments')}</span>
                           </button>
                         </td>
                       </tr>
@@ -441,7 +443,7 @@ export default function MemberLedger() {
             <header className="p-3 md:px-6 md:py-4 border-b border-slate-200 dark:border-slate-800">
               <h4 className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                 <Coins className="w-4 h-4 text-slate-400" />
-                Savings & Collections Ledger
+                {t('reportPage.savingsCollectionsLedger')}
               </h4>
             </header>
 
@@ -450,15 +452,15 @@ export default function MemberLedger() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">Collection Type</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Total Contributed</th>
-                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-right">Actions</th>
+                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">{t('collectionPage.collectionType')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">{t('reportPage.totalContributed')}</th>
+                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-right">{t('collectionPage.action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-250 font-semibold">
                   {ledgerData.collections.typesList.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-400 italic">No savings defined.</td>
+                      <td colSpan={3} className="p-8 text-center text-slate-400 italic">{t('reportPage.noSavingsDefined')}</td>
                     </tr>
                   ) : (
                     ledgerData.collections.typesList.map((type) => (
@@ -472,7 +474,7 @@ export default function MemberLedger() {
                             className="px-2.5 py-1 bg-slate-950 text-white hover:bg-slate-900 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded text-[10px] transition font-bold flex items-center gap-1 ml-auto cursor-pointer disabled:opacity-50"
                           >
                             <Eye className="w-3 h-3" />
-                            <span>View History</span>
+                            <span>{t('reportPage.viewHistory')}</span>
                           </button>
                         </td>
                       </tr>
@@ -514,7 +516,7 @@ export default function MemberLedger() {
             <header className="p-3 md:px-6 md:py-4 border-b border-slate-200 dark:border-slate-800">
               <h4 className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-slate-400" />
-                Expenses Logged
+                {t('reportPage.expensesLogged')}
               </h4>
             </header>
 
@@ -523,19 +525,19 @@ export default function MemberLedger() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">Expense ID</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Expense Date</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Description</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Amount</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Payment Mode</th>
-                    <th className="p-3 uppercase tracking-wider text-[9px]">Ref No</th>
-                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-center">Status</th>
+                    <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">{t('expensePage.refNo')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('expensePage.expenseDate')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('expensePage.description')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">{t('expensePage.amount')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('expensePage.paymentMode')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px]">{t('expensePage.refNo')}</th>
+                    <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-center">{t('expensePage.allStatuses')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-250 font-semibold">
                   {ledgerData.expenses.list.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400 italic">No expenses logged by this member.</td>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 italic">{t('reportPage.noExpensesLogged')}</td>
                     </tr>
                   ) : (
                     ledgerData.expenses.list.map((expense) => (

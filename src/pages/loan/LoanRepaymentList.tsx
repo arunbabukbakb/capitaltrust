@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Loan } from '../../models/Loan';
 import PaymentRow from '../../components/PaymentRow';
 import { CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const LoanRepaymentList: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'group' | 'single'>('single');
   const [loans, setLoans] = useState<Loan[]>([]);
   const [selectedLoanId, setSelectedLoanId] = useState<string>('');
@@ -164,9 +166,9 @@ const LoanRepaymentList: React.FC = () => {
       {/* Header Info */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl md:rounded-2xl p-3 md:p-6 shadow-sm flex flex-row items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight">Repayment Entry / Posting</h2>
-          <p className="hidden md:block text-xs text-slate-500 mt-1">
-            Input, adjust, and post active monthly repayments. Balances and interest carryovers recalculate upon Submission.
+          <h2 className="text-sm md:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight">{t('loanPage.repaymentList')}</h2>
+          <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t('loanPage.repaymentListSub')}
           </p>
         </div>
 
@@ -179,7 +181,7 @@ const LoanRepaymentList: React.FC = () => {
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
           >
-            Single
+            {t('loanPage.singleLoans')}
           </button>
           <button
             onClick={() => handleTabChange('group')}
@@ -188,7 +190,7 @@ const LoanRepaymentList: React.FC = () => {
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
           >
-            Group
+            {t('loanPage.groupLoans')}
           </button>
         </div>
       </div>

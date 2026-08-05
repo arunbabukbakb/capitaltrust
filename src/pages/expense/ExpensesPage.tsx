@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Expense, ExpensePaymentMode, ExpenseStatus } from '../../types';
+import { useTranslation } from 'react-i18next';
 import {
   Receipt,
   Plus,
@@ -39,6 +40,7 @@ interface UserOption {
 }
 
 export default function ExpensesPage() {
+  const { t } = useTranslation();
   const { user, activeRole } = useSelector((state: RootState) => state.auth);
   const activeRoleType = activeRole?.roleType || user?.role;
   const isAdminOrManager = activeRoleType === 'admin' || activeRoleType === 'manager';
@@ -328,11 +330,11 @@ export default function ExpensesPage() {
               <Receipt className="w-5 h-5" />
             </span>
             <h1 className="text-lg font-bold text-slate-900 dark:text-white font-headline">
-              Expense Management
+              {t('expensePage.title')}
             </h1>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Record, audit, and approve operational organization expenses across tenant workflows.
+            {t('expensePage.subtitle')}
           </p>
         </div>
 
@@ -350,7 +352,7 @@ export default function ExpensesPage() {
             className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold text-xs rounded-lg sm:rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Expense</span>
+            <span>{t('expensePage.recordExpense')}</span>
           </button>
         </div>
       </div>
@@ -359,7 +361,7 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">Total Entries</p>
+            <p className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">{t('expensePage.totalEntries')}</p>
             <h3 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5">
               {expenses.length}
             </h3>
@@ -371,7 +373,7 @@ export default function ExpensesPage() {
 
         <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-400">Approved</p>
+            <p className="text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-400">{t('expensePage.approved')}</p>
             <h3 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 truncate">
               {formatCurrency(totalApprovedAmount)}
             </h3>
@@ -383,7 +385,7 @@ export default function ExpensesPage() {
 
         <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-medium text-amber-600 dark:text-amber-400">Draft / Pending</p>
+            <p className="text-[10px] sm:text-xs font-medium text-amber-600 dark:text-amber-400">{t('expensePage.draftPending')}</p>
             <h3 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white mt-0.5">
               {totalDraftCount} <span className="text-[10px] sm:text-xs font-normal text-slate-400">({formatCurrency(totalDraftAmount)})</span>
             </h3>

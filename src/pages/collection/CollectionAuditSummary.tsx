@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Printer, Shield, RefreshCw, FileText, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AuditRecord {
   userId: string;
@@ -19,6 +20,7 @@ interface CollectionType {
 }
 
 export default function CollectionAuditSummary() {
+  const { t } = useTranslation();
   const [collectionTypes, setCollectionTypes] = useState<CollectionType[]>([]);
   const [selectedTypeId, setSelectedTypeId] = useState<string>('');
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
@@ -85,9 +87,9 @@ export default function CollectionAuditSummary() {
       
       {/* Title Header */}
       <div className="hidden sm:flex justify-between items-center pb-1">
-        <h2 className="text-lg font-bold font-headline text-slate-900 tracking-tight flex items-center gap-1.5">
-          <FileText className="w-5 h-5 text-slate-950" />
-          Collection Audit Summary
+        <h2 className="text-lg font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
+          <FileText className="w-5 h-5 text-slate-950 dark:text-slate-100" />
+          {t('collectionPage.auditTitle')}
         </h2>
       </div>
 
@@ -95,7 +97,7 @@ export default function CollectionAuditSummary() {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400">
-            Collection Type
+            {t('collectionPage.collectionType')}
           </label>
           {loadingTypes ? (
             <div className="h-8 flex items-center text-slate-400 text-xs font-semibold">Loading...</div>
@@ -105,9 +107,9 @@ export default function CollectionAuditSummary() {
               onChange={(e) => setSelectedTypeId(e.target.value)}
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-950/20 focus:border-slate-950 cursor-pointer bg-white"
             >
-              {collectionTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.typeName} {t.amount !== null && t.amount !== undefined ? `(₹${Number(t.amount).toLocaleString('en-IN')})` : ''} {!t.status ? '(Inactive)' : ''}
+              {collectionTypes.map((typeItem) => (
+                <option key={typeItem.id} value={typeItem.id}>
+                  {typeItem.typeName} {typeItem.amount !== null && typeItem.amount !== undefined ? `(₹${Number(typeItem.amount).toLocaleString('en-IN')})` : ''} {!typeItem.status ? `(${t('collectionPage.inactive')})` : ''}
                 </option>
               ))}
               {collectionTypes.length === 0 && (
@@ -119,16 +121,16 @@ export default function CollectionAuditSummary() {
 
         <div className="space-y-1">
           <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400">
-            Search Contributor
+            {t('collectionPage.searchMembers')}
           </label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
             <input
               type="text"
-              placeholder="Search name or ID..."
+              placeholder={t('collectionPage.auditSearchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-950"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
             />
           </div>
         </div>
@@ -182,18 +184,18 @@ export default function CollectionAuditSummary() {
       {/* AUDIT LISTING SECTION */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
         <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40">
-          <h4 className="text-xs sm:text-sm font-bold font-headline">Audit Trail Ledger</h4>
-          <p className="text-[10px] text-slate-500 mt-0.5">Verification sheet of member contributions. Unsubmitted entries appear as 0.</p>
+          <h4 className="text-xs sm:text-sm font-bold font-headline text-slate-900 dark:text-slate-100">{t('collectionPage.auditTitle')}</h4>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t('collectionPage.pastHistorySub')}</p>
         </div>
 
         {loading ? (
           <div className="py-16 text-center text-xs text-slate-400">
             <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
-            <span>Compiling report statistics...</span>
+            <span>{t('collectionPage.loadingAudit')}</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-xs italic">
-            No contributor accounts found or matches search criteria.
+            {t('collectionPage.noAuditRecords')}
           </div>
         ) : (
           <>
@@ -202,11 +204,11 @@ export default function CollectionAuditSummary() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-505 font-bold border-b border-slate-100 dark:border-slate-700">
-                    <th className="py-2.5 px-4 pl-6 uppercase tracking-wider text-[9px] sm:text-[10px]">Member</th>
-                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Member ID</th>
-                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">Email Address</th>
-                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Collection Amount</th>
-                    <th className="py-2.5 px-4 pr-6 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">Payment Date</th>
+                    <th className="py-2.5 px-4 pl-6 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.memberDetails')}</th>
+                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.memberId')}</th>
+                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.contact')}</th>
+                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">{t('collectionPage.totalContributed')}</th>
+                    <th className="py-2.5 px-4 pr-6 uppercase tracking-wider text-[9px] sm:text-[10px] text-center">{t('collectionPage.collectionDate')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">

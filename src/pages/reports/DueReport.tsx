@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { generateDueReportPDF } from '../../templates/reports/dueReportTemplate';
+import { useTranslation } from 'react-i18next';
 import {
   FileSpreadsheet,
   Calendar,
@@ -69,6 +70,7 @@ interface FilterOption {
 }
 
 export default function DueReport() {
+  const { t } = useTranslation();
   const { user, activeRole, companySettings } = useSelector((state: RootState) => state.auth);
   const [tenantInfo, setTenantInfo] = useState<any>(companySettings);
 
@@ -275,10 +277,10 @@ export default function DueReport() {
             </div>
             <div>
               <h2 className="text-base md:text-2xl font-bold font-headline text-slate-900 dark:text-white tracking-tight">
-                Loans Due Report
+                {t('reportPage.dueReportTitle')}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Comprehensive audit of outstanding principal & interest dues across all active commercial loan facilities.
+                {t('reportPage.dueReportSub')}
               </p>
             </div>
           </div>
@@ -292,7 +294,7 @@ export default function DueReport() {
             className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Download PDF</span>
+            <span>{t('reportPage.downloadPdf')}</span>
           </button>
           <button
             type="button"
@@ -301,7 +303,7 @@ export default function DueReport() {
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print PDF</span>
+            <span>{t('reportPage.printReport')}</span>
           </button>
         </div>
       </div>
@@ -310,49 +312,49 @@ export default function DueReport() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-            Total Dues Outstanding
+            {t('reportPage.totalDuesOutstanding')}
           </span>
           <p className="text-base md:text-2xl font-black font-headline text-rose-600 dark:text-rose-400 font-mono">
             ₹{Math.round(reportData?.summary.totalDueAmount || 0).toLocaleString()}
           </p>
           <span className="text-[10px] text-slate-500 block">
-            Net pending for billing period
+            {t('reportPage.netPendingPeriod')}
           </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-            Principal Due Component
+            {t('reportPage.principalDueComp')}
           </span>
           <p className="text-base md:text-2xl font-black font-headline text-slate-900 dark:text-white font-mono">
             ₹{Math.round(reportData?.summary.totalPrincipalDue || 0).toLocaleString()}
           </p>
           <span className="text-[10px] text-slate-500 block">
-            Scheduled principal installments
+            {t('reportPage.scheduledPrincipal')}
           </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-            Interest & Carryforward
+            {t('reportPage.interestCarryforward')}
           </span>
           <p className="text-base md:text-2xl font-black font-headline text-amber-600 dark:text-amber-400 font-mono">
             ₹{Math.round(reportData?.summary.totalInterestDue || 0).toLocaleString()}
           </p>
           <span className="text-[10px] text-slate-500 block">
-            Interest & accumulated arrears
+            {t('reportPage.interestArrears')}
           </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 shadow-xs space-y-1">
           <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-            Due Facilities / Members
+            {t('reportPage.dueFacilitiesMembers')}
           </span>
           <p className="text-base md:text-2xl font-black font-headline text-indigo-600 dark:text-indigo-400 font-mono">
             {reportData?.summary.totalFacilitiesCount || 0} / {reportData?.summary.totalMembersCount || 0}
           </p>
           <span className="text-[10px] text-slate-500 block">
-            Active loan accounts with dues
+            {t('reportPage.activeLoanAccounts')}
           </span>
         </div>
       </div>
@@ -379,14 +381,14 @@ export default function DueReport() {
           {/* Filter by Loan */}
           <div className="space-y-1">
             <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Filter by Loan Facility
+              {t('reportPage.filterByLoan')}
             </label>
             <select
               value={selectedLoanId}
               onChange={(e) => setSelectedLoanId(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
             >
-              <option value="">-- All Credit Facilities --</option>
+              <option value="">{t('reportPage.allCreditFacilities')}</option>
               {(allLoans.length > 0 ? allLoans : reportData?.filters.loans || []).map((l) => (
                 <option key={l.loanId} value={l.loanId}>
                   {l.loanNo} ({l.loanType} Loan)
@@ -398,14 +400,14 @@ export default function DueReport() {
           {/* Filter by User */}
           <div className="space-y-1">
             <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Filter by Member / User
+              {t('reportPage.filterByUser')}
             </label>
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
             >
-              <option value="">-- All Beneficiary Members --</option>
+              <option value="">{t('reportPage.allBeneficiaries')}</option>
               {(allUsers.length > 0 ? allUsers : reportData?.filters.users || []).map((u) => (
                 <option key={u.userId} value={u.userId}>
                   {u.userName} ({u.userId})
@@ -417,13 +419,13 @@ export default function DueReport() {
           {/* Search Box */}
           <div className="space-y-1">
             <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Search Text
+              {t('reportPage.searchText')}
             </label>
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search Loan No or Member..."
+                placeholder={t('reportPage.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
@@ -451,7 +453,7 @@ export default function DueReport() {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Grouped by Loan</span>
+              <span>{t('reportPage.groupedByLoan')}</span>
             </button>
             <button
               onClick={() => setViewMode('flat')}
@@ -462,7 +464,7 @@ export default function DueReport() {
               }`}
             >
               <ListFilter className="w-3.5 h-3.5" />
-              <span>Flat Table List</span>
+              <span>{t('reportPage.flatTableList')}</span>
             </button>
           </div>
         </div>

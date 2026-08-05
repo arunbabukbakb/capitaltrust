@@ -16,6 +16,7 @@ import {
 
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { useTranslation } from 'react-i18next';
 
 interface DashboardProps {
   user: any;
@@ -26,6 +27,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
   const { companySettings } = useSelector((state: RootState) => state.auth);
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const { t } = useTranslation();
 
   // Calculate AMC Due status
   const amcRecord = companySettings?.amcRecord;
@@ -94,15 +96,15 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-200">
         <div>
           <h3 className="text-lg sm:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100">
-            Welcome back, {user?.fullName.split(' ')[0] || 'Member'}
+            {t('dashboard.welcome')}, {user?.fullName.split(' ')[0] || t('dashboard.member')}
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Review your institutional credit facilities, active cash balance, and contribution health.
+            {t('dashboard.reviewText')}
           </p>
         </div>
         <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-100 dark:border-emerald-900/50 flex-shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>CapitalTrust Core Services: Operational</span>
+          <span>{ t('dashboard.systemStatus') }</span>
         </div>
       </div>
 
@@ -116,17 +118,19 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
             <div className="space-y-1 text-left">
               <div className="flex items-center gap-2">
                 <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-headline">
-                  Annual Maintenance Charge (AMC) Due Notice
+                  {t('dashboard.amcTitle')}
                 </h4>
                 <span className="text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase">
-                  {amcDaysRemaining < 0 ? `Overdue by ${Math.abs(amcDaysRemaining)} days` : `Due in ${amcDaysRemaining} days`}
+                  {amcDaysRemaining! < 0
+                    ? t('dashboard.amcOverdue', { days: Math.abs(amcDaysRemaining!) })
+                    : t('dashboard.amcDueIn', { days: amcDaysRemaining })}
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Your organization's AMC charge of <strong className="text-slate-900 dark:text-white">₹{amcRecord.amcCharge?.toFixed(2)}</strong> is due on{' '}
+                {t('dashboard.amcBody')} <strong className="text-slate-900 dark:text-white">₹{amcRecord.amcCharge?.toFixed(2)}</strong> {t('dashboard.amcDueOn')}{' '}
                 <strong className="text-slate-900 dark:text-white">
                   {new Date(amcRecord.dueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                </strong>. Please complete payment to avoid service suspension.
+                </strong>. {t('dashboard.amcWarning')}
               </p>
             </div>
           </div>
@@ -135,7 +139,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
             className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
           >
             <CreditCard className="w-4 h-4" />
-            <span>Pay AMC Charge Now</span>
+            <span>{t('dashboard.payAmcNow')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -148,7 +152,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div>
             <div className="flex justify-between items-start">
               <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400">
-                Active Loan Balance
+                {t('dashboard.activeLoanBalance')}
               </span>
               <span className="p-1 sm:p-1.5 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 rounded-lg">
                 <CreditCard className="w-3.5 h-3.5 sm:w-4 h-4" />
@@ -163,7 +167,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                   <TrendingUp className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                   {upcomingLoans.length > 0 ? `${upcomingLoans[0].interestRate}% APR` : "0% APR"}
                 </span>
-                <span>• {totalLoansCount} Total Loans</span>
+                <span>• {t('dashboard.totalLoans', { count: totalLoansCount })}</span>
               </div>
             </div>
           </div>
@@ -171,16 +175,16 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div className="mt-4 sm:mt-8 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
               {upcomingLoans.length > 0 ? (
-                `Next payment due ${upcomingLoans[0].nextDueDate}`
+                t('dashboard.nextPaymentDue', { date: upcomingLoans[0].nextDueDate })
               ) : (
-                "No active repayments"
+                t('dashboard.noActiveRepayments')
               )}
             </span>
             <button
               onClick={() => onNavigate('/loan-repayment')}
               className="text-[10px] sm:text-xs font-bold text-slate-950 dark:text-slate-300 dark:hover:text-emerald-400 hover:text-emerald-700 flex items-center gap-0.5 transition-colors cursor-pointer"
             >
-              <span>View Details</span>
+              <span>{t('dashboard.viewDetails')}</span>
               <ArrowUpRight className="w-3 h-3 sm:w-3.5 h-3.5" />
             </button>
           </div>
@@ -191,7 +195,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div>
             <div className="flex justify-between items-start">
               <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400">
-                Total Fund Contributions
+                {t('dashboard.totalFundContributions')}
               </span>
               <span className="p-1 sm:p-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded-lg">
                 <Coins className="w-3.5 h-3.5 sm:w-4 h-4" />
@@ -203,22 +207,24 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
                 <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold">
-                  {contributionSummary.count} Collection{contributionSummary.count !== 1 ? 's' : ''}
+                  {contributionSummary.count !== 1
+                    ? t('dashboard.collections', { count: contributionSummary.count })
+                    : t('dashboard.collection', { count: contributionSummary.count })}
                 </span>
-                <span>{lastCollectionDate ? `Last: ${lastCollectionDate}` : 'No collections yet'}</span>
+                <span>{lastCollectionDate ? t('dashboard.lastCollection', { date: lastCollectionDate }) : t('dashboard.noCollectionsYet')}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 sm:mt-8 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Daily compounding interest enabled
+              {t('dashboard.dailyCompounding')}
             </span>
             <button
               onClick={() => onNavigate('/fund-collection')}
               className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:text-emerald-800 flex items-center gap-0.5 transition-colors cursor-pointer"
             >
-              <span>+ Add Capital</span>
+              <span>{t('dashboard.addCapital')}</span>
               <ArrowUpRight className="w-3 h-3 sm:w-3.5 h-3.5" />
             </button>
           </div>
@@ -229,7 +235,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div>
             <div className="flex justify-between items-start">
               <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400">
-                Today's Expenses
+                {t('dashboard.todayExpenses')}
               </span>
               <span className="p-1 sm:p-1.5 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
                 <Receipt className="w-3.5 h-3.5 sm:w-4 h-4" />
@@ -241,22 +247,24 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1 sm:mt-2 font-medium">
                 <span className="bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400 px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold">
-                  {todayExpenseSummary.count} Entry{todayExpenseSummary.count !== 1 ? 'ies' : ''} Today
+                  {todayExpenseSummary.count !== 1
+                    ? t('dashboard.entriesPlural', { count: todayExpenseSummary.count })
+                    : t('dashboard.entriesSingular', { count: todayExpenseSummary.count })}
                 </span>
-                <span>• Total {todayExpenseSummary.totalLoggedCount} Logged</span>
+                <span>• {t('dashboard.totalLogged', { count: todayExpenseSummary.totalLoggedCount })}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 sm:mt-8 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Operational expenditure
+              {t('dashboard.operationalExpenditure')}
             </span>
             <button
               onClick={() => onNavigate('/expenses')}
               className="text-[10px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 hover:text-indigo-800 flex items-center gap-0.5 transition-colors cursor-pointer"
             >
-              <span>View Expenses</span>
+              <span>{t('dashboard.viewExpenses')}</span>
               <ArrowUpRight className="w-3 h-3 sm:w-3.5 h-3.5" />
             </button>
           </div>
@@ -268,9 +276,9 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
         {/* REPAYMENT PROGRESS GAUGE (Circular) */}
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-between text-center min-h-[280px] sm:min-h-[340px] transition-colors duration-200">
           <div className="w-full flex justify-between items-center mb-3 sm:mb-4">
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Repayment Progress</span>
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">{t('dashboard.repaymentProgress')}</span>
             <span className="text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded font-bold uppercase">
-              {upcomingLoans.length === 1 ? `Facility #${upcomingLoans[0].id}` : 'All Active'}
+              {upcomingLoans.length === 1 ? t('dashboard.facilityNo', { id: upcomingLoans[0].id }) : t('dashboard.allActive')}
             </span>
           </div>
 
@@ -301,17 +309,17 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
             </svg>
             <div className="absolute flex flex-col items-center">
               <span className="text-xl sm:text-3xl font-extrabold font-headline text-slate-950 dark:text-slate-50">{percentPaid}%</span>
-              <span className="text-[8px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">Principal Paid</span>
+              <span className="text-[8px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">{t('dashboard.principalPaid')}</span>
             </div>
           </div>
 
           <div className="w-full text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 sm:pt-4 space-y-1">
             <div className="flex justify-between font-medium">
-              <span>Repaid to date:</span>
+              <span>{t('dashboard.repaidToDate')}</span>
               <span className="font-bold text-slate-900 dark:text-slate-100">₹{totalPaid.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
             </div>
             <div className="flex justify-between font-medium animate-pulse">
-              <span>Remaining schedule:</span>
+              <span>{t('dashboard.remainingSchedule')}</span>
               <span className="font-bold text-slate-900 dark:text-slate-100">₹{totalOutstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
             </div>
           </div>
@@ -322,10 +330,10 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
           <div>
             <div className="flex justify-between items-center mb-3 sm:mb-6">
               <span className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">
-                Upcoming Payments & Collections
+                {t('dashboard.upcomingPayments')}
               </span>
               <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" /> Schedule
+                <Calendar className="w-3.5 h-3.5" /> {t('dashboard.schedule')}
               </span>
             </div>
 
@@ -350,10 +358,10 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                       </div>
                       <div>
                         <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                          {loan.loanNo || loan.id} EMI Repayment
+                          {loan.loanNo || loan.id} {t('dashboard.emiRepayment')}
                         </h5>
                         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
-                          {loan.type || 'Loan Facility'} • Due {loan.nextDueDate || 'TBD'}
+                          {loan.type || t('dashboard.loanFacility')} • {t('dashboard.due')} {loan.nextDueDate || t('dashboard.tbd')}
                         </p>
                       </div>
                     </div>
@@ -366,7 +374,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                           ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50'
                           : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50'
                       }`}>
-                        {isOverdue ? 'Overdue' : 'Scheduled'}
+                        {isOverdue ? t('dashboard.overdue') : t('dashboard.scheduled')}
                       </span>
                     </div>
                   </div>
@@ -386,10 +394,10 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                     </div>
                     <div>
                       <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                        {contrib.typeName || 'Capital Pool Collection'}
+                        {contrib.typeName || t('dashboard.capitalPoolCollection')}
                       </h5>
                       <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 capitalize">
-                        {contrib.frequency || 'Monthly'} • {contrib.dueDate || 'Upcoming Cycle'}
+                        {contrib.frequency || t('dashboard.monthly')} • {contrib.dueDate || t('dashboard.upcomingCycle')}
                       </p>
                     </div>
                   </div>
@@ -398,11 +406,11 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
                       {contrib.amount !== null && contrib.amount !== undefined ? (
                         `₹${Number(contrib.amount).toLocaleString()}`
                       ) : (
-                        <span className="text-slate-400 font-normal italic text-[11px]">Dynamic</span>
+                        <span className="text-slate-400 font-normal italic text-[11px]">{t('dashboard.dynamic')}</span>
                       )}
                     </p>
                     <span className="inline-block text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
-                      {contrib.status || 'Pending'}
+                      {contrib.status || t('dashboard.pending')}
                     </span>
                   </div>
                 </div>
@@ -411,7 +419,7 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               {upcomingLoans.length === 0 && upcomingCollections.length === 0 && (
                 <div className="text-center py-8 text-xs text-slate-400 dark:text-slate-500 font-medium space-y-1">
                   <Calendar className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto" />
-                  <p>No upcoming loan repayments or collections scheduled.</p>
+                  <p>{t('dashboard.noUpcoming')}</p>
                 </div>
               )}
             </div>
@@ -422,14 +430,14 @@ export default function Dashboard({ user, onNavigate }: DashboardProps) {
               onClick={() => onNavigate('/loan-repayment')}
               className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>View Repayments</span>
+              <span>{t('dashboard.viewRepayments')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onNavigate('/fund-collection')}
               className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>View Collections</span>
+              <span>{t('dashboard.viewCollections')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

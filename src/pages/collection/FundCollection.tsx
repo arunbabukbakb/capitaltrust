@@ -11,6 +11,7 @@ import {
   Edit3,
   X
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface MemberRecord {
   userId: string;
@@ -39,6 +40,7 @@ interface CollectionGroup {
 const today = new Date().toISOString().split('T')[0];
 
 export default function FundCollection() {
+  const { t } = useTranslation();
   // Collections History
   const [history, setHistory] = useState<CollectionGroup[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -219,7 +221,7 @@ export default function FundCollection() {
       });
 
       if (res.ok) {
-        setToast(editingGroupId ? "Collection updated successfully." : "New collection posted successfully.");
+        setToast(editingGroupId ? t('collectionPage.updatedSuccess') : t('collectionPage.postedSuccess'));
         handleInitNewCollection();
         fetchHistory();
         setIsModalOpen(false);
@@ -257,12 +259,12 @@ export default function FundCollection() {
       {/* Header Panel */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold font-headline text-slate-900 tracking-tight flex items-center gap-2">
-            <Coins className="w-6 h-6 text-blue-600" />
-            Member Fund Collections
+          <h2 className="text-xl md:text-2xl font-bold font-headline text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <Coins className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            {t('collectionPage.fundTitle')}
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Log and manage capital collection events. You can record multiple collections for the same type.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t('collectionPage.fundSubtitle')}
           </p>
         </div>
         <button
@@ -273,7 +275,7 @@ export default function FundCollection() {
           className="px-4 py-2 md:px-5 md:py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-blue-500/10 cursor-pointer flex-shrink-0 font-headline"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Record Collection</span>
+          <span>{t('collectionPage.recordCollection')}</span>
         </button>
       </div>
 
@@ -289,49 +291,49 @@ export default function FundCollection() {
         {/* Full-Width Column: History of Past Collections */}
         <div className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40">
-            <h4 className="text-xs sm:text-sm font-bold font-headline">Past Collections History</h4>
-            <p className="text-[10px] text-slate-500 mt-0.5">List of all posted collection events across types.</p>
+            <h4 className="text-xs sm:text-sm font-bold font-headline text-slate-900 dark:text-slate-100">{t('collectionPage.pastHistoryTitle')}</h4>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t('collectionPage.pastHistorySub')}</p>
           </div>
 
           {loadingHistory ? (
             <div className="py-12 text-center text-xs text-slate-400">
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
-              <span>Loading collection list...</span>
+              <span>{t('collectionPage.loadingList')}</span>
             </div>
           ) : history.length === 0 ? (
             <div className="py-16 text-center text-slate-450 text-xs italic">
-              No collection events recorded.
+              {t('collectionPage.noEvents')}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold border-b border-slate-100 dark:border-slate-700">
-                    <th className="py-2.5 px-4 pl-5 uppercase tracking-wider text-[9px] sm:text-[10px]">Type / Date</th>
-                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Total Amount</th>
-                    <th className="py-2.5 px-4 pr-5 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">Action</th>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-700">
+                    <th className="py-2.5 px-4 pl-5 uppercase tracking-wider text-[9px] sm:text-[10px]">{t('collectionPage.typeDate')}</th>
+                    <th className="py-2.5 px-4 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">{t('collectionPage.totalAmount')}</th>
+                    <th className="py-2.5 px-4 pr-5 uppercase tracking-wider text-[9px] sm:text-[10px] text-right">{t('collectionPage.action')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                   {history.map((h) => (
                     <tr key={h.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
                       <td className="py-3 px-4 pl-5">
-                        <div className="font-bold text-slate-900">{h.typeName}</div>
+                        <div className="font-bold text-slate-900 dark:text-slate-100">{h.typeName}</div>
                         <div className="text-[9px] text-slate-400 font-semibold font-mono mt-0.5 flex items-center gap-1">
                           <Calendar className="w-3 h-3" /> {h.date}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right font-extrabold font-mono text-slate-900">
+                      <td className="py-3 px-4 text-right font-extrabold font-mono text-slate-900 dark:text-slate-100">
                         ₹{Math.round(h.totalAmount).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 pr-5 text-right">
                         <button
                           type="button"
                           onClick={() => handleEditCollection(h.id)}
-                          className="p-1 px-2 border border-slate-200 hover:bg-slate-50 rounded-md text-[9px] font-bold text-slate-700 hover:text-slate-950 inline-flex items-center gap-1 transition cursor-pointer"
+                          className="p-1 px-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md text-[9px] font-bold text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white inline-flex items-center gap-1 transition cursor-pointer"
                         >
                           <Edit3 className="w-3 h-3" />
-                          <span>Edit</span>
+                          <span>{t('collectionPage.edit')}</span>
                         </button>
                       </td>
                     </tr>
@@ -347,21 +349,21 @@ export default function FundCollection() {
       {/* New/Edit Collection Form in Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex justify-between items-center">
               <div>
-                <h4 className="text-xs sm:text-sm font-bold font-headline">
-                  {editingGroupId ? `Edit Collection (Group #${editingGroupId})` : 'New Fund Collection'}
+                <h4 className="text-xs sm:text-sm font-bold font-headline text-slate-900 dark:text-slate-100">
+                  {editingGroupId ? t('collectionPage.editGroupTitle', { id: editingGroupId }) : t('collectionPage.newCollectionTitle')}
                 </h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  {editingGroupId ? 'Update details and contribution amounts for this session.' : 'Start a fresh collection event and allocate shares.'}
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {editingGroupId ? t('collectionPage.editGroupSub') : t('collectionPage.newCollectionSub')}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-md cursor-pointer transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -371,56 +373,56 @@ export default function FundCollection() {
               {/* Dropdown & Date row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-450">
-                    Collection Type
+                  <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-450 dark:text-slate-400">
+                    {t('collectionPage.collectionType')}
                   </label>
                   {loadingTypes ? (
-                    <div className="h-9 flex items-center text-slate-400 text-xs">Loading categories...</div>
+                    <div className="h-9 flex items-center text-slate-400 text-xs">{t('collectionPage.loadingTypes')}</div>
                   ) : (
                     <select
                       value={selectedTypeId}
                       onChange={(e) => setSelectedTypeId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-950/20 focus:border-slate-950 cursor-pointer bg-white"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
                     >
-                      {collectionTypes.map((t) => (
-                        <option key={t.id} value={t.id} disabled={!t.status && String(t.id) !== selectedTypeId}>
-                          {t.typeName} {t.amount !== null && t.amount !== undefined ? `(₹${Number(t.amount).toLocaleString('en-IN')})` : ''} {!t.status ? '(Inactive)' : ''}
+                      {collectionTypes.map((typeItem) => (
+                        <option key={typeItem.id} value={typeItem.id} disabled={!typeItem.status && String(typeItem.id) !== selectedTypeId}>
+                          {typeItem.typeName} {typeItem.amount !== null && typeItem.amount !== undefined ? `(₹${Number(typeItem.amount).toLocaleString('en-IN')})` : ''} {!typeItem.status ? `(${t('collectionPage.inactive')})` : ''}
                         </option>
                       ))}
                       {collectionTypes.length === 0 && (
-                        <option value="">-- No categories configured --</option>
+                        <option value="">-- {t('collectionPage.noTypesCreated')} --</option>
                       )}
                     </select>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-450">
-                    Collection Date
+                  <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-450 dark:text-slate-400">
+                    {t('collectionPage.collectionDate')}
                   </label>
                   <input
                     required
                     type="date"
                     value={collectionDate}
                     onChange={(e) => setCollectionDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-950/20 focus:border-slate-950"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Member search filter */}
-              <div className="space-y-1 pt-2 border-t border-slate-100">
+              <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="block text-[8px] sm:text-[9px] uppercase font-bold tracking-wider text-slate-400">
-                  Filter Members
+                  {t('collectionPage.filterMembers')}
                 </label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     type="text"
-                    placeholder="Filter name or ID..."
+                    placeholder={t('collectionPage.searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-950"
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
                   />
                 </div>
               </div>
@@ -429,26 +431,26 @@ export default function FundCollection() {
               {loadingMembers ? (
                 <div className="py-12 text-center text-xs text-slate-400">
                   <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
-                  <span>Syncing member registers...</span>
+                  <span>{t('collectionPage.syncingMembers')}</span>
                 </div>
               ) : filteredMembers.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs italic">
-                  No active member accounts found.
+                  {t('collectionPage.noActiveMembers')}
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-150 sticky top-0 z-10">
-                        <th className="py-2 px-3 pl-4 uppercase tracking-wider text-[9px]">Member</th>
-                        <th className="py-2 px-3 uppercase tracking-wider text-[9px]">Member ID</th>
-                        <th className="py-2 px-3 uppercase tracking-wider text-[9px] text-center w-36">Amount (₹)</th>
+                      <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-150 dark:border-slate-700 sticky top-0 z-10">
+                        <th className="py-2 px-3 pl-4 uppercase tracking-wider text-[9px]">{t('collectionPage.member')}</th>
+                        <th className="py-2 px-3 uppercase tracking-wider text-[9px]">{t('collectionPage.memberId')}</th>
+                        <th className="py-2 px-3 uppercase tracking-wider text-[9px] text-center w-36">{t('collectionPage.amountRs')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900">
                       {filteredMembers.map((member) => (
                         <tr key={member.userId} className="hover:bg-slate-50/20 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 transition">
-                          <td className="py-2 px-3 pl-4 font-bold text-slate-900 truncate max-w-[150px]">
+                          <td className="py-2 px-3 pl-4 font-bold text-slate-900 dark:text-slate-100 truncate max-w-[150px]">
                             {member.fullName}
                           </td>
                           <td className="py-2 px-3 font-mono font-bold text-slate-400 text-[10px]">
@@ -462,7 +464,7 @@ export default function FundCollection() {
                                 placeholder="0"
                                 value={member.localAmount}
                                 onChange={(e) => handleAmountChange(member.userId, e.target.value)}
-                                className="w-full pl-6 pr-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-bold focus:outline-none focus:ring-1 focus:ring-slate-950 text-tnum text-slate-800 font-mono"
+                                className="w-full pl-6 pr-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[11px] font-bold focus:outline-none text-tnum text-slate-800 dark:text-slate-200 font-mono"
                               />
                             </div>
                           </td>
@@ -474,18 +476,18 @@ export default function FundCollection() {
               )}
 
               {/* Bottom Actions */}
-              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
-                <div className="flex items-center gap-1.5 text-slate-450 text-[10px] font-semibold">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div className="flex items-center gap-1.5 text-slate-450 dark:text-slate-400 text-[10px] font-semibold">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                  <span>Only member entries with positive amounts will be saved.</span>
+                  <span>{t('collectionPage.positiveNotice')}</span>
                 </div>
                 <div className="flex w-full sm:w-auto gap-2.5">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 sm:flex-none px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                    className="flex-1 sm:flex-none px-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    Cancel
+                    {t('collectionPage.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -497,7 +499,7 @@ export default function FundCollection() {
                     ) : (
                       <Save className="w-3.5 h-3.5" />
                     )}
-                    <span>{editingGroupId ? 'Update Session' : 'Post Session'}</span>
+                    <span>{editingGroupId ? t('collectionPage.updateSession') : t('collectionPage.postSession')}</span>
                   </button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useTranslation } from 'react-i18next';
 import {
   Building,
   Calendar,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function LoanRepayment() {
+  const { t } = useTranslation();
   const { user } = useSelector((state: RootState) => state.auth);
   const [loans, setLoans] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -158,14 +160,12 @@ export default function LoanRepayment() {
 
             <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[8px] sm:text-[9px] bg-emerald-500 text-slate-950 px-2 py-0.5 rounded font-bold uppercase tracking-widest">
-                    Portfolio Active
-                  </span>
-                  <span className="text-[10px] sm:text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                    Consolidated Overview
-                  </span>
-                </div>
+                <span className="text-[9px] uppercase font-bold tracking-widest text-blue-300 block">
+                  {t('loanPage.myLoans')}
+                </span>
+                <p className="text-xs text-blue-200 mt-0.5 max-w-xl">
+                  {t('loanPage.myLoansSub')}
+                </p>
                 <h4 className="text-base sm:text-xl font-bold font-headline mt-1.5 text-white leading-tight">
                   My Active Credit Summary
                 </h4>

@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App.tsx';
 import './index.css';
+import './i18n'; // Initialize i18n before app renders
 import { ThemeProvider } from './components/ThemeContext.tsx';
 import { logOut } from './authSlice';
 import { initGA } from "./utils/analytics.js";
