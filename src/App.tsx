@@ -30,6 +30,8 @@ import ProfilePage from './pages/user/ProfilePage';
 import AdminLogin from './pages/superadmin/AdminLogin';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import TenantManagement from './pages/superadmin/TenantManagement';
+import TrafficDashboard from './pages/superadmin/TrafficDashboard';
+import { useTrafficTracker } from './hooks/useTrafficTracker';
 import SmtpSettings from './pages/superadmin/SmtpSettings';
 import SendMailPage from './pages/superadmin/SendMailPage';
 import SupportInboxPage from './pages/superadmin/SupportInboxPage';
@@ -68,6 +70,7 @@ import {
 import { initializePushNotifications, registerForegroundMessageHandler } from './firebase';
 
 export default function App() {
+  useTrafficTracker();
   const { user, menus, activeRole, companySettings } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const location = useLocation();
@@ -283,6 +286,7 @@ export default function App() {
           <Route element={<SuperAdminLayout />}>
             <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/admin/tenants" element={<TenantManagement />} />
+            <Route path="/admin/traffic" element={<TrafficDashboard />} />
             <Route path="/admin/company-details" element={<AdminCompanyDetails />} />
             <Route path="/admin/maintenance" element={<AdminMaintenanceNotice />} />
             <Route path="/admin/send-mail" element={<SendMailPage />} />

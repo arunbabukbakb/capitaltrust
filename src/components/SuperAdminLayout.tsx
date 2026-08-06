@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link, Navigate } from 'react-router-dom';
-import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send, Wrench } from 'lucide-react';
+import { Shield, Layers, User, LogOut, Menu, X, Coins, LayoutDashboard, Building2, Mail, Send, Wrench, Activity } from 'lucide-react';
 import { initializeSuperAdminPushNotifications, registerForegroundMessageHandler } from '../firebase';
 
 export default function SuperAdminLayout() {
@@ -33,6 +33,7 @@ export default function SuperAdminLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Tenants Registry', path: '/admin/tenants', icon: Building2 },
+    { label: 'Traffic Performance', path: '/admin/traffic', icon: Activity },
     { label: 'Company Details', path: '/admin/company-details', icon: Building2 },
     { label: 'Maintenance Notice', path: '/admin/maintenance', icon: Wrench },
     { label: 'Menu Management', path: '/admin/menus', icon: Layers },

@@ -125,7 +125,7 @@ export async function initDatabase(): Promise<Database> {
       port,
       multipleStatements: true,
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 50,
       queueLimit: 0
     });
 

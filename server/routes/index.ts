@@ -20,6 +20,7 @@ import expensesRoutes from './expenses';
 import transactionsRoutes from './transactions';
 import reportsRoutes from './reports';
 import contactRoutes from './contact';
+import trafficRoutes from './traffic';
 
 const router = Router();
 
@@ -56,14 +57,15 @@ router.use((req, res, next) => {
 
   // Modifying methods (POST, PUT, DELETE, PATCH)
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    // Exempt authentication, password reset, tenant creation/payment, and super-admin operations
+    // Exempt authentication, password reset, tenant creation/payment, super-admin, and traffic telemetry operations
     const isExempt =
       path.startsWith('/auth/login') ||
       path.startsWith('/auth/logout') ||
       path.startsWith('/tenants') ||
       path.startsWith('/super-admin') ||
       path.startsWith('/contact') ||
-      path.startsWith('/menus');
+      path.startsWith('/menus') ||
+      path.startsWith('/traffic');
 
     if (!isExempt) {
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -100,5 +102,6 @@ router.use('/expenses', expensesRoutes);
 router.use('/transactions', transactionsRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/contact', contactRoutes);
+router.use('/traffic', trafficRoutes);
 
 export default router;
