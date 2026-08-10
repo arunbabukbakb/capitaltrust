@@ -105,6 +105,7 @@ export async function runSeeders(db: Database) {
     { menuId: 'collection-types', name: 'Collection Type', icon: 'Shield', path: '/collection-types', parentId: 'liquidity', menuOrder: 21 },
     { menuId: 'fund-collection', name: 'Fund Collection', icon: 'Coins', path: '/fund-collection', parentId: 'liquidity', menuOrder: 22 },
     { menuId: 'fund-collection-audit', name: 'Collection Summary', icon: 'FileText', path: '/fund-collection-audit', parentId: 'liquidity', menuOrder: 23 },
+    { menuId: 'collection-opening-balance', name: 'Opening Balance Entry', icon: 'Coins', path: '/collection-opening-balance', parentId: 'liquidity', menuOrder: 24 },
     { menuId: 'credit', name: 'Loans', icon: 'Calculator', path: null, parentId: null, menuOrder: 30 },
     { menuId: 'loan-repayment', name: 'My Loans', icon: 'Calculator', path: '/loan-repayment', parentId: 'credit', menuOrder: 31 },
     { menuId: 'loan-request', name: 'Loan Request', icon: 'FilePlus', path: '/loan-request', parentId: 'credit', menuOrder: 31.5 },

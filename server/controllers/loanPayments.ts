@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-
 
 // Helper to calculate and generate LoanDue ledger entries consecutively up to targetMonth
 export async function getDuesForMember(db: any, member: any, loan: any, targetMonth: number, slabs: any[], saveToDb = false, isCompound = false): Promise<any> {
-  const startDateStr = loan.StartDate;
+  const startDateStr = (loan.OpeningDate && String(loan.OpeningDate).trim() !== '') ? loan.OpeningDate : loan.StartDate;
   const tenureMonths = Number(loan.TenureMonths || 12);
   const interestRate = Number(loan.InterestRate || 0);
   const interestMode = loan.InterestMode;
@@ -41,7 +41,8 @@ export async function getDuesForMember(db: any, member: any, loan: any, targetMo
     const payment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, m);
 
     // Determine Opening Principal & Carry Forward Interest for current month m
-    let openingPrincipal = shareAmount;
+    const memberOutstanding = Number(member.OutstandingPrincipal ?? shareAmount);
+    let openingPrincipal = (memberOutstanding > 0 && memberOutstanding < shareAmount) ? memberOutstanding : shareAmount;
     let carryForwardInterest = 0;
     let totalPrincipalPaidBefore = 0;
 

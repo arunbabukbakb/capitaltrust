@@ -31,6 +31,7 @@ interface PortalUser {
 interface MemberShare {
   userId: string;
   loanShareAmount: string;
+  outstandingPrincipal?: string;
 }
 
 interface InterestSlab {
@@ -82,6 +83,10 @@ export default function LoanEntry() {
     { fromAmount: '50000', toAmount: '250000', interestRate: '12' },
   ]);
 
+  const [isExistingLoan, setIsExistingLoan] = useState<boolean>(false);
+  const [outstandingAmount, setOutstandingAmount] = useState<string>('100000');
+  const [openingDate, setOpeningDate] = useState<string>(today);
+
   const [editingLoanId, setEditingLoanId] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
@@ -131,6 +136,10 @@ export default function LoanEntry() {
         setEditingLoanId(loan.loanId);
         setLoanType(loan.loanType === 'Group' ? 'Group' : 'Single');
         setAmount(String(loan.amount || loan.principal || ''));
+        const hasCustomOutstanding = loan.outstandingBalance !== undefined && Number(loan.outstandingBalance) !== Number(loan.amount || loan.principal);
+        setIsExistingLoan(hasCustomOutstanding);
+        setOutstandingAmount(String(loan.outstandingBalance ?? (loan.amount || loan.principal || '')));
+        setOpeningDate(loan.openingDate || loan.startDate || today);
         setTenureMonths(String(loan.tenureMonths || loan.remainingTerm || ''));
         setStartDate(loan.startDate || loan.nextDueDate || today);
         setInterestMode(loan.interestMode === 'Variable' ? 'Variable' : 'Fixed');
@@ -140,6 +149,7 @@ export default function LoanEntry() {
         setMembers((loan.members || []).map((member: any) => ({
           userId: member.userId,
           loanShareAmount: String(member.loanShareAmount),
+          outstandingPrincipal: String(member.outstandingPrincipal || member.loanShareAmount),
         })));
         setSlabs((loan.slabs || []).length
           ? loan.slabs.map((slab: any) => ({
@@ -242,6 +252,9 @@ export default function LoanEntry() {
     setEditingLoanId('');
     setLoanType('Single');
     setAmount('100000');
+    setIsExistingLoan(false);
+    setOutstandingAmount('100000');
+    setOpeningDate(today);
     setTenureMonths('12');
     setStartDate(today);
     setInterestMode('Fixed');
@@ -256,10 +269,15 @@ export default function LoanEntry() {
     setError('');
   };
 
-
-
   const validateForm = () => {
     if (!amountNum || amountNum <= 0) return 'Loan amount must be greater than zero.';
+    if (isExistingLoan) {
+      const outstandingNum = Number(outstandingAmount);
+      if (isNaN(outstandingNum) || outstandingNum < 0 || outstandingNum > amountNum) {
+        return 'Outstanding amount must be between 0 and original loan amount.';
+      }
+      if (!openingDate) return 'Opening date is required for existing loans.';
+    }
     if (!tenureNum || tenureNum <= 0) return 'Tenure must be greater than zero.';
     if (!startDate || !endDate) return 'Start date is required.';
     if (loanType === 'Single' && members.length !== 1) return 'Single loans must have exactly one member.';
@@ -293,6 +311,8 @@ export default function LoanEntry() {
         body: JSON.stringify({
           loanType,
           amount: amountNum,
+          outstandingAmount: isExistingLoan ? Number(outstandingAmount) : amountNum,
+          openingDate: isExistingLoan ? openingDate : startDate,
           tenureMonths: tenureNum,
           startDate,
           endDate,
@@ -303,6 +323,7 @@ export default function LoanEntry() {
           members: members.map((member) => ({
             userId: member.userId,
             loanShareAmount: Number(member.loanShareAmount),
+            outstandingPrincipal: isExistingLoan && member.outstandingPrincipal ? Number(member.outstandingPrincipal) : undefined,
           })),
           slabs: interestMode === 'Variable'
             ? slabs.map((slab) => ({
@@ -447,6 +468,63 @@ export default function LoanEntry() {
                   <option value="Cancelled">{t('loanPage.cancelled')}</option>
                 </select>
               </div>
+            </div>
+
+            {/* Existing Loan / Custom Outstanding Balance Option */}
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isExistingLoan}
+                  onChange={(e) => {
+                    setIsExistingLoan(e.target.checked);
+                    if (e.target.checked && (!outstandingAmount || outstandingAmount === '0')) {
+                      setOutstandingAmount(amount);
+                    }
+                  }}
+                  className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  Existing Loan? (Enter Current Remaining Outstanding Balance)
+                </span>
+              </label>
+
+              {isExistingLoan && (
+                <div className="mt-3 p-3.5 bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-amber-800 dark:text-amber-300 mb-1">
+                      Current Outstanding Principal Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={amountNum}
+                      value={outstandingAmount}
+                      onChange={(e) => setOutstandingAmount(e.target.value)}
+                      placeholder="Enter remaining balance..."
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 text-tnum"
+                    />
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium mt-1 block">
+                      Original Amount: ₹{amountNum.toLocaleString()} • Outstanding: ₹{(Number(outstandingAmount) || 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-amber-800 dark:text-amber-300 mb-1">
+                      Opening Date (Effective Balance Date)
+                    </label>
+                    <input
+                      type="date"
+                      value={openingDate}
+                      onChange={(e) => setOpeningDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-lg text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 text-tnum"
+                    />
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium mt-1 block">
+                      Dues calculations for this existing loan will start from this date.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

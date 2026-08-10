@@ -22,6 +22,7 @@ import LoanRepaymentList from './pages/loan/LoanRepaymentList';
 import PrivateRoute from './components/PrivateRoute';
 import CollectionTypeMaster from './pages/collection/CollectionTypeMaster';
 import CollectionAuditSummary from './pages/collection/CollectionAuditSummary';
+import CollectionOpeningBalance from './pages/collection/CollectionOpeningBalance';
 import MenusPage from './pages/user/MenusPage';
 import PermissionsPage from './pages/user/PermissionsPage';
 import SettingsPage from './pages/tenant/SettingsPage';
@@ -387,6 +388,7 @@ export default function App() {
             <Route path="/loan-repayments" element={hasPermission('loan-repayments') ? <LoanRepaymentList /> : <Navigate to="/dashboard" replace />} />
             <Route path="/collection-types" element={hasPermission('collection-types') ? <CollectionTypeMaster /> : <Navigate to="/dashboard" replace />} />
             <Route path="/fund-collection-audit" element={hasPermission('fund-collection-audit') ? <CollectionAuditSummary /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/collection-opening-balance" element={hasPermission('collection-opening-balance') ? <CollectionOpeningBalance /> : <Navigate to="/dashboard" replace />} />
             <Route path="/expenses" element={hasPermission('expenses') ? <ExpensesPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/transactions" element={hasPermission('transactions') ? <TransactionsPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/member-ledger" element={hasPermission('member-ledger') ? <MemberLedger /> : <Navigate to="/dashboard" replace />} />

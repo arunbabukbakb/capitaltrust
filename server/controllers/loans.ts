@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-
 interface LoanMemberInput {
   userId: string;
   loanShareAmount: number;
+  outstandingPrincipal?: number;
 }
 
 interface LoanInterestSlabInput {
@@ -130,6 +131,7 @@ export const getLoans = async (req: Request, res: Response) => {
         canDelete: repaymentCount === 0,
         nextDueDate: loan.StartDate,
         startDate: loan.StartDate,
+        openingDate: loan.OpeningDate || loan.StartDate,
         endDate: loan.EndDate,
         status,
         type: `${loan.LoanType} Loan`,
@@ -187,6 +189,8 @@ export const createLoan = async (req: Request, res: Response) => {
     const {
       loanType,
       amount,
+      outstandingAmount,
+      openingDate,
       tenureMonths,
       startDate,
       endDate,
@@ -219,6 +223,14 @@ export const createLoan = async (req: Request, res: Response) => {
       loanMembers,
       interestSlabs,
     } = validation;
+
+    const customOutstanding = outstandingAmount !== undefined && outstandingAmount !== null && outstandingAmount !== ''
+      ? Number(outstandingAmount)
+      : undefined;
+
+    if (customOutstanding !== undefined && (isNaN(customOutstanding) || customOutstanding < 0 || customOutstanding > parsedAmount)) {
+      return res.status(400).json({ error: "Outstanding amount must be between 0 and the total loan amount" });
+    }
 
     const loanId = `LN-${crypto.randomUUID()}`;
     const loanNo = `LN-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 89999)}`;
@@ -255,8 +267,10 @@ export const createLoan = async (req: Request, res: Response) => {
         LoanNo: loanNo,
         LoanType: normalizedLoanType as 'Single' | 'Group',
         Amount: parsedAmount,
+        OutstandingPrincipal: customOutstanding !== undefined ? customOutstanding : parsedAmount,
         TenureMonths: parsedTenure,
         StartDate: startDate,
+        OpeningDate: openingDate || (customOutstanding !== undefined ? startDate : null),
         EndDate: computedEndDate,
         InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
         InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
@@ -267,10 +281,15 @@ export const createLoan = async (req: Request, res: Response) => {
       });
 
       for (const member of loanMembers) {
+        const memberOutstanding = member.outstandingPrincipal !== undefined && member.outstandingPrincipal !== null
+          ? Number(member.outstandingPrincipal)
+          : (customOutstanding !== undefined && normalizedLoanType === 'Single' ? customOutstanding : Number(member.loanShareAmount));
+
         await LoanModel.addLoanMember({
           LoanId: loanId,
           UserId: member.userId,
           LoanShareAmount: Number(member.loanShareAmount),
+          OutstandingPrincipal: memberOutstanding,
           CreatedDate: createdDate,
           Status: 'Active'
         });
@@ -356,6 +375,8 @@ export const updateLoan = async (req: Request, res: Response) => {
     const {
       loanType,
       amount,
+      outstandingAmount,
+      openingDate,
       tenureMonths,
       startDate,
       endDate,
@@ -394,6 +415,14 @@ export const updateLoan = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Loan amount cannot be less than repayments already posted" });
     }
 
+    const customOutstanding = outstandingAmount !== undefined && outstandingAmount !== null && outstandingAmount !== ''
+      ? Number(outstandingAmount)
+      : undefined;
+
+    const newOutstandingPrincipal = customOutstanding !== undefined
+      ? customOutstanding
+      : (existingLoan.OutstandingPrincipal > 0 ? existingLoan.OutstandingPrincipal : parsedAmount - paidAmount);
+
     const computedEndDate = endDate || (() => {
       const date = new Date(startDate);
       date.setMonth(date.getMonth() + parsedTenure);
@@ -408,9 +437,10 @@ export const updateLoan = async (req: Request, res: Response) => {
       await LoanModel.updateLoan(existingLoan.Id, {
         LoanType: normalizedLoanType as 'Single' | 'Group',
         Amount: parsedAmount,
-        OutstandingPrincipal: parsedAmount,
+        OutstandingPrincipal: newOutstandingPrincipal,
         TenureMonths: parsedTenure,
         StartDate: startDate,
+        OpeningDate: openingDate !== undefined ? openingDate : existingLoan.OpeningDate,
         EndDate: computedEndDate,
         InterestMode: normalizedInterestMode as 'Fixed' | 'Variable',
         InterestRate: normalizedInterestMode === "Fixed" ? Number(interestRate) : undefined,
@@ -420,10 +450,15 @@ export const updateLoan = async (req: Request, res: Response) => {
 
       await LoanModel.deleteLoanMembers(existingLoan.Id);
       for (const member of loanMembers) {
+        const memberOutstanding = member.outstandingPrincipal !== undefined && member.outstandingPrincipal !== null
+          ? Number(member.outstandingPrincipal)
+          : (customOutstanding !== undefined && normalizedLoanType === 'Single' ? customOutstanding : Number(member.loanShareAmount));
+
         await LoanModel.addLoanMember({
           LoanId: existingLoan.Id,
           UserId: member.userId,
           LoanShareAmount: Number(member.loanShareAmount),
+          OutstandingPrincipal: memberOutstanding,
           CreatedDate: updatedDate,
           Status: 'Active'
         });

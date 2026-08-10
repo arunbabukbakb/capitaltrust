@@ -8,6 +8,7 @@ export interface Loan {
   OutstandingPrincipal: number;
   TenureMonths: number;
   StartDate: string;
+  OpeningDate?: string | null;
   EndDate: string;
   InterestMode: 'Fixed' | 'Variable';
   InterestRate?: number | null;
@@ -77,6 +78,7 @@ export const LoanModel = {
           l.OutstandingPrincipal,
           l.TenureMonths,
           l.StartDate,
+          l.OpeningDate,
           l.EndDate,
           l.InterestMode,
           l.InterestRate,
@@ -109,6 +111,7 @@ export const LoanModel = {
         l.OutstandingPrincipal,
         l.TenureMonths,
         l.StartDate,
+        l.OpeningDate,
         l.EndDate,
         l.InterestMode,
         l.InterestRate,
@@ -176,20 +179,26 @@ export const LoanModel = {
     return res?.count || 0;
   },
 
-  async createLoan(loan: Omit<Loan, 'OutstandingPrincipal'>): Promise<void> {
+  async createLoan(loan: Partial<Loan> & Omit<Loan, 'OutstandingPrincipal'> & { OutstandingPrincipal?: number }): Promise<void> {
     const db = getDatabase();
+    const outstanding = loan.OutstandingPrincipal !== undefined && loan.OutstandingPrincipal !== null && Number(loan.OutstandingPrincipal) >= 0
+      ? Number(loan.OutstandingPrincipal)
+      : loan.Amount;
     await db.run(
-      `INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, EndDate, InterestMode, InterestRate, IsCompound, Status, CreatedBy, CreatedDate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [loan.Id, loan.LoanNo, loan.LoanType, loan.Amount, loan.Amount, loan.TenureMonths, loan.StartDate, loan.EndDate, loan.InterestMode, loan.InterestRate || null, loan.IsCompound ? 1 : 0, loan.Status, loan.CreatedBy || null, loan.CreatedDate]
+      `INSERT INTO Loan (Id, LoanNo, LoanType, Amount, OutstandingPrincipal, TenureMonths, StartDate, OpeningDate, EndDate, InterestMode, InterestRate, IsCompound, Status, CreatedBy, CreatedDate)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [loan.Id, loan.LoanNo, loan.LoanType, loan.Amount, outstanding, loan.TenureMonths, loan.StartDate, loan.OpeningDate || null, loan.EndDate, loan.InterestMode, loan.InterestRate || null, loan.IsCompound ? 1 : 0, loan.Status, loan.CreatedBy || null, loan.CreatedDate]
     );
   },
 
-  async addLoanMember(member: Omit<LoanMember, 'Id' | 'OutstandingPrincipal'>): Promise<{ lastID?: number | string }> {
+  async addLoanMember(member: Partial<LoanMember> & Omit<LoanMember, 'Id' | 'OutstandingPrincipal'> & { OutstandingPrincipal?: number }): Promise<{ lastID?: number | string }> {
     const db = getDatabase();
+    const outstanding = member.OutstandingPrincipal !== undefined && member.OutstandingPrincipal !== null && Number(member.OutstandingPrincipal) >= 0
+      ? Number(member.OutstandingPrincipal)
+      : member.LoanShareAmount;
     return db.run(
       "INSERT INTO LoanMember (LoanId, UserId, LoanShareAmount, OutstandingPrincipal, CreatedDate, Status) VALUES (?, ?, ?, ?, ?, ?)",
-      [member.LoanId, member.UserId, member.LoanShareAmount, member.LoanShareAmount, member.CreatedDate, member.Status]
+      [member.LoanId, member.UserId, member.LoanShareAmount, outstanding, member.CreatedDate, member.Status]
     );
   },
 

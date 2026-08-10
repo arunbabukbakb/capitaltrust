@@ -51,6 +51,8 @@ interface LoanSummary {
 interface CollectionTypeItem {
   typeId: number;
   typeName: string;
+  openingBalance?: number;
+  collectedAmount?: number;
   totalAmount: number;
 }
 
@@ -453,6 +455,8 @@ export default function MemberLedger() {
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
                   <tr>
                     <th className="p-3 pl-6 uppercase tracking-wider text-[9px]">{t('collectionPage.collectionType')}</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Opening Bal. (₹)</th>
+                    <th className="p-3 uppercase tracking-wider text-[9px] text-right">Collections (₹)</th>
                     <th className="p-3 uppercase tracking-wider text-[9px] text-right">{t('reportPage.totalContributed')}</th>
                     <th className="p-3 pr-6 uppercase tracking-wider text-[9px] text-right">{t('collectionPage.action')}</th>
                   </tr>
@@ -460,13 +464,15 @@ export default function MemberLedger() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-250 font-semibold">
                   {ledgerData.collections.typesList.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-400 italic">{t('reportPage.noSavingsDefined')}</td>
+                      <td colSpan={5} className="p-8 text-center text-slate-400 italic">{t('reportPage.noSavingsDefined')}</td>
                     </tr>
                   ) : (
                     ledgerData.collections.typesList.map((type) => (
                       <tr key={type.typeId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="p-3 pl-6 font-bold text-slate-900 dark:text-white">{type.typeName}</td>
-                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400 font-bold">₹{type.totalAmount.toFixed(2)}</td>
+                        <td className="p-3 text-right text-slate-600 dark:text-slate-400 font-bold font-mono">₹{(type.openingBalance || 0).toFixed(2)}</td>
+                        <td className="p-3 text-right text-slate-700 dark:text-slate-300 font-bold font-mono">₹{(type.collectedAmount || 0).toFixed(2)}</td>
+                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400 font-bold font-mono">₹{type.totalAmount.toFixed(2)}</td>
                         <td className="p-3 pr-6 text-right">
                           <button
                             onClick={() => handleViewCollectionHistory(type)}
@@ -491,10 +497,12 @@ export default function MemberLedger() {
               ) : (
                 ledgerData.collections.typesList.map((type) => (
                   <div key={type.typeId} className="p-4 flex justify-between items-center bg-white dark:bg-slate-900 gap-4 text-xs font-semibold">
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-0.5">
                       <span className="font-bold text-slate-900 dark:text-white text-sm block truncate">{type.typeName}</span>
-                      <span className="text-[10px] text-slate-450 dark:text-slate-400 block mt-0.5 font-normal">Total Contributed</span>
-                      <span className="text-emerald-600 dark:text-emerald-405 font-bold text-sm block mt-0.5">₹{type.totalAmount.toFixed(2)}</span>
+                      <span className="text-[10px] text-slate-400 block font-normal">
+                        Opening Bal: ₹{(type.openingBalance || 0).toFixed(2)} • Collected: ₹{(type.collectedAmount || 0).toFixed(2)}
+                      </span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm block">Total: ₹{type.totalAmount.toFixed(2)}</span>
                     </div>
 
                     <button

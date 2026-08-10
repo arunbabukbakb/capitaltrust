@@ -296,6 +296,7 @@ export async function initDatabase(): Promise<Database> {
         OutstandingPrincipal DOUBLE NOT NULL DEFAULT 0,
         TenureMonths INT NOT NULL CHECK(TenureMonths > 0),
         StartDate VARCHAR(255) NOT NULL,
+        OpeningDate VARCHAR(255) DEFAULT NULL,
         EndDate VARCHAR(255) NOT NULL,
         InterestMode VARCHAR(255) NOT NULL CHECK(InterestMode IN ('Fixed', 'Variable')),
         InterestRate DOUBLE,
@@ -390,6 +391,24 @@ export async function initDatabase(): Promise<Database> {
         FOREIGN KEY(CollectionGroupId) REFERENCES FundCollectionGroup(Id) ON DELETE CASCADE,
         FOREIGN KEY(UserId) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS MemberOpeningBalance (
+        Id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        UserId VARCHAR(255) NOT NULL,
+        CollectionTypeId INT NOT NULL,
+        Amount DOUBLE NOT NULL DEFAULT 0,
+        AsOfDate VARCHAR(255) NOT NULL,
+        Notes VARCHAR(500),
+        CreatedBy VARCHAR(255),
+        CreatedDate VARCHAR(255) NOT NULL,
+        UpdatedDate VARCHAR(255) NOT NULL,
+        FOREIGN KEY(CollectionTypeId) REFERENCES CollectionType(Id) ON DELETE CASCADE,
+        FOREIGN KEY(UserId) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        UNIQUE(tenantId, UserId, CollectionTypeId)
+      );
+
 
       CREATE TABLE IF NOT EXISTS menus (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -763,6 +782,11 @@ export async function initDatabase(): Promise<Database> {
     if (!hasOutstanding) {
       await db.exec("ALTER TABLE Loan ADD COLUMN OutstandingPrincipal DOUBLE NOT NULL DEFAULT 0");
       await db.exec("UPDATE Loan SET OutstandingPrincipal = Amount WHERE OutstandingPrincipal = 0");
+    }
+
+    const hasLoanOpeningDate = await checkColumnExists('Loan', 'OpeningDate');
+    if (!hasLoanOpeningDate) {
+      await db.exec("ALTER TABLE Loan ADD COLUMN OpeningDate VARCHAR(255) DEFAULT NULL");
     }
 
     const hasExpenseBy = await checkColumnExists('expenses', 'ExpenseBy');

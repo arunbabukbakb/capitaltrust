@@ -67,22 +67,31 @@ export const getMemberLedgerData = async (req: Request, res: Response) => {
 
     // 3. Collections Summaries & Types list
     const totalCollectedRes = await db.get(
-      "SELECT COALESCE(SUM(Amount), 0) as totalCollected FROM MemberCollection WHERE UserId = ?",
-      [userId]
+      `SELECT 
+        (COALESCE((SELECT SUM(Amount) FROM MemberCollection WHERE UserId = ?), 0) + 
+         COALESCE((SELECT SUM(Amount) FROM MemberOpeningBalance WHERE UserId = ? AND tenantId = ?), 0)) as totalCollected`,
+      [userId, userId, tenantId]
     );
 
     const collectionTypesList = await db.all(
       `SELECT 
          ct.Id as typeId, 
          ct.TypeName as typeName, 
-         COALESCE(SUM(mc.Amount), 0) as totalAmount
+         COALESCE(mob.Amount, 0) as openingBalance,
+         COALESCE(sub.collectedAmount, 0) as collectedAmount,
+         (COALESCE(mob.Amount, 0) + COALESCE(sub.collectedAmount, 0)) as totalAmount
        FROM CollectionType ct
-       LEFT JOIN FundCollectionGroup fcg ON ct.Id = fcg.CollectionTypeId
-       LEFT JOIN MemberCollection mc ON fcg.Id = mc.CollectionGroupId AND mc.UserId = ?
+       LEFT JOIN MemberOpeningBalance mob ON ct.Id = mob.CollectionTypeId AND mob.UserId = ? AND mob.tenantId = ?
+       LEFT JOIN (
+         SELECT fcg.CollectionTypeId, SUM(mc.Amount) as collectedAmount
+         FROM MemberCollection mc
+         JOIN FundCollectionGroup fcg ON mc.CollectionGroupId = fcg.Id
+         WHERE mc.UserId = ?
+         GROUP BY fcg.CollectionTypeId
+       ) sub ON ct.Id = sub.CollectionTypeId
        WHERE ct.tenantId = ?
-       GROUP BY ct.Id, ct.TypeName
        ORDER BY ct.Id DESC`,
-      [userId, tenantId]
+      [userId, tenantId, userId, tenantId]
     );
 
     // 4. Expenses Summaries & List

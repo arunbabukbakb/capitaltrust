@@ -126,10 +126,47 @@ export default function LoanRepayment() {
     return activeFacility.interestRate ? `${activeFacility.interestRate}%` : 'Variable slabs';
   };
 
+  const parseYearMonth = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const clean = String(dateStr).trim().split('T')[0];
+    const parts = clean.split(/[-/.]/);
+    if (parts.length >= 3) {
+      if (parts[0].length === 4) {
+        return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) };
+      } else if (parts[2].length === 4) {
+        return { year: parseInt(parts[2], 10), month: parseInt(parts[1], 10) };
+      }
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+    }
+    return null;
+  };
+
   const getProperRemainingTenure = () => {
     if (!activeFacility) return 0;
+    
+    const isExisting = activeFacility.openingDate && 
+                      String(activeFacility.openingDate).trim() !== '' && 
+                      String(activeFacility.openingDate).trim() !== String(activeFacility.startDate).trim();
+
+    const openDateStr = isExisting ? activeFacility.openingDate : activeFacility.startDate;
+    
+    const openym = parseYearMonth(openDateStr);
+    const endym = parseYearMonth(activeFacility.endDate);
+
+    let initialRemainingMonths = Number(activeFacility.tenureMonths || 0);
+
+    if (openym && endym) {
+      const diff = (endym.year - openym.year) * 12 + (endym.month - openym.month);
+      if (diff >= 0) {
+        initialRemainingMonths = diff;
+      }
+    }
+
     const paidCount = selectedLoanPayments.length;
-    return Math.max(0, (activeFacility.tenureMonths || 0) - paidCount);
+    return Math.max(0, initialRemainingMonths - paidCount);
   };
 
   return (
@@ -302,6 +339,11 @@ export default function LoanRepayment() {
                     <p className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">
                       {getProperRemainingTenure()} / {activeFacility.tenureMonths} Months
                     </p>
+                    {activeFacility.openingDate && activeFacility.openingDate !== activeFacility.startDate && (
+                      <span className="text-[9px] text-amber-600 font-semibold block mt-0.5">
+                        (Remaining from Opening Date: {activeFacility.openingDate})
+                      </span>
+                    )}
                   </div>
 
                   <div className="col-span-2 sm:col-span-1">
@@ -310,6 +352,11 @@ export default function LoanRepayment() {
                       <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                       <span>{activeFacility.startDate} to {activeFacility.endDate}</span>
                     </p>
+                    {activeFacility.openingDate && activeFacility.openingDate !== activeFacility.startDate && (
+                      <span className="text-[9px] text-slate-400 font-medium block mt-0.5">
+                        Opening Date: {activeFacility.openingDate}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -124,13 +124,13 @@ export const CollectionModel = {
     const db = getDatabase();
     return db.get(
       `SELECT 
-        COALESCE(SUM(mc.Amount), 0) as totalAmount,
+        (COALESCE(SUM(mc.Amount), 0) + COALESCE((SELECT SUM(mob.Amount) FROM MemberOpeningBalance mob WHERE mob.CollectionTypeId = ? AND mob.tenantId = ?), 0)) as totalAmount,
         COUNT(DISTINCT mc.UserId) as membersCount
       FROM MemberCollection mc
       JOIN FundCollectionGroup fcg ON mc.CollectionGroupId = fcg.Id
       JOIN users u ON mc.UserId = u.id
       WHERE fcg.CollectionTypeId = ? AND u.tenantId = ?`,
-      [typeId, tenantId]
+      [typeId, tenantId, typeId, tenantId]
     );
   },
 
@@ -142,13 +142,16 @@ export const CollectionModel = {
         u.fullName, 
         u.email, 
         u.phoneNumber,
-        COALESCE(sub.totalAmount, 0) as amount,
+        COALESCE(mob.Amount, 0) as openingBalance,
+        COALESCE(sub.collectedAmount, 0) as collectedAmount,
+        (COALESCE(mob.Amount, 0) + COALESCE(sub.collectedAmount, 0)) as amount,
         sub.lastDate as date
       FROM users u
+      LEFT JOIN MemberOpeningBalance mob ON u.id = mob.UserId AND mob.CollectionTypeId = ? AND mob.tenantId = ?
       LEFT JOIN (
         SELECT 
           mc.UserId,
-          SUM(mc.Amount) as totalAmount,
+          SUM(mc.Amount) as collectedAmount,
           MAX(fcg.CollectionDate) as lastDate
         FROM MemberCollection mc
         JOIN FundCollectionGroup fcg ON mc.CollectionGroupId = fcg.Id
@@ -157,8 +160,68 @@ export const CollectionModel = {
       ) sub ON u.id = sub.UserId
       WHERE u.tenantId = ?
       ORDER BY u.fullName`,
-      [collectionTypeId, tenantId]
+      [collectionTypeId, tenantId, collectionTypeId, tenantId]
     );
+  },
+
+  async getOpeningBalances(tenantId: string, collectionTypeId: number): Promise<any[]> {
+    const db = getDatabase();
+    return db.all<any[]>(
+      `SELECT 
+        u.id as userId, 
+        u.fullName, 
+        u.email, 
+        u.phoneNumber,
+        COALESCE(mob.Amount, 0) as openingBalance,
+        mob.AsOfDate as asOfDate,
+        mob.Notes as notes,
+        mob.UpdatedDate as updatedDate
+      FROM users u
+      LEFT JOIN MemberOpeningBalance mob ON u.id = mob.UserId AND mob.CollectionTypeId = ? AND mob.tenantId = ?
+      WHERE u.tenantId = ?
+      ORDER BY u.fullName`,
+      [collectionTypeId, tenantId, tenantId]
+    );
+  },
+
+  async saveOpeningBalances(
+    tenantId: string,
+    collectionTypeId: number,
+    asOfDate: string,
+    balances: { userId: string; amount: number; notes?: string }[],
+    createdBy: string
+  ): Promise<void> {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+    await db.run("BEGIN TRANSACTION");
+    try {
+      for (const item of balances) {
+        const amt = Number(item.amount) || 0;
+        const notes = item.notes || '';
+        const existing = await db.get(
+          "SELECT Id FROM MemberOpeningBalance WHERE tenantId = ? AND UserId = ? AND CollectionTypeId = ?",
+          [tenantId, item.userId, collectionTypeId]
+        );
+        if (existing) {
+          await db.run(
+            `UPDATE MemberOpeningBalance 
+             SET Amount = ?, AsOfDate = ?, Notes = ?, UpdatedDate = ?
+             WHERE tenantId = ? AND UserId = ? AND CollectionTypeId = ?`,
+            [amt, asOfDate, notes, now, tenantId, item.userId, collectionTypeId]
+          );
+        } else {
+          await db.run(
+            `INSERT INTO MemberOpeningBalance (tenantId, UserId, CollectionTypeId, Amount, AsOfDate, Notes, CreatedBy, CreatedDate, UpdatedDate)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [tenantId, item.userId, collectionTypeId, amt, asOfDate, notes, createdBy, now, now]
+          );
+        }
+      }
+      await db.run("COMMIT");
+    } catch (err) {
+      await db.run("ROLLBACK");
+      throw err;
+    }
   },
 
   async clearMemberCollectionsByGroup(groupId: number): Promise<void> {

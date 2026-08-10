@@ -167,3 +167,72 @@ export const getAuditReport = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error fetching audit report" });
   }
 };
+
+export const getOpeningBalances = async (req: Request, res: Response) => {
+  try {
+    const { collectionTypeId } = req.query;
+    if (!collectionTypeId) {
+      return res.status(400).json({ error: "collectionTypeId query parameter is required" });
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const list = await CollectionModel.getOpeningBalances(tenantId, Number(collectionTypeId));
+    res.json(list);
+  } catch (error) {
+    console.error("Get opening balances error", error);
+    res.status(500).json({ error: "Error fetching member opening balances" });
+  }
+};
+
+export const saveOpeningBalances = async (req: Request, res: Response) => {
+  try {
+    const { collectionTypeId, asOfDate, balances } = req.body;
+    if (!collectionTypeId) {
+      return res.status(400).json({ error: "collectionTypeId is required" });
+    }
+    if (!asOfDate) {
+      return res.status(400).json({ error: "asOfDate is required" });
+    }
+    if (!Array.isArray(balances)) {
+      return res.status(400).json({ error: "balances must be an array" });
+    }
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const createdBy = (req as any).user?.id || 'admin';
+
+    await CollectionModel.saveOpeningBalances(
+      tenantId,
+      Number(collectionTypeId),
+      asOfDate,
+      balances,
+      createdBy
+    );
+
+    const db = getDatabase();
+    const typeRow = await db.get<{ typeName: string }>(
+      'SELECT TypeName as typeName FROM CollectionType WHERE Id = ?',
+      [collectionTypeId]
+    );
+    const typeName = typeRow?.typeName || 'Fund Collection';
+
+    for (const item of balances) {
+      const amt = Number(item.amount) || 0;
+      if (amt > 0) {
+        await recordTransaction({
+          tenantId: tenantId || 1,
+          transactionDate: asOfDate,
+          transactionType: 'OpeningBalance',
+          amount: amt,
+          referenceType: 'CollectionOpeningBalance',
+          referenceId: `OB-${collectionTypeId}-${item.userId}`,
+          narration: `Member Collection Opening Balance (${typeName})`,
+          createdBy: item.userId
+        });
+      }
+    }
+
+    res.json({ message: "Opening balances saved successfully" });
+  } catch (error) {
+    console.error("Save opening balances error", error);
+    res.status(500).json({ error: "Error saving member opening balances" });
+  }
+};
+

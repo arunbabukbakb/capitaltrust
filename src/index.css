@@ -136,6 +136,26 @@
   button.bg-white:hover {
     background-color: #161f30 !important;
   }
+
+  /* Date Input Calendar Icon Dark Mode Styling */
+  input[type="date"] {
+    color-scheme: dark;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.9) brightness(1.4) !important;
+    cursor: pointer;
+    opacity: 0.85;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+}
+
+/* Global Calendar Picker Indicator Base */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
 }
 
 /* ── In-App Push Notification Toast ──────────────────────────────────────── */
