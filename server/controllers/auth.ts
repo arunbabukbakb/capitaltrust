@@ -25,6 +25,19 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Account with this email/username already exists under this organization." });
     }
 
+    const db = getDatabase();
+    const tenantObj = await db.get("SELECT maxUserLimit FROM tenants WHERE id = ?", [tenantId]);
+    const maxUserLimit = (tenantObj && tenantObj.maxUserLimit) ? Number(tenantObj.maxUserLimit) : 25;
+
+    const tenantUserCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM users WHERE tenantId = ?", [tenantId]);
+    const currentUsers = tenantUserCount ? tenantUserCount.count : 0;
+
+    if (currentUsers >= maxUserLimit) {
+      return res.status(403).json({
+        error: `User limit reached: This organization has reached its maximum allowed limit of ${maxUserLimit} members. Please contact your administrator or upgrade subscription to add more members.`
+      });
+    }
+
     const usersCount = await UserModel.countAll();
     const isFirstUser = usersCount === 0;
     const initialRole = isFirstUser ? 'admin' : 'user';
@@ -71,7 +84,6 @@ export const register = async (req: Request, res: Response) => {
     const token = jwt.sign({ id: userId, role: initialRole }, JWT_SECRET, { expiresIn: '1h' });
     const refreshToken = jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
 
-    const db = getDatabase();
     await db.run("UPDATE users SET refreshToken = ? WHERE id = ?", [refreshToken, userId]);
 
     res.cookie('token', token, {

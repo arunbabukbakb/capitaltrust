@@ -16,7 +16,8 @@ import {
   Sparkles,
   Search,
   Sun,
-  Moon
+  Moon,
+  Video
 } from 'lucide-react';
 import { useTheme } from '../../components/ThemeContext';
 import { useSelector } from 'react-redux';
@@ -78,6 +79,13 @@ export default function DocLayout() {
       path: '/document/report',
       icon: <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 dark:text-teal-400" />,
       desc: 'Transaction audit ledger, Date filters & Metrics'
+    },
+    {
+      id: 'video-tutorials',
+      title: 'Video Tutorial',
+      path: '/document/video-tutorials',
+      icon: <Video className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500 dark:text-rose-400" />,
+      desc: 'Watch step-by-step video guides and walkthroughs'
     }
   ];
 

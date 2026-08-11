@@ -12,6 +12,7 @@ import {
 } from '../utils/mailer';
 import { fetchLiveIncomingEmails, deleteLiveInboxMessage } from '../utils/imapReader';
 import { runSeeders } from '../seeders';
+import { VideoTutorialModel } from '../models/VideoTutorial';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-key-that-should-be-in-env-vars";
 
@@ -105,7 +106,7 @@ export const listTenants = async (req: Request, res: Response) => {
     }
 
     const db = getDatabase();
-    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount, gstnumber FROM tenants ORDER BY createdDate DESC");
+    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount, gstnumber, maxUserLimit FROM tenants ORDER BY createdDate DESC");
     return res.json(tenants);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
@@ -153,7 +154,7 @@ export const toggleTenantStatus = async (req: Request, res: Response) => {
 export const updateTenantDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone, gstnumber } = req.body;
+    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone, gstnumber, maxUserLimit } = req.body;
 
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -187,6 +188,7 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     const newAddress = address !== undefined ? address : (tenant.address || '');
     const newPhone = phone !== undefined ? phone : (tenant.phone || '');
     const newGstNumber = gstnumber !== undefined ? gstnumber : (tenant.gstnumber || '');
+    const newMaxUserLimit = typeof maxUserLimit !== 'undefined' ? Number(maxUserLimit) : (tenant.maxUserLimit || 25);
 
     let newAmount = tenant.amount || 0;
     let newGst = tenant.gst || 0;
@@ -205,8 +207,8 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     }
 
     await db.run(
-      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ?, gstnumber = ? WHERE id = ?",
-      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, newGstNumber, id]
+      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ?, gstnumber = ?, maxUserLimit = ? WHERE id = ?",
+      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, newGstNumber, newMaxUserLimit, id]
     );
 
     return res.json({
@@ -225,7 +227,8 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
         gst: newGst,
         gstamount: newGstAmount,
         invoiceno: newInvoiceNo,
-        gstnumber: newGstNumber
+        gstnumber: newGstNumber,
+        maxUserLimit: newMaxUserLimit
       }
     });
   } catch (error: any) {
@@ -302,8 +305,8 @@ export const getPriceDetails = async (req: Request, res: Response) => {
     const db = getDatabase();
     let price = await db.get("SELECT * FROM pricedetails LIMIT 1");
     if (!price) {
-      await db.run("INSERT INTO pricedetails (price, tax, amc) VALUES (0, 0, 0)");
-      price = { id: 1, price: 0, tax: 0, amc: 0 };
+      await db.run("INSERT INTO pricedetails (price, tax, amc, defaultUserLimit, additionalUserBlockSize, additionalUserBlockPrice) VALUES (0, 0, 0, 25, 5, 0)");
+      price = { id: 1, price: 0, tax: 0, amc: 0, defaultUserLimit: 25, additionalUserBlockSize: 5, additionalUserBlockPrice: 0 };
     }
     return res.json(price);
   } catch (error) {
@@ -324,18 +327,23 @@ export const updatePriceDetails = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Access denied. Superadmin only.' });
     }
 
-    const { price, tax, amc } = req.body;
+    const { price, tax, amc, defaultUserLimit, additionalUserBlockSize, additionalUserBlockPrice } = req.body;
     const db = getDatabase();
     const existing = await db.get("SELECT id FROM pricedetails LIMIT 1");
+    
+    const dLimit = typeof defaultUserLimit !== 'undefined' ? Number(defaultUserLimit) : 25;
+    const bSize = typeof additionalUserBlockSize !== 'undefined' ? Number(additionalUserBlockSize) : 5;
+    const bPrice = typeof additionalUserBlockPrice !== 'undefined' ? Number(additionalUserBlockPrice) : 0;
+
     if (existing) {
       await db.run(
-        "UPDATE pricedetails SET price = ?, tax = ?, amc = ? WHERE id = ?",
-        [Number(price) || 0, Number(tax) || 0, Number(amc) || 0, existing.id]
+        "UPDATE pricedetails SET price = ?, tax = ?, amc = ?, defaultUserLimit = ?, additionalUserBlockSize = ?, additionalUserBlockPrice = ? WHERE id = ?",
+        [Number(price) || 0, Number(tax) || 0, Number(amc) || 0, dLimit, bSize, bPrice, existing.id]
       );
     } else {
       await db.run(
-        "INSERT INTO pricedetails (price, tax, amc) VALUES (?, ?, ?)",
-        [Number(price) || 0, Number(tax) || 0, Number(amc) || 0]
+        "INSERT INTO pricedetails (price, tax, amc, defaultUserLimit, additionalUserBlockSize, additionalUserBlockPrice) VALUES (?, ?, ?, ?, ?, ?)",
+        [Number(price) || 0, Number(tax) || 0, Number(amc) || 0, dLimit, bSize, bPrice]
       );
     }
     return res.json({ success: true, message: 'Price details updated successfully.' });
@@ -1137,4 +1145,175 @@ export const updateSuperAdminPushToken = async (req: Request, res: Response) => 
     return res.status(500).json({ error: error.message || 'Failed to update push token.' });
   }
 };
+
+// ==================== VIDEO TUTORIALS CONTROLLER FUNCTIONS ====================
+
+export const listVideoTutorials = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const tutorials = await VideoTutorialModel.findAll();
+    return res.json(tutorials);
+  } catch (error: any) {
+    console.error('listVideoTutorials error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch video tutorials.' });
+  }
+};
+
+export const createVideoTutorial = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { title, link, status, order_number, orderNumber } = req.body;
+    if (!title || !link) {
+      return res.status(400).json({ error: 'Title and link are required.' });
+    }
+
+    const numOrder = typeof order_number !== 'undefined' ? Number(order_number) : (typeof orderNumber !== 'undefined' ? Number(orderNumber) : 0);
+
+    const result = await VideoTutorialModel.create({
+      title,
+      link,
+      status: status || 'Active',
+      order_number: isNaN(numOrder) ? 0 : numOrder
+    });
+
+    return res.status(201).json({
+      message: 'Video tutorial created successfully.',
+      id: result.lastID
+    });
+  } catch (error: any) {
+    console.error('createVideoTutorial error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to create video tutorial.' });
+  }
+};
+
+export const updateVideoTutorial = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { id } = req.params;
+    const { title, link, status, order_number, orderNumber } = req.body;
+
+    if (!title || !link) {
+      return res.status(400).json({ error: 'Title and link are required.' });
+    }
+
+    const existing = await VideoTutorialModel.findById(Number(id));
+    if (!existing) {
+      return res.status(404).json({ error: 'Video tutorial not found.' });
+    }
+
+    const numOrder = typeof order_number !== 'undefined' ? Number(order_number) : (typeof orderNumber !== 'undefined' ? Number(orderNumber) : 0);
+
+    await VideoTutorialModel.update(Number(id), {
+      title,
+      link,
+      status: status || 'Active',
+      order_number: isNaN(numOrder) ? 0 : numOrder
+    });
+
+    return res.json({ message: 'Video tutorial updated successfully.' });
+  } catch (error: any) {
+    console.error('updateVideoTutorial error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update video tutorial.' });
+  }
+};
+
+export const toggleVideoTutorialStatus = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { id } = req.params;
+    const existing = await VideoTutorialModel.findById(Number(id));
+    if (!existing) {
+      return res.status(404).json({ error: 'Video tutorial not found.' });
+    }
+
+    const newStatus = existing.status === 'Active' ? 'Inactive' : 'Active';
+    await VideoTutorialModel.toggleStatus(Number(id), newStatus);
+
+    return res.json({
+      message: `Video tutorial status updated to ${newStatus}.`,
+      status: newStatus
+    });
+  } catch (error: any) {
+    console.error('toggleVideoTutorialStatus error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to toggle video tutorial status.' });
+  }
+};
+
+export const deleteVideoTutorial = async (req: Request, res: Response) => {
+  try {
+    const token = req.cookies?.token ||
+      (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated.' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    if (decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    }
+
+    const { id } = req.params;
+    const existing = await VideoTutorialModel.findById(Number(id));
+    if (!existing) {
+      return res.status(404).json({ error: 'Video tutorial not found.' });
+    }
+
+    await VideoTutorialModel.delete(Number(id));
+    return res.json({ message: 'Video tutorial deleted successfully.' });
+  } catch (error: any) {
+    console.error('deleteVideoTutorial error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete video tutorial.' });
+  }
+};
+
+export const getPublicVideoTutorials = async (req: Request, res: Response) => {
+  try {
+    const tutorials = await VideoTutorialModel.findActive();
+    return res.json(tutorials);
+  } catch (error: any) {
+    console.error('getPublicVideoTutorials error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch public video tutorials.' });
+  }
+};
+
 

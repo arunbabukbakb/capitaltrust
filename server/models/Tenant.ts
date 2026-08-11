@@ -17,6 +17,7 @@ export interface Tenant {
   gstamount?: number;
   logo?: string;
   gstnumber?: string;
+  maxUserLimit?: number;
 }
 
 export const TenantModel = {

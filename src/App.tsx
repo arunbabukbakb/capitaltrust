@@ -56,6 +56,8 @@ import LoanDoc from './pages/documentation/LoanDoc';
 import ExpenseDoc from './pages/documentation/ExpenseDoc';
 import AdminFeaturesDoc from './pages/documentation/AdminFeaturesDoc';
 import ReportDoc from './pages/documentation/ReportDoc';
+import VideoTutorialsDoc from './pages/documentation/VideoTutorialsDoc';
+import AdminVideoTutorials from './pages/superadmin/AdminVideoTutorials';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import {
@@ -275,6 +277,8 @@ export default function App() {
           <Route path="/document" element={<DocLayout />}>
             <Route index element={<Navigate to="/document/getting-started" replace />} />
             <Route path="getting-started" element={<GettingStartedDoc />} />
+            <Route path="video-tutorials" element={<VideoTutorialsDoc />} />
+            <Route path="video-tutorial" element={<VideoTutorialsDoc />} />
             <Route path="member-management" element={<MemberManagementDoc />} />
             <Route path="collection" element={<CollectionDoc />} />
             <Route path="loan" element={<LoanDoc />} />
@@ -296,6 +300,7 @@ export default function App() {
             <Route path="/admin/pricing" element={<AdminPricing />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
             <Route path="/admin/menus" element={<MenusPage />} />
+            <Route path="/admin/video-tutorials" element={<AdminVideoTutorials />} />
           </Route>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
@@ -361,6 +366,8 @@ export default function App() {
         <Route path="/document" element={<DocLayout />}>
           <Route index element={<Navigate to="/document/getting-started" replace />} />
           <Route path="getting-started" element={<GettingStartedDoc />} />
+          <Route path="video-tutorials" element={<VideoTutorialsDoc />} />
+          <Route path="video-tutorial" element={<VideoTutorialsDoc />} />
           <Route path="member-management" element={<MemberManagementDoc />} />
           <Route path="collection" element={<CollectionDoc />} />
           <Route path="loan" element={<LoanDoc />} />

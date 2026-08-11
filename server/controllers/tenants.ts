@@ -584,3 +584,126 @@ export const verifyAmcPayment = async (req: Request, res: Response) => {
   }
 };
 
+export const createUpgradeOrder = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant header is missing." });
+    }
+
+    const { blocks } = req.body;
+    const blockCount = Math.max(1, Number(blocks) || 1);
+
+    const db = getDatabase();
+    const tenant = await db.get("SELECT name, adminEmail, maxUserLimit FROM tenants WHERE id = ?", [tenantId]);
+    if (!tenant) {
+      return res.status(404).json({ error: "Tenant not found." });
+    }
+
+    const pricing = await db.get("SELECT additionalUserBlockPrice, additionalUserBlockSize, tax FROM pricedetails LIMIT 1");
+    const blockPrice = pricing ? (Number(pricing.additionalUserBlockPrice) || 0) : 0;
+    const blockSize = pricing ? (Number(pricing.additionalUserBlockSize) || 5) : 5;
+    const taxPercent = pricing ? (Number(pricing.tax) || 0) : 0;
+
+    const basePrice = blockCount * blockPrice;
+    const taxAmount = basePrice * (taxPercent / 100);
+    const totalAmount = basePrice + taxAmount;
+
+    const amountInPaise = Math.round(totalAmount * 100);
+    const rzpDetails = getRazorpayDetails();
+
+    let orderId = `order_upgrade_${Math.random().toString(36).substring(2, 11)}`;
+    let isMock = rzpDetails.isMock;
+
+    if (rzpDetails.client && amountInPaise > 0) {
+      try {
+        const order = await rzpDetails.client.orders.create({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: `rcpt_upg_${tenantId}_${Date.now()}`
+        });
+        orderId = order.id;
+        isMock = false;
+      } catch (err) {
+        console.warn("Failed to create Razorpay upgrade order, falling back to mock:", err);
+        isMock = true;
+      }
+    }
+
+    return res.json({
+      success: true,
+      orderId,
+      amount: totalAmount,
+      currency: "INR",
+      keyId: rzpDetails.keyId || "rzp_test_mockKeyId",
+      isMock,
+      blocks: blockCount,
+      addedMembers: blockCount * blockSize,
+      blockPrice,
+      blockSize,
+      taxPercent,
+      prefill: {
+        name: tenant.name,
+        email: tenant.adminEmail
+      }
+    });
+  } catch (error: any) {
+    console.error("Create upgrade order error:", error);
+    return res.status(500).json({ error: error.message || "Failed to create upgrade order." });
+  }
+};
+
+export const verifyUpgradePayment = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Tenant header is missing." });
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, blocks, isMock } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: "Missing payment verification parameters." });
+    }
+
+    const rzpDetails = getRazorpayDetails();
+    if (!isMock && rzpDetails.client) {
+      const generated_signature = crypto
+        .createHmac('sha256', rzpDetails.keySecret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest('hex');
+
+      if (generated_signature !== razorpay_signature) {
+        return res.status(400).json({ error: "Upgrade payment verification failed. Invalid signature." });
+      }
+    }
+
+    const db = getDatabase();
+    const tenant = await db.get("SELECT maxUserLimit FROM tenants WHERE id = ?", [tenantId]);
+    if (!tenant) {
+      return res.status(404).json({ error: "Tenant not found." });
+    }
+
+    const pricing = await db.get("SELECT additionalUserBlockSize FROM pricedetails LIMIT 1");
+    const blockSize = pricing ? (Number(pricing.additionalUserBlockSize) || 5) : 5;
+    const blockCount = Math.max(1, Number(blocks) || 1);
+    const addedMembers = blockCount * blockSize;
+
+    const currentLimit = Number(tenant.maxUserLimit) || 25;
+    const newMaxUserLimit = currentLimit + addedMembers;
+
+    await db.run(
+      "UPDATE tenants SET maxUserLimit = ? WHERE id = ?",
+      [newMaxUserLimit, tenantId]
+    );
+
+    return res.json({
+      success: true,
+      message: `Payment successful! Member limit has been upgraded to ${newMaxUserLimit}.`,
+      maxUserLimit: newMaxUserLimit
+    });
+  } catch (error: any) {
+    console.error("Verify upgrade payment error:", error);
+    return res.status(500).json({ error: error.message || "Failed to verify upgrade payment." });
+  }
+};
+

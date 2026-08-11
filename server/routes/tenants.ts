@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerTenant, payTenant, createRazorpayOrder, verifyRazorpayPayment, createAmcOrder, verifyAmcPayment } from '../controllers/tenants';
+import { registerTenant, payTenant, createRazorpayOrder, verifyRazorpayPayment, createAmcOrder, verifyAmcPayment, createUpgradeOrder, verifyUpgradePayment } from '../controllers/tenants';
 
 const router = Router();
 
@@ -50,5 +50,7 @@ router.post('/payment/order', createRazorpayOrder);
 router.post('/payment/verify', verifyRazorpayPayment);
 router.post('/amc/order', createAmcOrder);
 router.post('/amc/verify', verifyAmcPayment);
+router.post('/upgrade/order', createUpgradeOrder);
+router.post('/upgrade/verify', verifyUpgradePayment);
 
 export default router;

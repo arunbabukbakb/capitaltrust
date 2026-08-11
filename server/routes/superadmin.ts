@@ -24,7 +24,13 @@ import {
   getLiveInboxMessages,
   replyToInboxEmail,
   deleteInboxMessage,
-  updateSuperAdminPushToken
+  updateSuperAdminPushToken,
+  listVideoTutorials,
+  createVideoTutorial,
+  updateVideoTutorial,
+  toggleVideoTutorialStatus,
+  deleteVideoTutorial,
+  getPublicVideoTutorials
 } from '../controllers/superadmin';
 
 const router = Router();
@@ -56,5 +62,13 @@ router.get('/inbox', getLiveInboxMessages);
 router.post('/inbox/reply', replyToInboxEmail);
 router.delete('/inbox/:uid', deleteInboxMessage);
 router.post('/push-token', updateSuperAdminPushToken);
+
+// Video Tutorial Routes
+router.get('/video-tutorials/public', getPublicVideoTutorials);
+router.get('/video-tutorials', listVideoTutorials);
+router.post('/video-tutorials', createVideoTutorial);
+router.put('/video-tutorials/:id', updateVideoTutorial);
+router.patch('/video-tutorials/:id/status', toggleVideoTutorialStatus);
+router.delete('/video-tutorials/:id', deleteVideoTutorial);
 
 export default router;

@@ -46,6 +46,19 @@ export const createUser = async (req: Request, res: Response) => {
 
     const tenantId = req.headers['x-tenant-id'] as string;
 
+    const db = getDatabase();
+    const tenantObj = await db.get("SELECT maxUserLimit FROM tenants WHERE id = ?", [tenantId]);
+    const maxUserLimit = (tenantObj && tenantObj.maxUserLimit) ? Number(tenantObj.maxUserLimit) : 25;
+
+    const tenantUserCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM users WHERE tenantId = ?", [tenantId]);
+    const currentUsers = tenantUserCount ? tenantUserCount.count : 0;
+
+    if (currentUsers >= maxUserLimit) {
+      return res.status(403).json({
+        error: `User limit reached: This organization has reached its maximum allowed limit of ${maxUserLimit} members. Please upgrade member capacity to add more users.`
+      });
+    }
+
     const hasAdminRole = validRoles.some(r => r.roleType === 'admin');
     if (hasAdminRole) {
       const existingAdmin = await UserModel.checkAdminExists(tenantId);
@@ -57,7 +70,6 @@ export const createUser = async (req: Request, res: Response) => {
     const primaryRole = validRoles[0];
     const id = `CT-${Math.floor(40000 + Math.random() * 20000)}`;
 
-    const db = getDatabase();
     await db.run("BEGIN TRANSACTION;");
     try {
       await UserModel.create({

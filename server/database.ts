@@ -239,7 +239,8 @@ export async function initDatabase(): Promise<Database> {
         gst DOUBLE DEFAULT 0,
         gstamount DOUBLE DEFAULT 0,
         logo LONGTEXT DEFAULT NULL,
-        gstnumber VARCHAR(255) DEFAULT NULL
+        gstnumber VARCHAR(255) DEFAULT NULL,
+        maxUserLimit INT DEFAULT 25
       );
 
       CREATE TABLE IF NOT EXISTS roles (
@@ -486,7 +487,10 @@ export async function initDatabase(): Promise<Database> {
         id INT AUTO_INCREMENT PRIMARY KEY,
         price DOUBLE NOT NULL DEFAULT 0,
         tax DOUBLE NOT NULL DEFAULT 0,
-        amc DOUBLE NOT NULL DEFAULT 0
+        amc DOUBLE NOT NULL DEFAULT 0,
+        defaultUserLimit INT NOT NULL DEFAULT 25,
+        additionalUserBlockSize INT NOT NULL DEFAULT 5,
+        additionalUserBlockPrice DOUBLE NOT NULL DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS expenses (
@@ -534,7 +538,27 @@ export async function initDatabase(): Promise<Database> {
         password VARCHAR(255) NOT NULL,
         status VARCHAR(50) NOT NULL DEFAULT 'Inactive'
       );
+
+      CREATE TABLE IF NOT EXISTS video_tutorials (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        link TEXT NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        order_number INT DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
     `);
+
+    // Ensure video_tutorials has order_number column
+    try {
+      const hasOrderNumber = await checkColumnExists('video_tutorials', 'order_number');
+      if (!hasOrderNumber) {
+        await db.exec("ALTER TABLE video_tutorials ADD COLUMN order_number INT DEFAULT 0");
+      }
+    } catch (e) {
+      // Ignored
+    }
 
     // Ensure smtp_settings has imapServer and imapPort columns
     try {
@@ -737,6 +761,23 @@ export async function initDatabase(): Promise<Database> {
     const hasTenantGstNumber = await checkColumnExists('tenants', 'gstnumber');
     if (!hasTenantGstNumber) {
       await db.exec("ALTER TABLE tenants ADD COLUMN gstnumber VARCHAR(255) DEFAULT NULL");
+    }
+    const hasTenantMaxUserLimit = await checkColumnExists('tenants', 'maxUserLimit');
+    if (!hasTenantMaxUserLimit) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN maxUserLimit INT DEFAULT 25");
+    }
+
+    const hasPricedetailsDefaultLimit = await checkColumnExists('pricedetails', 'defaultUserLimit');
+    if (!hasPricedetailsDefaultLimit) {
+      await db.exec("ALTER TABLE pricedetails ADD COLUMN defaultUserLimit INT DEFAULT 25");
+    }
+    const hasPricedetailsBlockSize = await checkColumnExists('pricedetails', 'additionalUserBlockSize');
+    if (!hasPricedetailsBlockSize) {
+      await db.exec("ALTER TABLE pricedetails ADD COLUMN additionalUserBlockSize INT DEFAULT 5");
+    }
+    const hasPricedetailsBlockPrice = await checkColumnExists('pricedetails', 'additionalUserBlockPrice');
+    if (!hasPricedetailsBlockPrice) {
+      await db.exec("ALTER TABLE pricedetails ADD COLUMN additionalUserBlockPrice DOUBLE DEFAULT 0");
     }
 
     const hasAmcInvoiceNo = await checkColumnExists('amcdetails', 'invoiceno');

@@ -27,6 +27,7 @@ interface Tenant {
   paymentStatus: string;
   paymentDate?: string;
   gstnumber?: string;
+  maxUserLimit?: number;
 }
 
 export default function TenantManagement() {
@@ -75,7 +76,8 @@ export default function TenantManagement() {
     adminEmail: '',
     paymentStatus: 'Pending',
     isActive: 1,
-    gstnumber: ''
+    gstnumber: '',
+    maxUserLimit: 25
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
@@ -168,7 +170,8 @@ export default function TenantManagement() {
       adminEmail: tenant.adminEmail,
       paymentStatus: tenant.paymentStatus || 'Pending',
       isActive: tenant.isActive,
-      gstnumber: tenant.gstnumber || ''
+      gstnumber: tenant.gstnumber || '',
+      maxUserLimit: tenant.maxUserLimit || 25
     });
     setEditError('');
   };
@@ -459,6 +462,7 @@ export default function TenantManagement() {
                 <th className="px-6 py-4">Organization</th>
                 <th className="px-6 py-4">Subdomain</th>
                 <th className="px-6 py-4">Admin Email</th>
+                <th className="px-6 py-4 text-center">User Limit</th>
                 <th className="px-6 py-4">Reg. Date</th>
                 <th className="px-6 py-4 text-center">Payment</th>
                 <th className="px-6 py-4 text-center">Status</th>
@@ -468,14 +472,14 @@ export default function TenantManagement() {
             <tbody className="divide-y divide-slate-800/60">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-400" />
                     <span>Loading registered tenant organizations...</span>
                   </td>
                 </tr>
               ) : filteredTenants.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     No matching organization records found.
                   </td>
                 </tr>
@@ -517,6 +521,12 @@ export default function TenantManagement() {
                       </td>
 
                       <td className="px-6 py-4 text-slate-400 font-medium">{t.adminEmail}</td>
+
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                          {t.maxUserLimit || 25} Users
+                        </span>
+                      </td>
 
                       <td className="px-6 py-4 text-slate-400 whitespace-nowrap">
                         {t.createdDate
@@ -711,6 +721,19 @@ export default function TenantManagement() {
                     <option value={0}>Suspended</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Max Member Limit (Users)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editForm.maxUserLimit}
+                  onChange={e => setEditForm({ ...editForm, maxUserLimit: parseInt(e.target.value) || 25 })}
+                  placeholder="25"
+                  className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500 font-bold"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Default is 25 users. Can be upgraded manually or via tenant payment.</p>
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-800">

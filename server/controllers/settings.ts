@@ -41,9 +41,19 @@ export const getCompanySettings = async (req: Request, res: Response) => {
       };
     }
 
+    const pricing = await db.get("SELECT price, tax, amc, defaultUserLimit, additionalUserBlockSize, additionalUserBlockPrice FROM pricedetails LIMIT 1");
+    const pricingObj = pricing ? {
+      price: pricing.price,
+      tax: pricing.tax,
+      amc: pricing.amc,
+      defaultUserLimit: pricing.defaultUserLimit ?? 25,
+      additionalUserBlockSize: pricing.additionalUserBlockSize ?? 5,
+      additionalUserBlockPrice: pricing.additionalUserBlockPrice ?? 0
+    } : null;
+
     const tenantId = req.headers['x-tenant-id'] as string || null;
     if (tenantId) {
-      const tenant = await db.get("SELECT id, name, subdomain, adminEmail, phone, address, invoiceno, amount, gst, gstamount, isActive, paymentStatus, paymentDate, logo, gstnumber FROM tenants WHERE id = ?", [tenantId]);
+      const tenant = await db.get("SELECT id, name, subdomain, adminEmail, phone, address, invoiceno, amount, gst, gstamount, isActive, paymentStatus, paymentDate, logo, gstnumber, maxUserLimit FROM tenants WHERE id = ?", [tenantId]);
       if (!tenant) {
         return res.status(404).json({ error: "tenant_not_found" });
       }
@@ -51,14 +61,13 @@ export const getCompanySettings = async (req: Request, res: Response) => {
         return res.status(403).json({ error: "tenant_deactivated" });
       }
 
-      const pricing = await db.get("SELECT price, tax, amc FROM pricedetails LIMIT 1");
       const amcRecord = await db.get(
         "SELECT id, amcCharge, dueDate, paidStatus FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Pending' ORDER BY dueDate ASC LIMIT 1",
         [tenantId]
       );
 
       const amcList = await db.all(
-        "SELECT id, tenantId, amcCharge, dueDate, paidDate, paidStatus, invoiceno, gst, gstamount FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Paid' ORDER BY dueDate DESC",
+        "SELECT id, tenantId, amcCharge, dueDate, paidStatus, invoiceno, gst, gstamount FROM amcdetails WHERE tenantId = ? AND paidStatus = 'Paid' ORDER BY dueDate DESC",
         [tenantId]
       );
 
@@ -74,11 +83,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
         resumetime: globalSettings.resumetime,
         paymentStatus: tenant.paymentStatus,
         paymentDate: tenant.paymentDate,
-        pricing: pricing ? {
-          price: pricing.price,
-          tax: pricing.tax,
-          amc: pricing.amc
-        } : null,
+        pricing: pricingObj,
         amcRecord: amcRecord ? {
           id: amcRecord.id,
           amcCharge: amcRecord.amcCharge,
@@ -99,13 +104,17 @@ export const getCompanySettings = async (req: Request, res: Response) => {
           gstamount: tenant.gstamount || 0,
           paymentStatus: tenant.paymentStatus,
           paymentDate: tenant.paymentDate,
-          logo: tenant.logo || ''
+          logo: tenant.logo || '',
+          maxUserLimit: tenant.maxUserLimit || 25
         },
         amcList: amcList || []
       });
     }
 
-    res.json(globalSettings);
+    return res.json({
+      ...globalSettings,
+      pricing: pricingObj
+    });
   } catch (error) {
     console.error("Get company settings error", error);
     res.status(500).json({ error: "Error fetching company settings" });
