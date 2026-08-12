@@ -14,7 +14,9 @@ import {
   X,
   Edit2,
   Save,
-  Filter
+  Filter,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 interface Tenant {
@@ -22,6 +24,7 @@ interface Tenant {
   name: string;
   subdomain: string;
   adminEmail: string;
+  phone?: string;
   createdDate: string;
   isActive: number; // 0 or 1
   paymentStatus: string;
@@ -74,6 +77,7 @@ export default function TenantManagement() {
     name: '',
     subdomain: '',
     adminEmail: '',
+    phone: '',
     paymentStatus: 'Pending',
     isActive: 1,
     gstnumber: '',
@@ -168,6 +172,7 @@ export default function TenantManagement() {
       name: tenant.name,
       subdomain: tenant.subdomain,
       adminEmail: tenant.adminEmail,
+      phone: tenant.phone || '',
       paymentStatus: tenant.paymentStatus || 'Pending',
       isActive: tenant.isActive,
       gstnumber: tenant.gstnumber || '',
@@ -255,7 +260,8 @@ export default function TenantManagement() {
     const matchesSearch =
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.subdomain.toLowerCase().includes(search.toLowerCase()) ||
-      t.adminEmail.toLowerCase().includes(search.toLowerCase());
+      t.adminEmail.toLowerCase().includes(search.toLowerCase()) ||
+      (t.phone && t.phone.toLowerCase().includes(search.toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -379,8 +385,22 @@ export default function TenantManagement() {
                 {/* Details grid: Admin contact & Payment status */}
                 <div className="grid grid-cols-2 gap-2 text-[10px] bg-[#070b13] p-2 rounded-lg border border-slate-800/60">
                   <div className="min-w-0">
-                    <span className="text-slate-500 block text-[9px] font-bold uppercase">Admin Email</span>
-                    <span className="text-slate-300 font-medium truncate block" title={t.adminEmail}>{t.adminEmail}</span>
+                    <span className="text-slate-500 block text-[9px] font-bold uppercase">Admin Contact</span>
+                    <div className="flex items-center gap-1 text-slate-300 font-medium truncate mt-0.5" title={t.adminEmail}>
+                      <Mail className="w-3 h-3 text-indigo-400 shrink-0" />
+                      <span className="truncate">{t.adminEmail}</span>
+                    </div>
+                    {t.phone ? (
+                      <div className="flex items-center gap-1 text-slate-400 font-mono truncate mt-0.5">
+                        <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">{t.phone}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-slate-500 text-[9px] italic font-mono truncate mt-0.5">
+                        <Phone className="w-3 h-3 text-slate-600 shrink-0" />
+                        <span>No Phone</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -461,7 +481,7 @@ export default function TenantManagement() {
               <tr>
                 <th className="px-6 py-4">Organization</th>
                 <th className="px-6 py-4">Subdomain</th>
-                <th className="px-6 py-4">Admin Email</th>
+                <th className="px-6 py-4">Admin Email / Phone</th>
                 <th className="px-6 py-4 text-center">User Limit</th>
                 <th className="px-6 py-4">Reg. Date</th>
                 <th className="px-6 py-4 text-center">Payment</th>
@@ -520,7 +540,25 @@ export default function TenantManagement() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4 text-slate-400 font-medium">{t.adminEmail}</td>
+                      <td className="px-6 py-4 font-medium">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-slate-300 font-medium" title={t.adminEmail}>
+                            <Mail className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="truncate">{t.adminEmail || 'N/A'}</span>
+                          </div>
+                          {t.phone ? (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                              <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>{t.phone}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 italic font-mono">
+                              <Phone className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                              <span>No Phone</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
 
                       <td className="px-6 py-4 text-center">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
@@ -683,6 +721,17 @@ export default function TenantManagement() {
                   value={editForm.adminEmail}
                   onChange={e => setEditForm({ ...editForm, adminEmail: e.target.value })}
                   className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 text-[11px]">Admin Phone Number</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                  placeholder="e.g. +91 9876543210"
+                  className="w-full bg-[#070b13] border border-slate-700/80 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
               </div>
 

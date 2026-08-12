@@ -332,10 +332,23 @@ export const LoanModel = {
   async getMaxPaymentMonthByMember(memberId: number): Promise<number> {
     const db = getDatabase();
     const res = await db.get<{ maxMonth: number }>(
-      "SELECT MAX(DueMonth) as maxMonth FROM LoanPayment WHERE LoanMemberId = ?",
-      [memberId]
+      `SELECT MAX(m) as maxMonth FROM (
+         SELECT DueMonth as m FROM LoanPayment WHERE LoanMemberId = ?
+         UNION
+         SELECT DueMonth as m FROM LoanDue WHERE LoanMemberId = ? AND (PaidAmount > 0 OR Status = 'Paid' OR Status = 'Partial')
+       ) as t`,
+      [memberId, memberId]
     );
     return res?.maxMonth || 0;
+  },
+
+  async getTotalPrincipalPaidByMember(memberId: number): Promise<number> {
+    const db = getDatabase();
+    const res = await db.get<{ total: number }>(
+      "SELECT COALESCE(SUM(PrincipalPaid), 0) as total FROM LoanPayment WHERE LoanMemberId = ?",
+      [memberId]
+    );
+    return res?.total || 0;
   },
 
   async listSingleLoansByMonth(month: number, tenantId: string | number): Promise<any[]> {

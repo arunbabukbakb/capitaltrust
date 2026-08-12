@@ -26,4 +26,5 @@ export interface LoanPayment {
   startDate?: string;
   dueStatus?: 'Overdue' | 'Pending' | 'Paid' | 'Partial';
   carryForwardInterest?: number;
+  isLastPayment?: boolean;
 }

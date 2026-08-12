@@ -1,12 +1,13 @@
 import React from 'react';
 import { LoanPayment } from '../models/LoanPayment';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Trash2 } from 'lucide-react';
 
 interface PaymentRowProps {
   payment: LoanPayment;
   activeTab: 'single' | 'group';
   amountPaid: number; // parent controlled state
   onAmountChange: (amount: number) => void;
+  onDeletePayment?: (loanMemberId: number, month: number) => void;
   isMobile?: boolean;
 }
 
@@ -26,6 +27,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
   activeTab,
   amountPaid,
   onAmountChange,
+  onDeletePayment,
   isMobile = false,
 }) => {
   const {
@@ -36,11 +38,19 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
     loanNo,
   } = payment;
 
+  // If already approved/finalized in the database, lock it down
+  const isFinalized = Boolean(payment.approved || payment.dueStatus === 'Paid' || (payment.amountPaid && payment.amountPaid > 0));
+
   const activeInterestDue = (interestDue || 0) + (payment.carryForwardInterest || 0);
 
   // Split dynamically: first interest (current + carryforward), then balance to principal
-  const calculatedInterest = Math.round(Math.min(amountPaid, activeInterestDue));
-  const calculatedPrincipal = Math.round(Math.max(0, amountPaid - activeInterestDue));
+  const effectiveAmountPaid = isFinalized ? (payment.amountPaid || 0) : amountPaid;
+  const calculatedInterest = isFinalized 
+    ? (payment.interestAmount ?? Math.round(Math.min(effectiveAmountPaid, activeInterestDue)))
+    : Math.round(Math.min(effectiveAmountPaid, activeInterestDue));
+  const calculatedPrincipal = isFinalized
+    ? (payment.principalAmount ?? Math.round(Math.max(0, effectiveAmountPaid - activeInterestDue)))
+    : Math.round(Math.max(0, effectiveAmountPaid - activeInterestDue));
 
   // Status Badge Helper Component
   const renderStatusBadge = () => {
@@ -73,9 +83,6 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
     );
   };
 
-  // If already approved/finalized in the database, lock it down
-  const isFinalized = payment.approved;
-
   if (isMobile) {
     if (activeTab === 'single') {
       return (
@@ -105,26 +112,36 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Amount Input */}
             <div className="relative w-20">
               <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-[9px]">₹</span>
               <input
                 type="number"
-                disabled={payment.canEdit === false}
-                value={amountPaid === 0 ? '' : Math.round(amountPaid)}
+                disabled={isFinalized || payment.canEdit === false}
+                value={isFinalized ? Math.round(payment.amountPaid || 0) : (amountPaid === 0 ? '' : Math.round(amountPaid))}
                 onChange={(e) => {
+                  if (isFinalized) return;
                   const val = e.target.value === '' ? 0 : Math.round(parseFloat(e.target.value));
                   onAmountChange(isNaN(val) ? 0 : val);
                 }}
-                className={`w-full pl-4 pr-1 py-0.5 text-[10px] text-center font-mono border rounded focus:outline-none focus:ring-1 focus:ring-slate-950 focus:border-transparent transition text-slate-950 ${payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white'}`}
+                className={`w-full pl-4 pr-1 py-0.5 text-[10px] text-center font-mono font-bold border rounded focus:outline-none focus:ring-1 focus:ring-slate-950 focus:border-transparent transition ${
+                  isFinalized 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 cursor-not-allowed'
+                    : payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white text-slate-950'
+                }`}
                 placeholder="0"
               />
             </div>
-            {isFinalized && (
-              <span className="text-emerald-600 font-semibold flex items-center gap-0.5 text-[9px] ml-1">
-                <CheckCircle className="w-3.5 h-3.5" />
-              </span>
+            {isFinalized && (payment.isLastPayment !== false) && onDeletePayment && (
+              <button
+                type="button"
+                onClick={() => onDeletePayment(payment.loanMemberId!, payment.month)}
+                className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition cursor-pointer"
+                title="Delete last payment and enter new payment"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>
@@ -150,26 +167,36 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Amount Input */}
           <div className="relative w-20">
             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-[9px]">₹</span>
             <input
               type="number"
-              disabled={payment.canEdit === false}
-              value={amountPaid === 0 ? '' : Math.round(amountPaid)}
+              disabled={isFinalized || payment.canEdit === false}
+              value={isFinalized ? Math.round(payment.amountPaid || 0) : (amountPaid === 0 ? '' : Math.round(amountPaid))}
               onChange={(e) => {
+                if (isFinalized) return;
                 const val = e.target.value === '' ? 0 : Math.round(parseFloat(e.target.value));
                 onAmountChange(isNaN(val) ? 0 : val);
               }}
-              className={`w-full pl-4 pr-1 py-0.5 text-[10px] text-center font-mono border rounded focus:outline-none focus:ring-1 focus:ring-slate-950 focus:border-transparent transition text-slate-950 ${payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white'}`}
+              className={`w-full pl-4 pr-1 py-0.5 text-[10px] text-center font-mono font-bold border rounded focus:outline-none focus:ring-1 focus:ring-slate-950 focus:border-transparent transition ${
+                isFinalized 
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 cursor-not-allowed'
+                  : payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white text-slate-950'
+              }`}
               placeholder="0"
             />
           </div>
-          {isFinalized && (
-            <span className="text-emerald-600 font-semibold flex items-center gap-0.5 text-[9px] ml-1">
-              <CheckCircle className="w-3.5 h-3.5" />
-            </span>
+          {isFinalized && (payment.isLastPayment !== false) && onDeletePayment && (
+            <button
+              type="button"
+              onClick={() => onDeletePayment(payment.loanMemberId!, payment.month)}
+              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition cursor-pointer"
+              title="Delete last payment and enter new payment"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       </div>
@@ -225,13 +252,18 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono">₹</span>
             <input
               type="number"
-              disabled={payment.canEdit === false}
-              value={amountPaid === 0 ? '' : Math.round(amountPaid)}
+              disabled={isFinalized || payment.canEdit === false}
+              value={isFinalized ? Math.round(payment.amountPaid || 0) : (amountPaid === 0 ? '' : Math.round(amountPaid))}
               onChange={(e) => {
+                if (isFinalized) return;
                 const val = e.target.value === '' ? 0 : Math.round(parseFloat(e.target.value));
                 onAmountChange(isNaN(val) ? 0 : val);
               }}
-              className={`w-full pl-5 pr-2 py-1 text-sm font-mono border rounded-md focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition text-slate-950 ${payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white'}`}
+              className={`w-full pl-5 pr-2 py-1 text-sm font-mono font-bold border rounded-md focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition ${
+                isFinalized 
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 cursor-not-allowed'
+                  : payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white text-slate-950'
+              }`}
               placeholder="0"
             />
           </div>
@@ -239,7 +271,7 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         {/* Interest */}
         <td className="px-4 py-3 text-sm font-mono text-amber-600">
           ₹{calculatedInterest.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          {activeInterestDue > 0 && (
+          {activeInterestDue > 0 && !isFinalized && (
             <span className="block text-[10px] text-slate-400 font-medium">Cap: ₹{Math.round(activeInterestDue)}</span>
           )}
         </td>
@@ -247,9 +279,21 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
         <td className="px-4 py-3 text-sm font-mono text-emerald-600">
           ₹{calculatedPrincipal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </td>
-        {/* Processing Indicator / Status Badge */}
+        {/* Processing Indicator / Status Badge & Delete */}
         <td className="px-4 py-3 text-sm text-center">
-          {renderStatusBadge()}
+          <div className="flex items-center justify-center gap-1.5">
+            {renderStatusBadge()}
+            {isFinalized && (payment.isLastPayment !== false) && onDeletePayment && (
+              <button
+                type="button"
+                onClick={() => onDeletePayment(payment.loanMemberId!, payment.month)}
+                className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition cursor-pointer"
+                title="Delete last payment and enter new payment"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </td>
       </tr>
     );
@@ -300,20 +344,37 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono">₹</span>
           <input
             type="number"
-            disabled={payment.canEdit === false}
-            value={amountPaid === 0 ? '' : Math.round(amountPaid)}
+            disabled={isFinalized || payment.canEdit === false}
+            value={isFinalized ? Math.round(payment.amountPaid || 0) : (amountPaid === 0 ? '' : Math.round(amountPaid))}
             onChange={(e) => {
+              if (isFinalized) return;
               const val = e.target.value === '' ? 0 : Math.round(parseFloat(e.target.value));
               onAmountChange(isNaN(val) ? 0 : val);
             }}
-            className={`w-full pl-5 pr-2 py-1 text-sm font-mono border rounded-md focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition text-slate-950 ${payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white'}`}
+            className={`w-full pl-5 pr-2 py-1 text-sm font-mono font-bold border rounded-md focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition ${
+              isFinalized 
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 cursor-not-allowed'
+                : payment.canEdit === false ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'bg-white text-slate-950'
+            }`}
             placeholder="0"
           />
         </div>
       </td>
-      {/* Status */}
+      {/* Status & Delete */}
       <td className="px-4 py-3 text-sm text-center">
-        {renderStatusBadge()}
+        <div className="flex items-center justify-center gap-1.5">
+          {renderStatusBadge()}
+          {isFinalized && (payment.isLastPayment !== false) && onDeletePayment && (
+            <button
+              type="button"
+              onClick={() => onDeletePayment(payment.loanMemberId!, payment.month)}
+              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition cursor-pointer"
+              title="Delete last payment and enter new payment"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

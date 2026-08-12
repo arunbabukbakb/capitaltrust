@@ -145,6 +145,31 @@ const LoanRepaymentList: React.FC = () => {
     }
   };
 
+  const handleDeletePayment = async (loanMemberId: number, month: number) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this payment? This will restore the previous outstanding balance and allow entering a new payment.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/loan-payments?loanMemberId=${loanMemberId}&month=${month}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setToast('Last payment deleted successfully. You can now enter a new payment.');
+        await fetchPayments();
+        setTimeout(() => setToast(''), 3000);
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.error || 'Failed to delete payment'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('An error occurred while deleting the payment.');
+    }
+  };
+
   // Group loan selection reset on tab change
   const handleTabChange = (tab: 'group' | 'single') => {
     setActiveTab(tab);
@@ -197,8 +222,8 @@ const LoanRepaymentList: React.FC = () => {
 
       {/* Main Content Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-3 md:p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row items-end sm:items-center gap-4">
-          {activeTab === 'group' && (
+        {activeTab === 'group' && (
+          <div className="p-3 md:p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col sm:flex-row items-end sm:items-center gap-4">
             <div className="max-w-xs w-full space-y-1">
               <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-500">
                 Filter by Group Credit Pool
@@ -223,25 +248,8 @@ const LoanRepaymentList: React.FC = () => {
                   })}
               </select>
             </div>
-          )}
-
-          <div className="max-w-xs w-full space-y-1">
-            <label className="block text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-slate-500">
-              Filter by Billing Month
-            </label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs md:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-950 dark:focus:ring-slate-400 focus:border-transparent transition"
-            >
-              {getAdminSelectableMonths().map((m) => (
-                <option key={m.val} value={m.val}>
-                  {m.label} (Period: {m.val})
-                </option>
-              ))}
-            </select>
           </div>
-        </div>
+        )}
 
         {/* Ledger Grid */}
         {loading ? (
@@ -278,7 +286,7 @@ const LoanRepaymentList: React.FC = () => {
                       Interest Rate
                     </th>
                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
-                      Outstanding Balance
+                      Current Outstanding
                     </th>
                     <th className="px-4 py-3 text-[10px] uppercase font-bold tracking-wider text-slate-500">
                       Current Due (Month)
@@ -309,6 +317,7 @@ const LoanRepaymentList: React.FC = () => {
                       activeTab={activeTab}
                       amountPaid={payment.localAmountPaid}
                       onAmountChange={(amount) => handleAmountChange(payment.id, amount)}
+                      onDeletePayment={handleDeletePayment}
                       isMobile={false}
                     />
                   ))}
@@ -325,6 +334,7 @@ const LoanRepaymentList: React.FC = () => {
                   activeTab={activeTab}
                   amountPaid={payment.localAmountPaid}
                   onAmountChange={(amount) => handleAmountChange(payment.id, amount)}
+                  onDeletePayment={handleDeletePayment}
                   isMobile={true}
                 />
               ))}

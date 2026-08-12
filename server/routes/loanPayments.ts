@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getLoanPaymentsList, approveLoanPayment, finalSubmitLoanPayments } from '../controllers/loanPayments';
+import { getLoanPaymentsList, approveLoanPayment, finalSubmitLoanPayments, deleteLoanPayment } from '../controllers/loanPayments';
 
 const router = Router();
 
@@ -66,5 +66,14 @@ router.post('/final-submit', finalSubmitLoanPayments);
  *     tags: [LoanPayments]
  */
 router.put('/:id/approve', approveLoanPayment);
+
+/**
+ * @swagger
+ * /api/loan-payments:
+ *   delete:
+ *     summary: Delete the most recent payment for a loan member
+ *     tags: [LoanPayments]
+ */
+router.delete('/', deleteLoanPayment);
 
 export default router;

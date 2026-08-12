@@ -29,11 +29,27 @@ export async function getDuesForMember(db: any, member: any, loan: any, targetMo
   let previousDueRecord: any = null;
   let elapsedMonths = 0;
 
+  // Calculate initial opening principal before any recorded payments in this ledger
+  const totalPrinPaidAllTime = await LoanModel.getTotalPrincipalPaidByMember(member.Id);
+  const memberOutstanding = Number(member.OutstandingPrincipal ?? shareAmount);
+  let initialOpeningPrincipal = (memberOutstanding > 0 && memberOutstanding < shareAmount)
+    ? Math.min(shareAmount, memberOutstanding + totalPrinPaidAllTime)
+    : shareAmount;
+
+  const origStartDate = new Date(loan.StartDate || startDateStr);
+  const origStartYear = origStartDate.getFullYear();
+  const origStartMonth = origStartDate.getMonth();
+
   while (curr <= targetDate) {
     elapsedMonths++;
     const yyyy = curr.getFullYear();
     const mm = String(curr.getMonth() + 1).padStart(2, '0');
     const m = parseInt(`${yyyy}${mm}`);
+
+    const currYear = curr.getFullYear();
+    const currMonth = curr.getMonth();
+    const monthsElapsedFromStart = (currYear - origStartYear) * 12 + (currMonth - origStartMonth) + 1;
+    const monthsElapsedBefore = monthsElapsedFromStart - 1;
 
     // Check if LoanDue record exists in DB
     let dbDueRecord = await LoanModel.findDueByMemberAndMonth(member.Id, m);
@@ -41,8 +57,7 @@ export async function getDuesForMember(db: any, member: any, loan: any, targetMo
     const payment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, m);
 
     // Determine Opening Principal & Carry Forward Interest for current month m
-    const memberOutstanding = Number(member.OutstandingPrincipal ?? shareAmount);
-    let openingPrincipal = (memberOutstanding > 0 && memberOutstanding < shareAmount) ? memberOutstanding : shareAmount;
+    let openingPrincipal = initialOpeningPrincipal;
     let carryForwardInterest = 0;
     let totalPrincipalPaidBefore = 0;
 
@@ -67,10 +82,25 @@ export async function getDuesForMember(db: any, member: any, loan: any, targetMo
 
     const interestDue = interestBase * (rate / 100) / 12;
     
-    // Principal due accumulated for unpaid elapsed months
-    const monthlyPrincipalShare = shareAmount / tenureMonths;
-    const accumulatedTargetPrincipal = Math.min(shareAmount, elapsedMonths * monthlyPrincipalShare);
-    const principalDue = Math.min(openingPrincipal, Math.max(0, accumulatedTargetPrincipal - totalPrincipalPaidBefore));
+    // Principal due calculation (recalculates from remaining balance if overpaid or reduced existing loan)
+    const standardMonthlyPrincipal = shareAmount / tenureMonths;
+    const expectedRemainingBefore = shareAmount - (monthsElapsedBefore * standardMonthlyPrincipal);
+
+    let principalDue = 0;
+    if (
+      openingPrincipal < expectedRemainingBefore - 1 ||
+      totalPrincipalPaidBefore > (monthsElapsedBefore * standardMonthlyPrincipal) + 1
+    ) {
+      // Overpaid or Reduced Existing Loan case: Recalculate monthly principal share based on current remaining opening principal and remaining tenure
+      const remainingTenure = Math.max(1, tenureMonths - monthsElapsedBefore);
+      const recalculatedMonthlyPrincipal = openingPrincipal / remainingTenure;
+      principalDue = Math.min(openingPrincipal, Math.round(recalculatedMonthlyPrincipal));
+    } else {
+      // Standard / Underpaid case
+      const accumulatedTargetPrincipal = Math.min(shareAmount, monthsElapsedFromStart * standardMonthlyPrincipal);
+      const totalPrincipalPaidSoFar = shareAmount - openingPrincipal;
+      principalDue = Math.min(openingPrincipal, Math.max(0, accumulatedTargetPrincipal - totalPrincipalPaidSoFar));
+    }
 
     const totalDue = principalDue + interestDue + carryForwardInterest;
 
@@ -202,9 +232,9 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
 
         // Fetch cumulative finalized payments in LoanPayment for this month
         const approvedPayment = await LoanModel.getPaymentSumByMemberAndMonth(member.Id, currentMonth);
-        const totalPaid = approvedPayment.totalPaid;
-        const interestPaid = approvedPayment.interestPaid;
-        const principalPaid = approvedPayment.principalPaid;
+        const totalPaid = approvedPayment.totalPaid > 0 ? approvedPayment.totalPaid : (dueRecord.PaidAmount || 0);
+        const interestPaid = approvedPayment.interestPaid > 0 ? approvedPayment.interestPaid : (dueRecord.InterestPaid || 0);
+        const principalPaid = approvedPayment.principalPaid > 0 ? approvedPayment.principalPaid : (dueRecord.PrincipalPaid || 0);
 
         const isApproved = totalPaid > 0 || dueRecord.Status === 'Paid' || dueRecord.Status === 'Partial';
 
@@ -212,7 +242,19 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
         const lastPaidMonth = await LoanModel.getMaxPaymentMonthByMember(member.Id);
         const canEdit = lastPaidMonth === 0 || currentMonth >= lastPaidMonth;
 
-        const currentInterestBase = isCompound ? (dueRecord.OpeningPrincipal + dueRecord.CarryForwardInterest) : dueRecord.OpeningPrincipal;
+        const isPaidThisMonth = totalPaid >= dueRecord.TotalDue || dueRecord.Status === 'Paid' || (totalPaid > 0 && totalPaid >= dueRecord.TotalDue - 1);
+        const isPaidOrPartial = totalPaid > 0 || (dueRecord.PaidAmount && dueRecord.PaidAmount > 0) || dueRecord.Status === 'Paid' || dueRecord.Status === 'Partial';
+        const isLastPayment = lastPaidMonth > 0 && currentMonth === lastPaidMonth && isPaidOrPartial;
+
+        // Effective current outstanding:
+        // If a payment was made (totalPaid > 0 or PaidAmount > 0), closing principal is OpeningPrincipal - principalPaid.
+        // Otherwise, current outstanding is OpeningPrincipal (or member.OutstandingPrincipal).
+        const currentInterestBase = isCompound 
+          ? (dueRecord.OpeningPrincipal + dueRecord.CarryForwardInterest) 
+          : dueRecord.OpeningPrincipal;
+
+        const effectiveOutstanding = isPaidOrPartial ? dueRecord.ClosingPrincipal : currentInterestBase;
+
         let activeRate = loan.InterestRate || 0;
         if (loan.InterestMode === 'Variable') {
           const slab = slabs.find((s: any) => currentInterestBase >= s.FromAmount && currentInterestBase <= s.ToAmount);
@@ -221,11 +263,11 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
 
         // Calculate status and overdue flag
         let dueStatus: 'Overdue' | 'Pending' | 'Paid' | 'Partial' = 'Pending';
-        if (totalPaid >= dueRecord.TotalDue || dueRecord.Status === 'Paid') {
+        if (isPaidThisMonth) {
           dueStatus = 'Paid';
         } else if (currentMonth < currentCalendarMonth || dueRecord.CarryForwardInterest > 0) {
           dueStatus = 'Overdue';
-        } else if (totalPaid > 0) {
+        } else if (totalPaid > 0 || (dueRecord.PaidAmount && dueRecord.PaidAmount > 0)) {
           dueStatus = 'Partial';
         }
 
@@ -236,8 +278,8 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
           userId: member.UserId,
           userName: member.fullName,
           loanAmount: member.LoanShareAmount,
-          outstandingBalance: currentInterestBase,
-          dueAmount: dueRecord.TotalDue,
+          outstandingBalance: effectiveOutstanding,
+          dueAmount: Math.max(0, Math.round(dueRecord.TotalDue - totalPaid)),
           interestDue: dueRecord.InterestDue,
           carryForwardInterest: dueRecord.CarryForwardInterest,
           principalDue: dueRecord.PrincipalDue,
@@ -247,11 +289,12 @@ export const getLoanPaymentsList = async (req: Request, res: Response) => {
           month: currentMonth,
           approved: isApproved,
           dueStatus: dueStatus,
-          hasRequest: totalPaid > 0,
+          hasRequest: totalPaid > 0 || (dueRecord.PaidAmount && dueRecord.PaidAmount > 0),
           requestId: null,
           requestedAmount: 0,
           loanMemberId: member.Id,
           canEdit: canEdit,
+          isLastPayment: isLastPayment,
           interestRate: activeRate,
           interestMode: loan.InterestMode,
           startDate: loan.StartDate
@@ -449,4 +492,105 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
 
 export const approveLoanPayment = async (req: Request, res: Response) => {
   res.status(405).json({ error: "Endpoint deprecated. Use final-submit batch endpoint instead." });
+};
+
+export const deleteLoanPayment = async (req: Request, res: Response) => {
+  const db = getDatabase();
+  try {
+    const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    if (decoded.role !== 'admin' && decoded.role !== 'manager' && decoded.role !== 'superadmin') {
+      return res.status(403).json({ error: "Only admin and manager can delete repayments" });
+    }
+
+    const { loanMemberId, month } = req.query;
+    const memberId = Number(loanMemberId);
+    const dueMonth = Number(month);
+
+    if (!memberId || !dueMonth) {
+      return res.status(400).json({ error: "Missing loanMemberId or month parameter" });
+    }
+
+    const member = await db.get("SELECT * FROM LoanMember WHERE Id = ?", [memberId]);
+    if (!member) {
+      return res.status(404).json({ error: "Loan member not found" });
+    }
+
+    const loan = await LoanModel.findById(member.LoanId);
+    if (!loan) {
+      return res.status(404).json({ error: "Loan not found" });
+    }
+
+    // Verify this is the last payment month
+    const maxMonth = await LoanModel.getMaxPaymentMonthByMember(memberId);
+    if (maxMonth > 0 && dueMonth < maxMonth) {
+      return res.status(400).json({ error: "Can only delete the most recent (last) payment for this loan member." });
+    }
+
+    await db.run("BEGIN TRANSACTION");
+    try {
+      // Find payments and dues for this month before deleting to get exact principal paid and total paid
+      const paymentSum = await LoanModel.getPaymentSumByMemberAndMonth(memberId, dueMonth);
+      const dueRecord = await db.get("SELECT * FROM LoanDue WHERE LoanMemberId = ? AND DueMonth = ?", [memberId, dueMonth]);
+      const totalPaidToDelete = paymentSum.totalPaid > 0 ? paymentSum.totalPaid : (dueRecord?.PaidAmount || 0);
+      const principalPaidToDelete = paymentSum.principalPaid > 0 ? paymentSum.principalPaid : (dueRecord?.PrincipalPaid || 0);
+
+      // Delete LoanPayment entries for this month
+      await db.run("DELETE FROM LoanPayment WHERE LoanMemberId = ? AND DueMonth = ?", [memberId, dueMonth]);
+
+      // Delete LoanDue entry for this month
+      await db.run("DELETE FROM LoanDue WHERE LoanMemberId = ? AND DueMonth = ?", [memberId, dueMonth]);
+
+      // Record transaction entry for reversal/deletion if amount was paid
+      if (totalPaidToDelete > 0) {
+        await recordTransaction({
+          tenantId: (req.headers['x-tenant-id'] as string) || member.TenantId || 1,
+          transactionDate: new Date().toISOString().split('T')[0],
+          transactionType: 'Adjustment',
+          amount: Math.abs(totalPaidToDelete),
+          status: 'Reversed',
+          referenceType: 'LoanRepaymentDeletion',
+          referenceId: `DEL-LP-${memberId}-${dueMonth}`,
+          narration: `Reversal/Deletion of EMI Repayment for Loan ${loan.LoanNo} (Month: ${dueMonth})`,
+          createdBy: decoded.id
+        });
+      }
+
+      // Recalculate member's OutstandingPrincipal by restoring principalPaidToDelete
+      const newMaxMonth = await LoanModel.getMaxPaymentMonthByMember(memberId);
+      let newOutstanding = Number(member.OutstandingPrincipal || 0) + principalPaidToDelete;
+      if (newMaxMonth > 0) {
+        const latestClosing = await LoanModel.getLatestClosingPrincipal(memberId, newMaxMonth);
+        if (latestClosing !== null) {
+          newOutstanding = latestClosing;
+        }
+      }
+      newOutstanding = Math.min(member.LoanShareAmount, Math.max(0, newOutstanding));
+      await LoanModel.updateLoanMemberOutstanding(memberId, newOutstanding);
+
+      // Recalculate total loan outstanding & status
+      const newLoanOutstanding = await LoanModel.getSumOutstandingPrincipalByLoan(loan.Id);
+      const newLoanStatus = newLoanOutstanding <= 0 ? 'Closed' : 'Active';
+      await LoanModel.updateLoanOutstanding(loan.Id, newLoanOutstanding);
+      await LoanModel.updateLoan(loan.Id, { Status: newLoanStatus });
+
+      await db.run("COMMIT");
+
+      return res.json({ success: true, message: "Last payment deleted successfully" });
+    } catch (err: any) {
+      await db.run("ROLLBACK");
+      throw err;
+    }
+  } catch (error: any) {
+    console.error("Delete loan payment error", error);
+    return res.status(500).json({ error: error.message || "Failed to delete payment" });
+  }
 };
