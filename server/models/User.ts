@@ -2,6 +2,7 @@ import { getDatabase } from '../database';
 
 export interface User {
   id: string;
+  memberNumber?: string;
   fullName: string;
   email: string;
   username?: string;
@@ -9,6 +10,27 @@ export interface User {
   password?: string;
   status: number;
   phoneNumber?: string;
+  alternateNumber?: string;
+  gender?: string;
+  dob?: string;
+  joiningDate?: string;
+  address?: string;
+  country?: string;
+  state?: string;
+  district?: string;
+  locality?: string;
+  pincode?: string;
+  idType?: string;
+  idNumber?: string;
+  bankName?: string;
+  bankBranch?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  nomineeName?: string;
+  relationship?: string;
+  nomineeContact?: string;
+  occupation?: string;
+  notes?: string;
   roleId?: number;
   profileImage?: string;
   tenantId: string;
@@ -53,8 +75,22 @@ export const UserModel = {
     const db = getDatabase();
     const status = user.status !== undefined ? user.status : 0;
     await db.run(
-      "INSERT INTO users (id, fullName, email, username, role, password, status, phoneNumber, roleId, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [user.id, user.fullName, user.email.toLowerCase(), user.username?.toLowerCase() || null, user.role, user.password || null, status, user.phoneNumber || null, user.roleId || null, user.tenantId]
+      `INSERT INTO users (
+        id, memberNumber, fullName, email, username, role, password, status, phoneNumber, alternateNumber,
+        gender, dob, joiningDate, address, country, state, district, locality, pincode,
+        idType, idNumber, bankName, bankBranch, accountNumber, ifsc,
+        nomineeName, relationship, nomineeContact, occupation, notes, roleId, profileImage, tenantId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user.id, user.memberNumber || null, user.fullName, user.email.toLowerCase(), user.username?.toLowerCase() || null,
+        user.role, user.password || null, status, user.phoneNumber || null, user.alternateNumber || null,
+        user.gender || null, user.dob || null, user.joiningDate || null, user.address || null, user.country || null,
+        user.state || null, user.district || null, user.locality || null, user.pincode || null,
+        user.idType || null, user.idNumber || null, user.bankName || null, user.bankBranch || null,
+        user.accountNumber || null, user.ifsc || null, user.nomineeName || null, user.relationship || null,
+        user.nomineeContact || null, user.occupation || null, user.notes || null, user.roleId || null,
+        user.profileImage || null, user.tenantId
+      ]
     );
   },
 
@@ -80,7 +116,7 @@ export const UserModel = {
   async listByTenant(tenantId: string): Promise<User[]> {
     const db = getDatabase();
     return db.all<User[]>(
-      "SELECT id, fullName, email, username, phoneNumber, status, profileImage, tenantId FROM users WHERE tenantId = ? ORDER BY fullName",
+      "SELECT * FROM users WHERE tenantId = ? ORDER BY fullName",
       [tenantId]
     );
   },

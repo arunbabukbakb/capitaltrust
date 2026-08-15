@@ -45,12 +45,15 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
 
   // Split dynamically: first interest (current + carryforward), then balance to principal
   const effectiveAmountPaid = isFinalized ? (payment.amountPaid || 0) : amountPaid;
-  const calculatedInterest = isFinalized 
-    ? (payment.interestAmount ?? Math.round(Math.min(effectiveAmountPaid, activeInterestDue)))
-    : Math.round(Math.min(effectiveAmountPaid, activeInterestDue));
-  const calculatedPrincipal = isFinalized
-    ? (payment.principalAmount ?? Math.round(Math.max(0, effectiveAmountPaid - activeInterestDue)))
-    : Math.round(Math.max(0, effectiveAmountPaid - activeInterestDue));
+  const rawInterest = isFinalized 
+    ? (payment.interestAmount ?? Math.min(effectiveAmountPaid, activeInterestDue))
+    : Math.min(effectiveAmountPaid, activeInterestDue);
+  const rawPrincipal = isFinalized
+    ? (payment.principalAmount ?? Math.max(0, effectiveAmountPaid - activeInterestDue))
+    : Math.max(0, effectiveAmountPaid - activeInterestDue);
+
+  const calculatedInterest = Math.round(rawInterest || 0);
+  const calculatedPrincipal = Math.round(rawPrincipal || 0);
 
   // Status Badge Helper Component
   const renderStatusBadge = () => {
@@ -99,16 +102,16 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
               </div>
             )}
             <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
-              <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0)}</strong></span>
+              <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0).toLocaleString()}</strong></span>
               <span>•</span>
               <span>Rate: <strong className="text-indigo-600 dark:text-indigo-400">{payment.interestRate}% ({payment.interestMode})</strong></span>
               <span>•</span>
-              <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
+              <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}</strong></span>
             </div>
             <div className="flex gap-2 font-mono text-[9px] text-slate-500">
-              <span>Int: <strong className="text-amber-600">₹{calculatedInterest}</strong></span>
+              <span>Int: <strong className="text-amber-600">₹{calculatedInterest.toLocaleString()}</strong></span>
               <span>•</span>
-              <span>Prin: <strong className="text-emerald-600">₹{calculatedPrincipal}</strong></span>
+              <span>Prin: <strong className="text-emerald-600">₹{calculatedPrincipal.toLocaleString()}</strong></span>
             </div>
           </div>
 
@@ -152,18 +155,26 @@ const PaymentRow: React.FC<PaymentRowProps> = ({
     return (
       <div className="p-3 flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition duration-150 text-[10px] text-slate-700 dark:text-slate-300">
         <div className="space-y-1 flex-1 min-w-0">
-          <h5 className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">{userName || '—'}</h5>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h5 className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">{userName || '—'}</h5>
+            {renderStatusBadge()}
+          </div>
           {payment.startDate && (
             <div className="text-[9px] text-slate-400 font-sans">
               Start: <span className="font-medium text-slate-600 dark:text-slate-300">{formatDate(payment.startDate)}</span>
             </div>
           )}
           <div className="flex gap-2 text-slate-500 font-medium font-mono text-[9px] flex-wrap">
-            <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0)}</strong></span>
+            <span>Due: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(dueAmount || 0).toLocaleString()}</strong></span>
             <span>•</span>
             <span>Rate: <strong className="text-indigo-600 dark:text-indigo-400">{payment.interestRate}% ({payment.interestMode})</strong></span>
             <span>•</span>
-            <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0)}</strong></span>
+            <span>Bal: <strong className="text-slate-700 dark:text-slate-300">₹{Math.round(payment.outstandingBalance || 0).toLocaleString()}</strong></span>
+          </div>
+          <div className="flex gap-2 font-mono text-[9px] text-slate-500">
+            <span>Int: <strong className="text-amber-600">₹{calculatedInterest.toLocaleString()}</strong></span>
+            <span>•</span>
+            <span>Prin: <strong className="text-emerald-600">₹{calculatedPrincipal.toLocaleString()}</strong></span>
           </div>
         </div>
 

@@ -58,8 +58,18 @@ import AdminFeaturesDoc from './pages/documentation/AdminFeaturesDoc';
 import ReportDoc from './pages/documentation/ReportDoc';
 import VideoTutorialsDoc from './pages/documentation/VideoTutorialsDoc';
 import AdminVideoTutorials from './pages/superadmin/AdminVideoTutorials';
+import AdminOrganizationTypes from './pages/superadmin/AdminOrganizationTypes';
+import OrganizationInfoPage from './pages/tenant/OrganizationInfoPage';
+import GroupPage from './pages/tenant/GroupPage';
+import GroupMembersPage from './pages/tenant/GroupMembersPage';
+import BankPage from './pages/tenant/BankPage';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
+import MeetingList from './pages/meeting/MeetingList';
+import MeetingDetails from './pages/meeting/MeetingDetails';
+import MeetingTypeMaster from './pages/meeting/MeetingTypeMaster';
+import MeetingStatusMaster from './pages/meeting/MeetingStatusMaster';
+import AttendancePage from './pages/meeting/AttendancePage';
 import {
   PlusCircle,
   Settings as SettingsIcon,
@@ -301,6 +311,7 @@ export default function App() {
             <Route path="/admin/profile" element={<AdminProfile />} />
             <Route path="/admin/menus" element={<MenusPage />} />
             <Route path="/admin/video-tutorials" element={<AdminVideoTutorials />} />
+            <Route path="/admin/organization-types" element={<AdminOrganizationTypes />} />
           </Route>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
@@ -401,7 +412,16 @@ export default function App() {
             <Route path="/reports/member-ledger" element={hasPermission('member-ledger') ? <MemberLedger /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/due-report" element={hasPermission('due-report') ? <DueReport /> : <Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/organization-info" element={<OrganizationInfoPage />} />
+            <Route path="/groups" element={<GroupPage />} />
+            <Route path="/group-members" element={<GroupMembersPage />} />
+            <Route path="/banks" element={<BankPage />} />
             <Route path="/contact" element={(user?.role === 'admin' || user?.role === 'manager' || activeRole?.roleType === 'admin' || activeRole?.roleType === 'manager') ? <ContactPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/meetings" element={<MeetingList />} />
+            <Route path="/meetings/:id" element={<MeetingDetails />} />
+            <Route path="/meeting-types" element={<MeetingTypeMaster />} />
+            <Route path="/meeting-statuses" element={<MeetingStatusMaster />} />
+            <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>

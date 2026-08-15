@@ -101,6 +101,15 @@ export async function runSeeders(db: Database) {
   // Seed menus if missing
   const initialMenus = [
     { menuId: 'dashboard', name: 'Dashboard', icon: 'LayoutDashboard', path: '/dashboard', parentId: null, menuOrder: 10 },
+    { menuId: 'organization-parent', name: 'Organization', icon: 'Building2', path: null, parentId: null, menuOrder: 15 },
+    { menuId: 'organization-info', name: 'Organization Details', icon: 'Building2', path: '/organization-info', parentId: 'organization-parent', menuOrder: 16 },
+    { menuId: 'groups', name: 'Groups', icon: 'Users', path: '/groups', parentId: 'organization-parent', menuOrder: 17 },
+    { menuId: 'group-members', name: 'Group Members', icon: 'UserCheck', path: '/group-members', parentId: 'organization-parent', menuOrder: 17.5 },
+    { menuId: 'banks', name: 'Banks', icon: 'Landmark', path: '/banks', parentId: 'organization-parent', menuOrder: 18 },
+    { menuId: 'meetings-parent', name: 'Meetings', icon: 'CalendarDays', path: null, parentId: null, menuOrder: 19 },
+    { menuId: 'meeting-list', name: 'Meeting List', icon: 'Calendar', path: '/meetings', parentId: 'meetings-parent', menuOrder: 19.1 },
+    { menuId: 'meeting-types', name: 'Meeting Type', icon: 'Tag', path: '/meeting-types', parentId: 'meetings-parent', menuOrder: 19.2 },
+    { menuId: 'meeting-statuses', name: 'Meeting Status', icon: 'CheckSquare', path: '/meeting-statuses', parentId: 'meetings-parent', menuOrder: 19.3 },
     { menuId: 'liquidity', name: 'Collection', icon: 'Coins', path: null, parentId: null, menuOrder: 20 },
     { menuId: 'collection-types', name: 'Collection Type', icon: 'Shield', path: '/collection-types', parentId: 'liquidity', menuOrder: 21 },
     { menuId: 'fund-collection', name: 'Fund Collection', icon: 'Coins', path: '/fund-collection', parentId: 'liquidity', menuOrder: 22 },

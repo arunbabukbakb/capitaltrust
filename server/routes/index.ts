@@ -21,8 +21,11 @@ import transactionsRoutes from './transactions';
 import reportsRoutes from './reports';
 import contactRoutes from './contact';
 import trafficRoutes from './traffic';
+import tenantOrgRoutes from './tenantOrganization';
+import meetingsRoutes from './meetings';
 
 const router = Router();
+
 
 // Tenant resolution middleware to resolve subdomain string to integer ID
 router.use(async (req, res, next) => {
@@ -103,5 +106,7 @@ router.use('/transactions', transactionsRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/contact', contactRoutes);
 router.use('/traffic', trafficRoutes);
+router.use('/', tenantOrgRoutes);
+router.use('/', meetingsRoutes);
 
 export default router;

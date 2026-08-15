@@ -254,6 +254,7 @@ export async function initDatabase(): Promise<Database> {
 
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
+        memberNumber VARCHAR(100) DEFAULT NULL,
         fullName VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         username VARCHAR(255),
@@ -261,8 +262,30 @@ export async function initDatabase(): Promise<Database> {
         password VARCHAR(255),
         status INT NOT NULL DEFAULT 0,
         phoneNumber VARCHAR(255),
+        alternateNumber VARCHAR(100) DEFAULT NULL,
+        gender VARCHAR(50) DEFAULT NULL,
+        dob VARCHAR(50) DEFAULT NULL,
+        joiningDate VARCHAR(50) DEFAULT NULL,
+        address TEXT DEFAULT NULL,
+        country VARCHAR(100) DEFAULT NULL,
+        state VARCHAR(100) DEFAULT NULL,
+        district VARCHAR(100) DEFAULT NULL,
+        locality VARCHAR(100) DEFAULT NULL,
+        pincode VARCHAR(50) DEFAULT NULL,
+        idType VARCHAR(100) DEFAULT NULL,
+        idNumber VARCHAR(100) DEFAULT NULL,
+        bankName VARCHAR(255) DEFAULT NULL,
+        bankBranch VARCHAR(255) DEFAULT NULL,
+        accountNumber VARCHAR(100) DEFAULT NULL,
+        ifsc VARCHAR(50) DEFAULT NULL,
+        nomineeName VARCHAR(255) DEFAULT NULL,
+        relationship VARCHAR(100) DEFAULT NULL,
+        nomineeContact VARCHAR(100) DEFAULT NULL,
+        occupation VARCHAR(255) DEFAULT NULL,
+        notes TEXT DEFAULT NULL,
         roleId INT,
-        profileImage VARCHAR(255),
+        groupId INT DEFAULT NULL,
+        profileImage LONGTEXT DEFAULT NULL,
         tenantId INT NOT NULL,
         refreshToken VARCHAR(500) DEFAULT NULL,
         FOREIGN KEY(roleId) REFERENCES roles(id),
@@ -548,6 +571,149 @@ export async function initDatabase(): Promise<Database> {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS organization_types (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        typeName VARCHAR(255) UNIQUE NOT NULL,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        description TEXT DEFAULT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        orderNumber INT NOT NULL DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        code VARCHAR(50) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        UNIQUE(tenantId, code)
+      );
+
+      CREATE TABLE IF NOT EXISTS group_members (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        groupId INT NOT NULL,
+        userId VARCHAR(255) NOT NULL,
+        tenantId INT NOT NULL,
+        joinedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(groupId) REFERENCES tenant_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE,
+        UNIQUE(groupId, userId)
+      );
+
+      CREATE TABLE IF NOT EXISTS organization_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL UNIQUE,
+        oneUserOneGroup INT NOT NULL DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_banks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        branch VARCHAR(255) NOT NULL,
+        accountNumber VARCHAR(255) NOT NULL,
+        ifsc VARCHAR(50) NOT NULL,
+        address TEXT DEFAULT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        isPrimary TINYINT(1) NOT NULL DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS meeting_types (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NULL,
+        name VARCHAR(255) NOT NULL,
+        status TINYINT NOT NULL DEFAULT 1,
+        createdBy VARCHAR(255) NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedBy VARCHAR(255) DEFAULT NULL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS meeting_statuses (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenantId INT NULL,
+        name VARCHAR(255) NOT NULL,
+        isDefault TINYINT NOT NULL DEFAULT 0,
+        isSystem TINYINT NOT NULL DEFAULT 0,
+        status TINYINT NOT NULL DEFAULT 1,
+        createdBy VARCHAR(255) DEFAULT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedBy VARCHAR(255) DEFAULT NULL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(tenantId) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS meetings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        organizationId INT NOT NULL,
+        meetingNo VARCHAR(100) NOT NULL,
+        meetingDate VARCHAR(50) NOT NULL,
+        meetingTypeId INT NOT NULL,
+        meetingStatusId INT NOT NULL,
+        location VARCHAR(255) DEFAULT NULL,
+        groupId INT DEFAULT NULL,
+        note TEXT DEFAULT NULL,
+        startedAt DATETIME DEFAULT NULL,
+        completedAt DATETIME DEFAULT NULL,
+        createdBy VARCHAR(255) NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedBy VARCHAR(255) DEFAULT NULL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(organizationId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY(meetingTypeId) REFERENCES meeting_types(id),
+        FOREIGN KEY(meetingStatusId) REFERENCES meeting_statuses(id),
+        FOREIGN KEY(groupId) REFERENCES tenant_groups(id) ON DELETE SET NULL,
+        FOREIGN KEY(createdBy) REFERENCES users(id),
+        UNIQUE(organizationId, meetingNo)
+      );
+
+      CREATE TABLE IF NOT EXISTS attendances (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        organizationId INT NOT NULL,
+        meetingId INT NOT NULL,
+        memberId VARCHAR(255) NOT NULL,
+        attendanceStatus VARCHAR(50) NOT NULL,
+        remarks TEXT DEFAULT NULL,
+        createdBy VARCHAR(255) NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedBy VARCHAR(255) DEFAULT NULL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(organizationId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY(meetingId) REFERENCES meetings(id) ON DELETE CASCADE,
+        FOREIGN KEY(memberId) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(meetingId, memberId)
+      );
+
+      CREATE TABLE IF NOT EXISTS meeting_discussions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        organizationId INT NOT NULL,
+        meetingId INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT DEFAULT NULL,
+        discussedBy VARCHAR(255) DEFAULT NULL,
+        remarks TEXT DEFAULT NULL,
+        createdBy VARCHAR(255) NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedBy VARCHAR(255) DEFAULT NULL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY(organizationId) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY(meetingId) REFERENCES meetings(id) ON DELETE CASCADE,
+        FOREIGN KEY(createdBy) REFERENCES users(id)
+      );
     `);
 
     // Ensure video_tutorials has order_number column
@@ -577,6 +743,49 @@ export async function initDatabase(): Promise<Database> {
       if (!hasSuperAdminPushToken) {
         await db.exec("ALTER TABLE superadmins ADD COLUMN pushToken VARCHAR(500) NULL");
       }
+    } catch (e) {
+      // Ignored
+    }
+
+    // Ensure users table has new detailed user columns
+    const userCols = [
+      { name: 'memberNumber', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'gender', type: 'VARCHAR(50) DEFAULT NULL' },
+      { name: 'dob', type: 'VARCHAR(50) DEFAULT NULL' },
+      { name: 'joiningDate', type: 'VARCHAR(50) DEFAULT NULL' },
+      { name: 'alternateNumber', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'address', type: 'TEXT DEFAULT NULL' },
+      { name: 'country', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'state', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'district', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'locality', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'pincode', type: 'VARCHAR(50) DEFAULT NULL' },
+      { name: 'idType', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'idNumber', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'bankName', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'bankBranch', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'accountNumber', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'ifsc', type: 'VARCHAR(50) DEFAULT NULL' },
+      { name: 'nomineeName', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'relationship', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'nomineeContact', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'occupation', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'notes', type: 'TEXT DEFAULT NULL' }
+    ];
+
+    for (const col of userCols) {
+      try {
+        const exists = await checkColumnExists('users', col.name);
+        if (!exists) {
+          await db.exec(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+        }
+      } catch (e) {
+        // Ignored
+      }
+    }
+
+    try {
+      await db.exec("ALTER TABLE users MODIFY COLUMN profileImage LONGTEXT DEFAULT NULL");
     } catch (e) {
       // Ignored
     }
@@ -683,6 +892,73 @@ export async function initDatabase(): Promise<Database> {
       console.error('Error seeding default superadmin user:', err);
     }
 
+    // Seed default organization types if empty
+    try {
+      const orgTypeCount = await db.get<{ count: number }>("SELECT COUNT(*) as count FROM organization_types");
+      if (!orgTypeCount || orgTypeCount.count === 0) {
+        const defaultOrgTypes = [
+          { typeName: 'Society', code: 'SOC', description: 'Registered Societies & Associations', orderNumber: 1 },
+          { typeName: 'Trust', code: 'TRU', description: 'Public & Private Charitable / Educational Trusts', orderNumber: 2 },
+          { typeName: 'NBFC', code: 'NBFC', description: 'Non-Banking Financial Company', orderNumber: 3 },
+          { typeName: 'Microfinance / MFI', code: 'MFI', description: 'Microfinance Institution', orderNumber: 4 },
+          { typeName: 'Co-operative Society', code: 'COOP', description: 'Co-operative Societies & Credit Unions', orderNumber: 5 },
+          { typeName: 'Credit Union', code: 'CU', description: 'Member Credit Unions & Financial Co-operatives', orderNumber: 6 },
+          { typeName: 'NGO / Non-Profit', code: 'NGO', description: 'Non-Governmental Organization', orderNumber: 7 },
+          { typeName: 'Individual / Proprietary', code: 'IND', description: 'Proprietary Firm / Individual Enterprise', orderNumber: 8 },
+          { typeName: 'Corporate / Pvt Ltd', code: 'CORP', description: 'Private & Public Limited Companies', orderNumber: 9 }
+        ];
+        for (const item of defaultOrgTypes) {
+          await db.run(
+            "INSERT INTO organization_types (typeName, code, description, status, orderNumber) VALUES (?, ?, ?, ?, ?)",
+            [item.typeName, item.code, item.description, 'Active', item.orderNumber]
+          );
+        }
+        console.log('Seeded default organization types.');
+      }
+    } catch (err) {
+      console.error('Error seeding default organization types:', err);
+    }
+
+    // Seed system default meeting types and statuses (shared across all tenants, tenantId = NULL)
+    try {
+      try {
+        await db.exec("ALTER TABLE meeting_types MODIFY COLUMN tenantId INT NULL;");
+      } catch (e) { }
+      try {
+        await db.exec("ALTER TABLE meeting_statuses MODIFY COLUMN tenantId INT NULL;");
+      } catch (e) { }
+
+      const defaultMeetingTypes = ['Regular', 'Special', 'Emergency', 'Other'];
+      for (const name of defaultMeetingTypes) {
+        const exists = await db.get("SELECT id FROM meeting_types WHERE name = ? AND (tenantId IS NULL OR tenantId = 0)", [name]);
+        if (!exists) {
+          await db.run(
+            "INSERT INTO meeting_types (tenantId, name, status, createdBy) VALUES (NULL, ?, 1, 'system')",
+            [name]
+          );
+        }
+      }
+
+      const defaultStatuses = [
+        { name: 'Scheduled', isDefault: 1, isSystem: 1 },
+        { name: 'Postponed', isDefault: 0, isSystem: 1 },
+        { name: 'Completed', isDefault: 0, isSystem: 1 }
+      ];
+      for (const st of defaultStatuses) {
+        const exists = await db.get("SELECT id FROM meeting_statuses WHERE name = ? AND (tenantId IS NULL OR tenantId = 0 OR isSystem = 1)", [st.name]);
+        if (!exists) {
+          await db.run(
+            "INSERT INTO meeting_statuses (tenantId, name, isDefault, isSystem, status, createdBy) VALUES (NULL, ?, ?, ?, 1, 'system')",
+            [st.name, st.isDefault, st.isSystem]
+          );
+        } else {
+          await db.run("UPDATE meeting_statuses SET isSystem = 1 WHERE name = ?", [st.name]);
+        }
+      }
+    } catch (err) {
+      console.error('Error seeding shared meeting masters:', err);
+    }
+
     // Clean up legacy tables if needed
     try {
       await db.exec("DROP TABLE IF EXISTS UserDue;");
@@ -765,6 +1041,31 @@ export async function initDatabase(): Promise<Database> {
     const hasTenantMaxUserLimit = await checkColumnExists('tenants', 'maxUserLimit');
     if (!hasTenantMaxUserLimit) {
       await db.exec("ALTER TABLE tenants ADD COLUMN maxUserLimit INT DEFAULT 25");
+    }
+    const hasOrgTypeId = await checkColumnExists('tenants', 'organizationTypeId');
+    if (!hasOrgTypeId) {
+      await db.exec("ALTER TABLE tenants ADD COLUMN organizationTypeId INT NULL");
+    }
+
+    const tenantCols = [
+      { name: 'code', type: 'VARCHAR(50) NULL' },
+      { name: 'registerNumber', type: 'VARCHAR(255) NULL' },
+      { name: 'registerDate', type: 'VARCHAR(255) NULL' },
+      { name: 'establishedDate', type: 'VARCHAR(255) NULL' },
+      { name: 'contactPerson', type: 'VARCHAR(255) NULL' },
+      { name: 'website', type: 'VARCHAR(255) NULL' },
+      { name: 'addressLine1', type: 'VARCHAR(255) NULL' },
+      { name: 'addressLine2', type: 'VARCHAR(255) NULL' },
+      { name: 'country', type: "VARCHAR(255) NULL DEFAULT 'India'" },
+      { name: 'state', type: 'VARCHAR(255) NULL' },
+      { name: 'city', type: 'VARCHAR(255) NULL' },
+      { name: 'pincode', type: 'VARCHAR(50) NULL' }
+    ];
+    for (const col of tenantCols) {
+      const hasCol = await checkColumnExists('tenants', col.name);
+      if (!hasCol) {
+        await db.exec(`ALTER TABLE tenants ADD COLUMN ${col.name} ${col.type}`);
+      }
     }
 
     const hasPricedetailsDefaultLimit = await checkColumnExists('pricedetails', 'defaultUserLimit');
@@ -963,6 +1264,28 @@ export async function initDatabase(): Promise<Database> {
       const hasMenuStatus = await checkColumnExists('menus', 'status');
       if (!hasMenuStatus) {
         await db.exec("ALTER TABLE menus ADD COLUMN status TINYINT NOT NULL DEFAULT 1");
+      }
+    } catch (e) {
+      // Ignored
+    }
+
+    // Ensure meetingId column on financial transaction tables
+    try {
+      const hasMtgFundCol = await checkColumnExists('FundCollectionGroup', 'meetingId');
+      if (!hasMtgFundCol) {
+        await db.exec("ALTER TABLE FundCollectionGroup ADD COLUMN meetingId INT NULL");
+      }
+      const hasMtgLoanPay = await checkColumnExists('LoanPayment', 'meetingId');
+      if (!hasMtgLoanPay) {
+        await db.exec("ALTER TABLE LoanPayment ADD COLUMN meetingId INT NULL");
+      }
+      const hasMtgExpense = await checkColumnExists('expenses', 'meetingId');
+      if (!hasMtgExpense) {
+        await db.exec("ALTER TABLE expenses ADD COLUMN meetingId INT NULL");
+      }
+      const hasMtgTxn = await checkColumnExists('transactions', 'meetingId');
+      if (!hasMtgTxn) {
+        await db.exec("ALTER TABLE transactions ADD COLUMN meetingId INT NULL");
       }
     } catch (e) {
       // Ignored

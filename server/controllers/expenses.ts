@@ -50,8 +50,9 @@ export const createExpense = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const { expenseDate, amount, paymentMode, referenceNo, description, expenseBy, ExpenseBy } = req.body;
+    const { expenseDate, amount, paymentMode, referenceNo, description, expenseBy, ExpenseBy, meetingId } = req.body;
     const rawExpenseBy = expenseBy || ExpenseBy;
+    const parsedMeetingId = meetingId ? Number(meetingId) : null;
 
     // Validate non-nullable Description
     if (!description || typeof description !== 'string' || description.trim().length === 0) {
@@ -97,7 +98,8 @@ export const createExpense = async (req: Request, res: Response) => {
       Description: description.trim(),
       ExpenseBy: resolvedExpenseBy,
       Status: initialStatus,
-      CreatedBy: userContext.user.id
+      CreatedBy: userContext.user.id,
+      meetingId: parsedMeetingId
     };
 
     await ExpenseModel.create(newExpense);

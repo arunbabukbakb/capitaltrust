@@ -32,6 +32,14 @@ import {
   deleteVideoTutorial,
   getPublicVideoTutorials
 } from '../controllers/superadmin';
+import {
+  listOrganizationTypes,
+  getActiveOrganizationTypes,
+  createOrganizationType,
+  updateOrganizationType,
+  toggleOrganizationTypeStatus,
+  deleteOrganizationType
+} from '../controllers/organizationTypes';
 
 const router = Router();
 
@@ -70,5 +78,13 @@ router.post('/video-tutorials', createVideoTutorial);
 router.put('/video-tutorials/:id', updateVideoTutorial);
 router.patch('/video-tutorials/:id/status', toggleVideoTutorialStatus);
 router.delete('/video-tutorials/:id', deleteVideoTutorial);
+
+// Organization Type Master Routes
+router.get('/organization-types/public', getActiveOrganizationTypes);
+router.get('/organization-types', listOrganizationTypes);
+router.post('/organization-types', createOrganizationType);
+router.put('/organization-types/:id', updateOrganizationType);
+router.patch('/organization-types/:id/status', toggleOrganizationTypeStatus);
+router.delete('/organization-types/:id', deleteOrganizationType);
 
 export default router;

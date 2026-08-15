@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Expense, ExpensePaymentMode, ExpenseStatus } from '../../types';
@@ -20,7 +21,11 @@ import {
   ShieldCheck,
   RefreshCw,
   Pencil,
-  AlertTriangle
+  AlertTriangle,
+  Tag,
+  Users,
+  MapPin,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ConfirmDialogState {
@@ -41,9 +46,25 @@ interface UserOption {
 
 export default function ExpensesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const meetingId = searchParams.get('meetingId');
+
+  const [meetingContext, setMeetingContext] = useState<any>(null);
   const { user, activeRole } = useSelector((state: RootState) => state.auth);
   const activeRoleType = activeRole?.roleType || user?.role;
   const isAdminOrManager = activeRoleType === 'admin' || activeRoleType === 'manager';
+
+  useEffect(() => {
+    if (meetingId) {
+      fetch(`/api/meetings/${meetingId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) setMeetingContext(data);
+        })
+        .catch(err => console.error("Error loading meeting context:", err));
+    }
+  }, [meetingId]);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [usersList, setUsersList] = useState<UserOption[]>([]);
@@ -183,7 +204,8 @@ export default function ExpensesPage() {
           paymentMode: formData.paymentMode,
           referenceNo: formData.referenceNo.trim() || null,
           description: formData.description.trim(),
-          expenseBy: isAdminOrManager ? (formData.expenseBy || null) : user?.id
+          expenseBy: isAdminOrManager ? (formData.expenseBy || null) : user?.id,
+          meetingId: meetingId ? Number(meetingId) : null
         })
       });
 
@@ -322,6 +344,34 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-fade-in mt-12 sm:mt-20 pt-3 sm:pt-0 pb-6 px-2.5 sm:px-0">
+      {/* Meeting Context Banner */}
+      {meetingContext && (
+        <div className="bg-gradient-to-r from-rose-900 to-slate-900 text-white p-5 rounded-2xl shadow-md border border-rose-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-300">Active Meeting Context</span>
+            <h3 className="text-lg font-extrabold font-headline flex items-center gap-2 mt-0.5">
+              <span>Meeting #{meetingContext.meetingNo}</span>
+              <span className="text-xs px-2 py-0.5 bg-rose-800/80 rounded-md font-normal">{meetingContext.statusName}</span>
+            </h3>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-rose-200 mt-1">
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {meetingContext.meetingDate}</span>
+              <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> {meetingContext.typeName || 'Regular'}</span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {meetingContext.groupName || 'All Members'}</span>
+              {meetingContext.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {meetingContext.location}</span>}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(`/meetings/${meetingId}`)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Meeting Dashboard</span>
+          </button>
+        </div>
+      )}
+
       {/* Header section (Card container on desktop, plain layout with top margin on mobile) */}
       <div className="flex items-center justify-between gap-3 sm:bg-white sm:dark:bg-slate-900 sm:p-4 sm:rounded-2xl sm:border sm:border-slate-200/80 sm:dark:border-slate-800 sm:shadow-xs mt-3 sm:mt-0">
         <div className="hidden sm:block">

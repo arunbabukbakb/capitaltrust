@@ -7,7 +7,7 @@ import { recordTransaction } from '../services/transactionService';
 export const submitMemberCollections = async (req: Request, res: Response) => {
   const db = getDatabase();
   try {
-    const { id, collectionTypeId, date, payments } = req.body;
+    const { id, collectionTypeId, date, payments, meetingId } = req.body;
     if (!collectionTypeId) {
       return res.status(400).json({ error: "collectionTypeId is required" });
     }
@@ -18,6 +18,7 @@ export const submitMemberCollections = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "payments must be an array" });
     }
 
+    const parsedMeetingId = meetingId ? Number(meetingId) : null;
     const tenantId = req.headers['x-tenant-id'] as string;
     const collectionsToSend: { userId: string; amount: number }[] = [];
 
@@ -26,10 +27,10 @@ export const submitMemberCollections = async (req: Request, res: Response) => {
       let groupId = id ? Number(id) : null;
 
       if (groupId) {
-        await CollectionModel.updateGroup(groupId, Number(collectionTypeId), date);
+        await CollectionModel.updateGroup(groupId, Number(collectionTypeId), date, parsedMeetingId);
         await CollectionModel.clearMemberCollectionsByGroup(groupId);
       } else {
-        const result = await CollectionModel.createGroup(Number(collectionTypeId), date, tenantId);
+        const result = await CollectionModel.createGroup(Number(collectionTypeId), date, tenantId, parsedMeetingId);
         groupId = result.lastID ? Number(result.lastID) : null;
       }
 

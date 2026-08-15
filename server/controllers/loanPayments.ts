@@ -327,11 +327,12 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Only admin and manager can finalize repayments" });
     }
 
-    const { payments, month } = req.body;
+    const { payments, month, meetingId } = req.body;
     if (!Array.isArray(payments) || payments.length === 0) {
       return res.status(400).json({ error: "No payments provided for final submit" });
     }
 
+    const parsedMeetingId = meetingId ? Number(meetingId) : null;
     const currentMonth = month ? parseInt(month) : parseInt(new Date().toISOString().slice(0, 7).replace('-', ''));
     const currentDate = new Date().toISOString().split('T')[0];
 
@@ -407,7 +408,8 @@ export const finalSubmitLoanPayments = async (req: Request, res: Response) => {
                 InterestPaid: interestPaid,
                 PrincipalPaid: principalPaid,
                 ApprovedBy: decoded.id,
-                ApprovedDate: currentDate
+                ApprovedDate: currentDate,
+                meetingId: parsedMeetingId
               });
             }
 

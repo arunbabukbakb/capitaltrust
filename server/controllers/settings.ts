@@ -192,3 +192,52 @@ export const uploadTenantLogo = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error uploading logo" });
   }
 };
+
+function getTenantIdNumber(req: Request): number {
+  const raw = req.headers['x-tenant-id'];
+  const parsed = Number(raw);
+  return !isNaN(parsed) && parsed > 0 ? parsed : 1;
+}
+
+export const getOrgSettings = async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantIdNumber(req);
+    const db = getDatabase();
+    const settings = await db.get(
+      "SELECT oneUserOneGroup FROM organization_settings WHERE tenantId = ?",
+      [tenantId]
+    );
+    return res.json({
+      oneUserOneGroup: settings ? Boolean(settings.oneUserOneGroup) : true
+    });
+  } catch (error) {
+    console.error("Get organization settings error", error);
+    res.status(500).json({ error: "Failed to fetch organization settings" });
+  }
+};
+
+export const updateOrgSettings = async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantIdNumber(req);
+    const { oneUserOneGroup } = req.body;
+    const db = getDatabase();
+    const val = oneUserOneGroup === true || oneUserOneGroup === 1 ? 1 : 0;
+
+    const existing = await db.get("SELECT id FROM organization_settings WHERE tenantId = ?", [tenantId]);
+    if (existing) {
+      await db.run(
+        "UPDATE organization_settings SET oneUserOneGroup = ?, updatedAt = CURRENT_TIMESTAMP WHERE tenantId = ?",
+        [val, tenantId]
+      );
+    } else {
+      await db.run(
+        "INSERT INTO organization_settings (tenantId, oneUserOneGroup) VALUES (?, ?)",
+        [tenantId, val]
+      );
+    }
+    return res.json({ message: "Organization settings updated successfully", oneUserOneGroup: Boolean(val) });
+  } catch (error) {
+    console.error("Update organization settings error", error);
+    res.status(500).json({ error: "Failed to update organization settings" });
+  }
+};

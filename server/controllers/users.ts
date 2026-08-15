@@ -29,7 +29,13 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { fullName, email, username, phoneNumber, roleId, roleIds } = req.body;
+    const {
+      memberNumber, fullName, email, username, phoneNumber, alternateNumber,
+      gender, dob, joiningDate, address, country, state, district, locality, pincode,
+      idType, idNumber, bankName, bankBranch, accountNumber, ifsc,
+      nomineeName, relationship, nomineeContact, occupation, notes, profileImage,
+      roleId, roleIds
+    } = req.body;
     const finalRoleIds: number[] = Array.isArray(roleIds) ? roleIds : (roleId ? [Number(roleId)] : []);
 
     if (!fullName || !email || !username || finalRoleIds.length === 0) {
@@ -74,11 +80,34 @@ export const createUser = async (req: Request, res: Response) => {
     try {
       await UserModel.create({
         id,
+        memberNumber: memberNumber || undefined,
         fullName,
         email,
         username,
         role: primaryRole.roleType,
         phoneNumber: phoneNumber || undefined,
+        alternateNumber: alternateNumber || undefined,
+        gender: gender || undefined,
+        dob: dob || undefined,
+        joiningDate: joiningDate || undefined,
+        address: address || undefined,
+        country: country || undefined,
+        state: state || undefined,
+        district: district || undefined,
+        locality: locality || undefined,
+        pincode: pincode || undefined,
+        idType: idType || undefined,
+        idNumber: idNumber || undefined,
+        bankName: bankName || undefined,
+        bankBranch: bankBranch || undefined,
+        accountNumber: accountNumber || undefined,
+        ifsc: ifsc || undefined,
+        nomineeName: nomineeName || undefined,
+        relationship: relationship || undefined,
+        nomineeContact: nomineeContact || undefined,
+        occupation: occupation || undefined,
+        notes: notes || undefined,
+        profileImage: profileImage || undefined,
         roleId: primaryRole.id,
         tenantId
       });
@@ -106,7 +135,13 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { fullName, email, username, phoneNumber, roleId, roleIds, status } = req.body;
+    const {
+      memberNumber, fullName, email, username, phoneNumber, alternateNumber,
+      gender, dob, joiningDate, address, country, state, district, locality, pincode,
+      idType, idNumber, bankName, bankBranch, accountNumber, ifsc,
+      nomineeName, relationship, nomineeContact, occupation, notes, profileImage,
+      roleId, roleIds, status
+    } = req.body;
     const finalRoleIds: number[] = Array.isArray(roleIds) ? roleIds : (roleId ? [Number(roleId)] : []);
 
     if (!fullName || !email || !username || finalRoleIds.length === 0) {
@@ -137,10 +172,33 @@ export const updateUser = async (req: Request, res: Response) => {
     await db.run("BEGIN TRANSACTION;");
     try {
       await UserModel.update(id, {
+        memberNumber: memberNumber || null,
         fullName,
         email,
         username,
         phoneNumber: phoneNumber || null,
+        alternateNumber: alternateNumber || null,
+        gender: gender || null,
+        dob: dob || null,
+        joiningDate: joiningDate || null,
+        address: address || null,
+        country: country || null,
+        state: state || null,
+        district: district || null,
+        locality: locality || null,
+        pincode: pincode || null,
+        idType: idType || null,
+        idNumber: idNumber || null,
+        bankName: bankName || null,
+        bankBranch: bankBranch || null,
+        accountNumber: accountNumber || null,
+        ifsc: ifsc || null,
+        nomineeName: nomineeName || null,
+        relationship: relationship || null,
+        nomineeContact: nomineeContact || null,
+        occupation: occupation || null,
+        notes: notes || null,
+        profileImage: profileImage !== undefined ? profileImage : null,
         roleId: primaryRole.id,
         role: primaryRole.roleType,
         status: status === true || status === 1 ? 1 : 0

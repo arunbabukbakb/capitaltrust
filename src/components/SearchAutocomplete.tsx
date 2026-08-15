@@ -23,6 +23,9 @@ import {
   ChevronRight,
   Sparkles,
   Command,
+  Building2,
+  Landmark,
+  UserCheck,
   ArrowRight
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -47,6 +50,42 @@ const DEFAULT_SYSTEM_MENUS: SearchMenuItem[] = [
     icon: LayoutDashboard,
     keywords: ['home', 'overview', 'summary', 'analytics', 'stats', 'dashboard', 'members'],
     menuId: 'dashboard'
+  },
+  {
+    id: 'organization-info',
+    name: 'Organization Details',
+    path: '/organization-info',
+    category: 'Organization',
+    icon: Building2,
+    keywords: ['organization', 'company info', 'registration', 'tenant details', 'contact', 'address'],
+    menuId: 'organization-info'
+  },
+  {
+    id: 'groups',
+    name: 'Groups',
+    path: '/groups',
+    category: 'Organization',
+    icon: Users,
+    keywords: ['group', 'groups', 'teams', 'members', 'shg', 'group management'],
+    menuId: 'groups'
+  },
+  {
+    id: 'group-members',
+    name: 'Group Members',
+    path: '/group-members',
+    category: 'Organization',
+    icon: UserCheck,
+    keywords: ['group members', 'assign members', 'member allocation', 'group list'],
+    menuId: 'group-members'
+  },
+  {
+    id: 'banks',
+    name: 'Banks',
+    path: '/banks',
+    category: 'Organization',
+    icon: Landmark,
+    keywords: ['bank', 'banks', 'primary bank', 'account number', 'ifsc', 'settlement'],
+    menuId: 'banks'
   },
   {
     id: 'fund-collection',

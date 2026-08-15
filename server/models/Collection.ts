@@ -61,19 +61,19 @@ export const CollectionModel = {
     await db.run("UPDATE CollectionType SET TypeName = ?, Status = ?, Frequency = ?, Amount = ? WHERE Id = ?", [typeName, status, frequency, amount, id]);
   },
 
-  async createGroup(collectionTypeId: number, collectionDate: string, tenantId: string): Promise<{ lastID?: number | string }> {
+  async createGroup(collectionTypeId: number, collectionDate: string, tenantId: string, meetingId: number | null = null): Promise<{ lastID?: number | string }> {
     const db = getDatabase();
     return db.run(
-      "INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId) VALUES (?, ?, ?)",
-      [collectionTypeId, collectionDate, tenantId]
+      "INSERT INTO FundCollectionGroup (CollectionTypeId, CollectionDate, tenantId, meetingId) VALUES (?, ?, ?, ?)",
+      [collectionTypeId, collectionDate, tenantId, meetingId]
     );
   },
 
-  async updateGroup(id: number, collectionTypeId: number, collectionDate: string): Promise<void> {
+  async updateGroup(id: number, collectionTypeId: number, collectionDate: string, meetingId: number | null = null): Promise<void> {
     const db = getDatabase();
     await db.run(
-      "UPDATE FundCollectionGroup SET CollectionTypeId = ?, CollectionDate = ? WHERE Id = ?",
-      [collectionTypeId, collectionDate, id]
+      "UPDATE FundCollectionGroup SET CollectionTypeId = ?, CollectionDate = ?, meetingId = COALESCE(?, meetingId) WHERE Id = ?",
+      [collectionTypeId, collectionDate, meetingId, id]
     );
   },
 

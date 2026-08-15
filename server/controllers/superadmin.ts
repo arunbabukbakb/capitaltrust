@@ -106,7 +106,12 @@ export const listTenants = async (req: Request, res: Response) => {
     }
 
     const db = getDatabase();
-    const tenants = await db.all("SELECT id, name, subdomain, adminEmail, createdDate, isActive, paymentStatus, paymentDate, address, phone, invoiceno, amount, gst, gstamount, gstnumber, maxUserLimit FROM tenants ORDER BY createdDate DESC");
+    const tenants = await db.all(`
+      SELECT t.id, t.name, t.subdomain, t.adminEmail, t.createdDate, t.isActive, t.paymentStatus, t.paymentDate, t.address, t.phone, t.invoiceno, t.amount, t.gst, t.gstamount, t.gstnumber, t.maxUserLimit, t.organizationTypeId, ot.typeName as organizationTypeName, ot.code as organizationTypeCode
+      FROM tenants t
+      LEFT JOIN organization_types ot ON t.organizationTypeId = ot.id
+      ORDER BY t.createdDate DESC
+    `);
     return res.json(tenants);
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token.' });
@@ -154,7 +159,7 @@ export const toggleTenantStatus = async (req: Request, res: Response) => {
 export const updateTenantDetails = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone, gstnumber, maxUserLimit } = req.body;
+    const { name, adminEmail, subdomain, paymentStatus, isActive, address, phone, gstnumber, maxUserLimit, organizationTypeId } = req.body;
 
     const token = req.cookies.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
     if (!token) {
@@ -189,6 +194,7 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     const newPhone = phone !== undefined ? phone : (tenant.phone || '');
     const newGstNumber = gstnumber !== undefined ? gstnumber : (tenant.gstnumber || '');
     const newMaxUserLimit = typeof maxUserLimit !== 'undefined' ? Number(maxUserLimit) : (tenant.maxUserLimit || 25);
+    const newOrganizationTypeId = typeof organizationTypeId !== 'undefined' ? (organizationTypeId ? Number(organizationTypeId) : null) : (tenant.organizationTypeId || null);
 
     let newAmount = tenant.amount || 0;
     let newGst = tenant.gst || 0;
@@ -207,8 +213,8 @@ export const updateTenantDetails = async (req: Request, res: Response) => {
     }
 
     await db.run(
-      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ?, gstnumber = ?, maxUserLimit = ? WHERE id = ?",
-      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, newGstNumber, newMaxUserLimit, id]
+      "UPDATE tenants SET name = ?, adminEmail = ?, subdomain = ?, paymentStatus = ?, isActive = ?, address = ?, phone = ?, amount = ?, gst = ?, gstamount = ?, invoiceno = ?, gstnumber = ?, maxUserLimit = ?, organizationTypeId = ? WHERE id = ?",
+      [newName, newAdminEmail, newSubdomain, newPaymentStatus, newIsActive, newAddress, newPhone, newAmount, newGst, newGstAmount, newInvoiceNo, newGstNumber, newMaxUserLimit, newOrganizationTypeId, id]
     );
 
     return res.json({

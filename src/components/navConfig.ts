@@ -11,6 +11,9 @@ import {
   Receipt,
   FileSpreadsheet,
   Calendar,
+  CalendarDays,
+  Tag,
+  CheckSquare,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -27,6 +30,31 @@ export const navConfig: NavItem[] = [
     name: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
+  },
+  {
+    id: 'meetings-parent',
+    name: 'Meetings',
+    icon: CalendarDays,
+    children: [
+      {
+        id: 'meeting-list',
+        name: 'Meeting List',
+        icon: Calendar,
+        path: '/meetings',
+      },
+      {
+        id: 'meeting-types',
+        name: 'Meeting Type',
+        icon: Tag,
+        path: '/meeting-types',
+      },
+      {
+        id: 'meeting-statuses',
+        name: 'Meeting Status',
+        icon: CheckSquare,
+        path: '/meeting-statuses',
+      },
+    ],
   },
   {
     id: 'expenses',

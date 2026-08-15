@@ -302,12 +302,12 @@ export const LoanModel = {
     await db.run(`UPDATE LoanDue SET ${fields.join(', ')} WHERE Id = ?`, values);
   },
 
-  async addPayment(payment: Omit<LoanPayment, 'Id'>): Promise<{ lastID?: number | string }> {
+  async addPayment(payment: Omit<LoanPayment, 'Id'> & { meetingId?: number | null }): Promise<{ lastID?: number | string }> {
     const db = getDatabase();
     return db.run(
-      `INSERT INTO LoanPayment (LoanMemberId, DueMonth, PaymentDate, Amount, InterestPaid, PrincipalPaid, ApprovedBy, ApprovedDate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [payment.LoanMemberId, payment.DueMonth, payment.PaymentDate, payment.Amount, payment.InterestPaid, payment.PrincipalPaid, payment.ApprovedBy || null, payment.ApprovedDate || null]
+      `INSERT INTO LoanPayment (LoanMemberId, DueMonth, PaymentDate, Amount, InterestPaid, PrincipalPaid, ApprovedBy, ApprovedDate, meetingId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [payment.LoanMemberId, payment.DueMonth, payment.PaymentDate, payment.Amount, payment.InterestPaid, payment.PrincipalPaid, payment.ApprovedBy || null, payment.ApprovedDate || null, payment.meetingId || null]
     );
   },
 

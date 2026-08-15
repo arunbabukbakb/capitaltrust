@@ -246,7 +246,7 @@ export default function Sidebar({
                       >
                         <div className="flex items-center gap-4">
                           <Icon className="w-5 h-5" />
-                          <span>{String(t(`menu.${item.name.replace(/\s+/g, '')}`, { defaultValue: item.name }))}</span>
+                          <span>{String(t(`menu.${item.name.replace(/\s+/g, '')}`, { defaultValue: t(`nav.${item.id}`, { defaultValue: item.name }) }))}</span>
                         </div>
                         <ChevronDown className={`w-4 h-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
                       </button>
@@ -261,7 +261,7 @@ export default function Sidebar({
                                 : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
                                 }`}
                             >
-                              <span>{String(t(`menu.${child.name.replace(/\s+/g, '')}`, { defaultValue: child.name }))}</span>
+                              <span>{String(t(`menu.${child.name.replace(/\s+/g, '')}`, { defaultValue: t(`nav.${child.id}`, { defaultValue: child.name }) }))}</span>
                             </button>
                           ))}
                         </div>
@@ -280,7 +280,7 @@ export default function Sidebar({
                       }`}
                   >
                     <Icon className="w-5 h-5" />
-                    <span>{String(t(`menu.${item.name.replace(/\s+/g, '')}`, { defaultValue: item.name }))}</span>
+                    <span>{String(t(`menu.${item.name.replace(/\s+/g, '')}`, { defaultValue: t(`nav.${item.id}`, { defaultValue: item.name }) }))}</span>
                   </button>
                 );
               })

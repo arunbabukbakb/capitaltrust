@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Coins,
   Search,
@@ -9,7 +10,11 @@ import {
   PlusCircle,
   Calendar,
   Edit3,
-  X
+  X,
+  Users,
+  MapPin,
+  Tag,
+  ArrowLeft
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -41,6 +46,12 @@ const today = new Date().toISOString().split('T')[0];
 
 export default function FundCollection() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const meetingId = searchParams.get('meetingId');
+
+  const [meetingContext, setMeetingContext] = useState<any>(null);
+
   // Collections History
   const [history, setHistory] = useState<CollectionGroup[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -57,6 +68,20 @@ export default function FundCollection() {
   const [loadingTypes, setLoadingTypes] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (meetingId) {
+      fetch(`/api/meetings/${meetingId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setMeetingContext(data);
+            if (data.meetingDate) setCollectionDate(data.meetingDate);
+          }
+        })
+        .catch(err => console.error("Error loading meeting context:", err));
+    }
+  }, [meetingId]);
 
   // Filters & UI States
   const [searchQuery, setSearchQuery] = useState('');
@@ -206,6 +231,7 @@ export default function FundCollection() {
         id: editingGroupId,
         collectionTypeId: Number(selectedTypeId),
         date: collectionDate,
+        meetingId: meetingId ? Number(meetingId) : null,
         payments: members
           .map(m => ({
             userId: m.userId,
@@ -245,6 +271,34 @@ export default function FundCollection() {
 
   return (
     <div className="space-y-4 sm:space-y-8 animate-fade-in text-slate-900 mt-16 sm:mt-20 mb-5 px-3">
+
+      {/* Meeting Context Banner */}
+      {meetingContext && (
+        <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-md border border-indigo-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Active Meeting Context</span>
+            <h3 className="text-lg font-extrabold font-headline flex items-center gap-2 mt-0.5">
+              <span>Meeting #{meetingContext.meetingNo}</span>
+              <span className="text-xs px-2 py-0.5 bg-indigo-800/80 rounded-md font-normal">{meetingContext.statusName}</span>
+            </h3>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-indigo-200 mt-1">
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {meetingContext.meetingDate}</span>
+              <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> {meetingContext.typeName || 'Regular'}</span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {meetingContext.groupName || 'All Members'}</span>
+              {meetingContext.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {meetingContext.location}</span>}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(`/meetings/${meetingId}`)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Meeting Dashboard</span>
+          </button>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toast && (

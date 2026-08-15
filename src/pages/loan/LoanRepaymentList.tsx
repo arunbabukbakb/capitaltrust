@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Loan } from '../../models/Loan';
 import PaymentRow from '../../components/PaymentRow';
-import { CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertCircle, RefreshCw, Calendar, Tag, Users, MapPin, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const LoanRepaymentList: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const meetingId = searchParams.get('meetingId');
+
+  const [meetingContext, setMeetingContext] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'group' | 'single'>('single');
   const [loans, setLoans] = useState<Loan[]>([]);
   const [selectedLoanId, setSelectedLoanId] = useState<string>('');
@@ -14,6 +20,17 @@ const LoanRepaymentList: React.FC = () => {
   const [toast, setToast] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number>(parseInt(new Date().toISOString().slice(0, 7).replace('-', '')));
+
+  useEffect(() => {
+    if (meetingId) {
+      fetch(`/api/meetings/${meetingId}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) setMeetingContext(data);
+        })
+        .catch(err => console.error("Error loading meeting context:", err));
+    }
+  }, [meetingId]);
 
   // Fetch loans for the dropdown filter
   const fetchLoans = async () => {
@@ -126,7 +143,7 @@ const LoanRepaymentList: React.FC = () => {
       const res = await fetch('/api/loan-payments/final-submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payments: payload, month: selectedMonth }),
+        body: JSON.stringify({ payments: payload, month: selectedMonth, meetingId: meetingId ? Number(meetingId) : null }),
       });
 
       if (res.ok) {
@@ -157,7 +174,7 @@ const LoanRepaymentList: React.FC = () => {
       });
 
       if (res.ok) {
-        setToast('Last payment deleted successfully. You can now enter a new payment.');
+        setToast('Payment deleted successfully.');
         await fetchPayments();
         setTimeout(() => setToast(''), 3000);
       } else {
@@ -181,6 +198,33 @@ const LoanRepaymentList: React.FC = () => {
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto animate-fade-in space-y-3 md:space-y-6 mt-16">
+      {/* Meeting Context Banner */}
+      {meetingContext && (
+        <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-5 rounded-2xl shadow-md border border-blue-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-300">Active Meeting Context</span>
+            <h3 className="text-lg font-extrabold font-headline flex items-center gap-2 mt-0.5">
+              <span>Meeting #{meetingContext.meetingNo}</span>
+              <span className="text-xs px-2 py-0.5 bg-blue-800/80 rounded-md font-normal">{meetingContext.statusName}</span>
+            </h3>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-blue-200 mt-1">
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {meetingContext.meetingDate}</span>
+              <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> {meetingContext.typeName || 'Regular'}</span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {meetingContext.groupName || 'All Members'}</span>
+              {meetingContext.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {meetingContext.location}</span>}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(`/meetings/${meetingId}`)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Meeting Dashboard</span>
+          </button>
+        </div>
+      )}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-800 text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-in">
           <CheckCircle className="w-5 h-5 text-emerald-400" />

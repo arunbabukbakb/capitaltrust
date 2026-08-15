@@ -359,7 +359,12 @@ export const updateProfile = async (req: Request, res: Response) => {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { id: string };
-    const { fullName, email, phoneNumber, profileImage } = req.body;
+    const {
+      memberNumber, fullName, email, phoneNumber, alternateNumber,
+      gender, dob, joiningDate, address, country, state, district, locality, pincode,
+      idType, idNumber, bankName, bankBranch, accountNumber, ifsc,
+      nomineeName, relationship, nomineeContact, occupation, notes, profileImage
+    } = req.body;
 
     if (!fullName || !email) {
       return res.status(400).json({ error: "Full name and email are required" });
@@ -412,10 +417,32 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 
     await UserModel.update(payload.id, {
+      memberNumber: memberNumber || null,
       fullName,
       email: email.toLowerCase(),
       phoneNumber: phoneNumber || null,
-      profileImage: savedProfileImagePath || null
+      alternateNumber: alternateNumber || null,
+      gender: gender || null,
+      dob: dob || null,
+      joiningDate: joiningDate || null,
+      address: address || null,
+      country: country || null,
+      state: state || null,
+      district: district || null,
+      locality: locality || null,
+      pincode: pincode || null,
+      idType: idType || null,
+      idNumber: idNumber || null,
+      bankName: bankName || null,
+      bankBranch: bankBranch || null,
+      accountNumber: accountNumber || null,
+      ifsc: ifsc || null,
+      nomineeName: nomineeName || null,
+      relationship: relationship || null,
+      nomineeContact: nomineeContact || null,
+      occupation: occupation || null,
+      notes: notes || null,
+      profileImage: savedProfileImagePath !== undefined ? savedProfileImagePath : null
     });
 
     const user = await UserModel.findById(payload.id);

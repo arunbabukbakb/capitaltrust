@@ -12,6 +12,7 @@ export interface Expense {
   Status: 'Draft' | 'Approved' | 'Cancelled';
   CreatedBy: string;
   CreatedAt?: string;
+  meetingId?: number | null;
   createdByName?: string;
   expenseByName?: string | null;
 }
@@ -45,8 +46,8 @@ export const ExpenseModel = {
   async create(expense: Omit<Expense, 'CreatedAt' | 'createdByName' | 'expenseByName'>): Promise<void> {
     const db = getDatabase();
     await db.run(
-      `INSERT INTO expenses (Id, TenantId, ExpenseDate, Amount, PaymentMode, ReferenceNo, Description, ExpenseBy, Status, CreatedBy) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO expenses (Id, TenantId, ExpenseDate, Amount, PaymentMode, ReferenceNo, Description, ExpenseBy, Status, CreatedBy, meetingId) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         expense.Id,
         expense.TenantId,
@@ -57,7 +58,8 @@ export const ExpenseModel = {
         expense.Description,
         expense.ExpenseBy || null,
         expense.Status,
-        expense.CreatedBy
+        expense.CreatedBy,
+        expense.meetingId || null
       ]
     );
   },
