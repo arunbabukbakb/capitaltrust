@@ -35,6 +35,7 @@
     "reports": "Reports",
     "transactions": "Transactions",
     "member-ledger": "Member Ledger",
+    "member-passbook": "Member Passbook",
     "due-report": "Due Report",
     "roles": "Roles",
     "permissions": "Permissions",
@@ -79,6 +80,7 @@
     "Reports": "Reports",
     "Transactions": "Transactions",
     "MemberLedger": "Member Ledger",
+    "MemberPassbook": "Member Passbook",
     "DueReport": "Due Report"
   },
   "header": {

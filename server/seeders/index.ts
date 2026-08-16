@@ -130,6 +130,7 @@ export async function runSeeders(db: Database) {
     { menuId: 'reports', name: 'Reports', icon: 'FileSpreadsheet', path: null, parentId: null, menuOrder: 50 },
     { menuId: 'transactions', name: 'Transactions', icon: 'Receipt', path: '/reports/transactions', parentId: 'reports', menuOrder: 51 },
     { menuId: 'member-ledger', name: 'Member Ledger', icon: 'FileText', path: '/reports/member-ledger', parentId: 'reports', menuOrder: 52 },
+    { menuId: 'member-passbook', name: 'Member Passbook', icon: 'BookOpen', path: '/reports/member-passbook', parentId: 'reports', menuOrder: 52.5 },
     { menuId: 'due-report', name: 'Due Report', icon: 'Calendar', path: '/reports/due-report', parentId: 'reports', menuOrder: 53 }
   ];
 

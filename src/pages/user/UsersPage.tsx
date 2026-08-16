@@ -25,8 +25,10 @@ import {
   Hash,
   Briefcase,
   Calendar,
-  Search
+  Search,
+  BookOpen
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -77,6 +79,7 @@ type ModalTab = 'basic' | 'contact' | 'identification' | 'bank' | 'nominee' | 'o
 
 export default function UsersPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1111,7 +1114,30 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    navigate(`/reports/member-ledger?userId=${viewingUser.id}`);
+                    setViewingUser(null);
+                  }}
+                  className="px-3 py-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Financial Ledger
+                </button>
+                <button
+                  onClick={() => {
+                    navigate(`/members/${viewingUser.id}/passbook`);
+                    setViewingUser(null);
+                  }}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Passbook
+                </button>
+              </div>
+
               <button
                 onClick={() => setViewingUser(null)}
                 className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold"

@@ -5,6 +5,8 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import apiRoutes from './routes';
 import swaggerRouter from './swagger';
+import { errorHandler } from './middleware/errorHandler';
+import { logger } from './logger';
 
 export async function createApp() {
   const app = express();
@@ -12,6 +14,18 @@ export async function createApp() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
   app.use(cookieParser());
+
+  // Log incoming API requests
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      if (req.originalUrl.startsWith('/api')) {
+        logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
+      }
+    });
+    next();
+  });
 
   // Serve uploaded profile images
   const uploadsPath = path.join(process.cwd(), 'uploads');
@@ -25,6 +39,9 @@ export async function createApp() {
 
   // API routing registry
   app.use('/api', apiRoutes);
+
+  // Centralized Error Handler Middleware for API routes
+  app.use('/api', errorHandler);
 
   // --- VITE AND STATIC ASSET SERVING ---
   if (process.env.NODE_ENV !== "production") {
@@ -51,6 +68,9 @@ export async function createApp() {
       res.sendFile(path.join(staticPath, 'index.html'));
     });
   }
+
+  // Global Centralized Error Handler Fallback
+  app.use(errorHandler);
 
   return app;
 }

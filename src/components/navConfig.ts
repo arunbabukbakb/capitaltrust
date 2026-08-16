@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Tag,
   CheckSquare,
+  BookOpen,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -133,6 +134,12 @@ export const navConfig: NavItem[] = [
         name: 'Member Ledger',
         icon: FileText,
         path: '/reports/member-ledger',
+      },
+      {
+        id: 'member-passbook',
+        name: 'Member Passbook',
+        icon: BookOpen,
+        path: '/reports/member-passbook',
       },
       {
         id: 'due-report',

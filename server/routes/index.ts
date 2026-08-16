@@ -23,6 +23,7 @@ import contactRoutes from './contact';
 import trafficRoutes from './traffic';
 import tenantOrgRoutes from './tenantOrganization';
 import meetingsRoutes from './meetings';
+import passbookRoutes from './passbook';
 
 const router = Router();
 
@@ -108,5 +109,6 @@ router.use('/contact', contactRoutes);
 router.use('/traffic', trafficRoutes);
 router.use('/', tenantOrgRoutes);
 router.use('/', meetingsRoutes);
+router.use('/', passbookRoutes);
 
 export default router;

@@ -17,8 +17,10 @@ import {
   ShieldAlert,
   Hash,
   Calendar,
-  Edit3
+  Edit3,
+  BookOpen
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Group {
   id: number;
@@ -47,6 +49,7 @@ interface AvailableUser {
 
 export default function GroupMembersPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | ''>('');
   const [members, setMembers] = useState<MemberUser[]>([]);
@@ -538,6 +541,14 @@ export default function GroupMembersPage() {
 
                     <td className="py-4.5 px-6 text-right pr-8 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => navigate(`/members/${m.id}/passbook`)}
+                          className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 transition cursor-pointer"
+                          title="Member Passbook"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+
                         <button
                           onClick={() => handleOpenEditDateModal(m)}
                           className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400 transition cursor-pointer"

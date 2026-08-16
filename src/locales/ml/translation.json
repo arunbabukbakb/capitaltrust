@@ -35,6 +35,7 @@
     "reports": "റിപ്പോർട്ടുകൾ",
     "transactions": "ഇടപാടുകൾ",
     "member-ledger": "അംഗ ലെഡ്ജർ",
+    "member-passbook": "അംഗ പാസ്ബുക്ക്",
     "due-report": "കുടിശ്ശിക റിപ്പോർട്ട്",
     "roles": "റോളുകൾ",
     "permissions": "അനുമതികൾ",
@@ -79,6 +80,7 @@
     "Reports": "റിപ്പോർട്ടുകൾ",
     "Transactions": "ഇടപാടുകൾ",
     "MemberLedger": "അംഗ ലെഡ്ജർ",
+    "MemberPassbook": "അംഗ പാസ്ബുക്ക്",
     "DueReport": "കുടിശ്ശിക റിപ്പോർട്ട്"
   },
   "header": {

@@ -16,7 +16,34 @@ import {
   Sparkles,
   Receipt,
   Sun,
-  Moon
+  Moon,
+  Building2,
+  Landmark,
+  User,
+  Calendar,
+  ClipboardCheck,
+  Wallet,
+  PieChart,
+  CreditCard,
+  PlusCircle,
+  DollarSign,
+  BookOpen,
+  Book,
+  MessageSquare,
+  Link as LinkIcon,
+  BarChart3,
+  FileText,
+  Clock,
+  Search,
+  Printer,
+  UserCog,
+  ShieldCheck,
+  Database,
+  Smartphone,
+  Download,
+  PhoneCall,
+  Lock,
+  ChevronRight
 } from 'lucide-react';
 import { useTheme } from '../components/ThemeContext';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -115,99 +142,183 @@ export default function LandingPage() {
     }
   };
 
-  const benefits = [
+  // CapitalTrust Compact Features Matrix
+  const featureCategories = [
     {
-      icon: <Receipt className="w-6 h-6 text-indigo-400 animate-pulse" />,
-      title: t('landing.benefit1Title'),
-      desc: t('landing.benefit1Desc')
+      title: "Organization & Members",
+      icon: <Building2 className="w-4 h-4 text-indigo-500" />,
+      badgeBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
+      features: [
+        { emoji: "🏢", name: "Organization Management" },
+        { emoji: "🏦", name: "Bank Account Management" },
+        { emoji: "👥", name: "Group Management" },
+        { emoji: "👤", name: "Member Management" },
+      ]
     },
     {
-      icon: <TrendingUp className="w-6 h-6 text-cyan-400" />,
-      title: t('landing.benefit2Title'),
-      desc: t('landing.benefit2Desc')
+      title: "Meetings & Attendance",
+      icon: <Calendar className="w-4 h-4 text-cyan-500" />,
+      badgeBg: "bg-cyan-500/10 border-cyan-500/20 text-cyan-600 dark:text-cyan-400",
+      features: [
+        { emoji: "🗓️", name: "Meeting Management" },
+        { emoji: "📋", name: "Meeting Type & Status" },
+        { emoji: "✅", name: "Attendance Management" },
+        { emoji: "📝", name: "Meeting Discussions" },
+      ]
     },
     {
-      icon: <Coins className="w-6 h-6 text-emerald-400" />,
-      title: t('landing.benefit3Title'),
-      desc: t('landing.benefit3Desc')
+      title: "Savings & Collections",
+      icon: <Wallet className="w-4 h-4 text-emerald-500" />,
+      badgeBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+      features: [
+        { emoji: "💰", name: "Fund / Savings Collection" },
+        { emoji: "📊", name: "Collection & Opening Balance" },
+        { emoji: "🔗", name: "Meeting-Based Transactions" },
+        { emoji: "💸", name: "Expense Management" },
+      ]
     },
     {
-      icon: <Activity className="w-6 h-6 text-purple-400" />,
-      title: t('landing.benefit4Title'),
-      desc: t('landing.benefit4Desc')
+      title: "Loan Facility Engine",
+      icon: <CreditCard className="w-4 h-4 text-purple-500" />,
+      badgeBg: "bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400",
+      features: [
+        { emoji: "🏦", name: "Loan Management" },
+        { emoji: "➕", name: "New & Existing Loans" },
+        { emoji: "👤", name: "Single & Group Loans" },
+        { emoji: "💳", name: "Loan Repayment & EMI Calc" },
+      ]
     },
     {
-      icon: <Shield className="w-6 h-6 text-blue-400" />,
-      title: t('landing.benefit5Title'),
-      desc: t('landing.benefit5Desc')
+      title: "Passbook & Accounting",
+      icon: <BookOpen className="w-4 h-4 text-blue-500" />,
+      badgeBg: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
+      features: [
+        { emoji: "📒", name: "Member Financial Ledger" },
+        { emoji: "📖", name: "Member Passbook" },
+        { emoji: "⏰", name: "Due Report" },
+        { emoji: "📑", name: "Financial & Transaction Reports" },
+      ]
     },
     {
-      icon: <UserCheck className="w-6 h-6 text-amber-400" />,
-      title: t('landing.benefit6Title'),
-      desc: t('landing.benefit6Desc')
+      title: "Analytics & Export",
+      icon: <BarChart3 className="w-4 h-4 text-amber-500" />,
+      badgeBg: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
+      features: [
+        { emoji: "📊", name: "Executive Dashboard" },
+        { emoji: "🖨️", name: "Print & PDF Reports" },
+        { emoji: "🔍", name: "Search & Advanced Filtering" },
+        { emoji: "🏷️", name: "Master Data Management" },
+      ]
+    },
+    {
+      title: "Security & Governance",
+      icon: <ShieldCheck className="w-4 h-4 text-rose-500" />,
+      badgeBg: "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400",
+      features: [
+        { emoji: "👨‍💼", name: "User Management" },
+        { emoji: "🔐", name: "Role & Permission Control" },
+        { emoji: "🛡️", name: "Org Data Security" },
+        { emoji: "📞", name: "Support & Contact" },
+      ]
+    },
+    {
+      title: "Platform & Experience",
+      icon: <Smartphone className="w-4 h-4 text-teal-500" />,
+      badgeBg: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400",
+      features: [
+        { emoji: "📱", name: "Mobile-Friendly Responsive" },
+        { emoji: "📲", name: "PWA / App Installation" },
+        { emoji: "🌐", name: "Multi-Language Support" },
+        { emoji: "⚡", name: "Real-time Cloud Sync" },
+      ]
     }
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-[#e2e8f0] relative overflow-hidden font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[150px] pointer-events-none" />
-      <div className="absolute top-[30%] right-[10%] w-[350px] h-[350px] rounded-full bg-violet-600/5 blur-[90px] pointer-events-none" />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-white font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-hidden transition-colors duration-300">
+      <WhatsAppButton />
 
-      {/* Header */}
-      <header className="relative z-10 px-4 sm:px-6 py-3.5 sm:py-6 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/60 bg-white/90 dark:bg-[#090d16]/90 backdrop-blur-md sticky top-0">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <img
-            src={companySettings?.companyLogo || '/favicon.png'}
-            alt={companySettings?.companyName || 'CapitalTrust Logo'}
-            className="h-8 sm:h-9 w-auto object-contain shrink-0"
-          />
-          <div className="hidden sm:block">
-            <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 via-slate-700 to-slate-500 dark:from-white dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent font-headline tracking-tight">
-              CapitalTrust
-            </span>
-            <span className="ml-1.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 rounded border border-indigo-500/30">
-              Portal
-            </span>
-          </div>
+      {/* Grid Pattern Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+
+      {/* Top Glow Highlights */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-indigo-500/15 via-cyan-500/10 to-transparent blur-[120px] pointer-events-none rounded-full" />
+
+      {/* Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#090d16]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex items-center justify-between transition-colors">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+          {companySettings?.companyLogo ? (
+            <img
+              src={companySettings.companyLogo}
+              alt="Logo"
+              className="h-8 w-auto object-contain rounded"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-black text-sm shadow-md shadow-indigo-500/20">
+              CT
+            </div>
+          )}
+          <span className="font-extrabold text-base tracking-tight font-headline bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent">
+            {companySettings?.companyName || 'CapitalTrust'}
+          </span>
         </div>
 
-        {/* Desktop nav buttons */}
-        <div className="hidden sm:flex items-center gap-3 sm:gap-4">
+        {/* Desktop Nav Controls */}
+        <div className="hidden sm:flex items-center gap-3">
           <a
             href="#features"
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors px-2 py-1"
           >
             {t('landing.features')}
           </a>
           <button
             onClick={() => navigate('/document/getting-started')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors px-2 py-1 cursor-pointer"
           >
-            {t('landing.documentation')}
+            {t('landing.docs')}
           </button>
 
-          {/* Language Switcher (Direct 1-Click Toggle) */}
-          <button
-            onClick={() => i18n.changeLanguage(i18n.language?.startsWith('ml') ? 'en' : 'ml')}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all cursor-pointer text-xs font-bold"
-            title={i18n.language?.startsWith('ml') ? 'Switch to English' : 'മലയാളത്തിലേക്ക് മാറുക'}
-          >
-            <Globe className="w-3.5 h-3.5 text-indigo-500" />
-            <span>{i18n.language?.startsWith('ml') ? 'മലയാളം' : 'English'}</span>
-          </button>
+          {/* Language Selector Dropdown */}
+          <div className="relative" ref={langRef}>
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span>{i18n.language?.startsWith('ml') ? 'മലയാളം' : 'English'}</span>
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                {languages.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => {
+                      i18n.changeLanguage(l.code);
+                      setLangOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer ${
+                      i18n.language === l.code ? 'font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>{l.nativeLabel}</span>
+                    {i18n.language === l.code && <CheckCircle className="w-3.5 h-3.5 text-indigo-500" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
+          {/* Dark / Light Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
-            title={theme === 'dark' ? t('header.switchLight') : t('header.switchDark')}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 transition-all cursor-pointer shadow-xs"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
           </button>
           <button
             onClick={handleLoadDemo}
-            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
           >
             <Play className="w-3.5 h-3.5 fill-indigo-500 dark:fill-indigo-400 text-indigo-500 dark:text-indigo-400" />
             {t('landing.liveDemo')}
@@ -222,9 +333,8 @@ export default function LandingPage() {
           </button>
         </div>
 
-        {/* Mobile: Get Started + Language + Theme toggle */}
+        {/* Mobile: Language + Theme toggle */}
         <div className="sm:hidden flex items-center gap-2">
-          {/* Mobile Language Button toggle */}
           <button
             onClick={() => i18n.changeLanguage(i18n.language?.startsWith('ml') ? 'en' : 'ml')}
             className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
@@ -300,7 +410,7 @@ export default function LandingPage() {
           </button>
           <button
             onClick={() => navigate('/register-tenant')}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
           >
             {t('landing.createOrganization')}
           </button>
@@ -332,16 +442,16 @@ export default function LandingPage() {
             <div className="w-full md:w-1/3 space-y-4">
               <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-left shadow-xs dark:shadow-none">
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Total Active Loans</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">T-Shs 452,000,000</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">₹ 4,52,00,000</div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
                   <CheckCircle className="w-3 h-3" /> +12.4% this month
                 </div>
               </div>
               <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl text-left shadow-xs dark:shadow-none">
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Liquidity Pool reserves</div>
-                <div className="text-xl font-bold text-indigo-600 dark:text-indigo-300 mt-1">T-Shs 1.25 Billion</div>
+                <div className="text-xl font-bold text-indigo-600 dark:text-indigo-300 mt-1">₹ 1.25 Crore</div>
                 <div className="text-[10px] text-indigo-500 dark:text-indigo-400 flex items-center gap-1 mt-1 font-semibold">
-                  <Cpu className="w-3 h-3" /> Reinvestment Enabled
+                  <Cpu className="w-3 h-3" /> Auto Interest Active
                 </div>
               </div>
             </div>
@@ -356,9 +466,9 @@ export default function LandingPage() {
               </div>
               <div className="space-y-2">
                 {[
-                  { name: "Suleiman Nditi", desc: "Weekly Loan Repayment Contribution", amount: "T-Shs 45,000", status: "Approved", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
-                  { name: "Fatuma Mwinyi", desc: "Credit Installment (Interest Slab v4)", amount: "T-Shs 120,000", status: "Approved", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
-                  { name: "Chande Juma", desc: "Liquidity Pool Contribution", amount: "T-Shs 300,000", status: "Processing", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10" }
+                  { name: "Anil Kumar", desc: "Weekly Loan Repayment Contribution", amount: "₹ 5,045", status: "Approved", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
+                  { name: "Sunil Sharma", desc: "Savings Collection (Meeting #12)", amount: "₹ 12,000", status: "Approved", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" },
+                  { name: "Priya Varma", desc: "Loan EMI Disbursement", amount: "₹ 50,000", status: "Processing", color: "text-amber-600 dark:text-amber-400 bg-amber-500/10" }
                 ].map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-950/40 rounded-lg border border-slate-200 dark:border-slate-900 hover:border-slate-300 dark:hover:border-slate-800 transition-colors">
                     <div>
@@ -381,39 +491,61 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Benefits Grid */}
-      <section id="features" className="relative z-10 max-w-7xl mx-auto px-6 py-20 border-t border-slate-200 dark:border-slate-800/40">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-2xl sm:text-4xl font-extrabold font-headline tracking-tight text-slate-900 dark:text-white mb-4">
-            {t('landing.completeSolution')}
+      {/* COMPACT KEY FEATURES SECTION */}
+      <section id="features" className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 border-t border-slate-200 dark:border-slate-800/40">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 text-xs font-bold mb-3">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>CapitalTrust Ecosystem</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-extrabold font-headline tracking-tight text-slate-900 dark:text-white mb-3">
+            Key Features & Capabilities
           </h2>
           <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm font-normal">
-            {t('landing.solutionSub')}
+            Everything your group or organization needs for seamless financial administration, member accounting, and automated reporting.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {benefits.map((b, idx) => (
+        {/* Compact Grid of Feature Categories */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {featureCategories.map((cat, idx) => (
             <div
               key={idx}
-              className="p-6 bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800/60 rounded-2xl hover:border-indigo-400 dark:hover:border-indigo-500/40 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900/40 group text-left shadow-sm dark:shadow-none"
+              className="p-4 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 rounded-2xl transition-all duration-200 shadow-xs hover:shadow-md dark:shadow-none flex flex-col justify-between group"
             >
-              <div className="p-3 bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl inline-block mb-5 group-hover:scale-110 transition-transform">
-                {b.icon}
+              <div>
+                {/* Category Header */}
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg border ${cat.badgeBg}`}>
+                      {cat.icon}
+                    </div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {cat.title}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Feature Pills */}
+                <div className="space-y-1.5">
+                  {cat.features.map((f, fIdx) => (
+                    <div
+                      key={fIdx}
+                      className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-[11px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <span className="text-xs shrink-0">{f.emoji}</span>
+                      <span className="truncate">{f.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                {b.title}
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">
-                {b.desc}
-              </p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Subdomain Testing Step Guide */}
-      <section className="relative z-10 max-w-5xl mx-4 sm:mx-auto px-4 sm:px-6 py-12 sm:py-16 mt-10 sm:mt-16 bg-gradient-to-r from-indigo-50 dark:from-indigo-900/20 to-cyan-50 dark:to-cyan-900/20 border border-indigo-100 dark:border-slate-800/80 rounded-3xl mb-12 sm:mb-24 text-left">
+      <section className="relative z-10 max-w-5xl mx-4 sm:mx-auto px-4 sm:px-6 py-12 sm:py-16 mt-6 bg-gradient-to-r from-indigo-50 dark:from-indigo-900/20 to-cyan-50 dark:to-cyan-900/20 border border-indigo-100 dark:border-slate-800/80 rounded-3xl mb-12 sm:mb-24 text-left">
         <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4">
           {t('landing.howToTestTitle')}
         </h3>
@@ -448,25 +580,16 @@ export default function LandingPage() {
             onClick={() => navigate('/privacy-policy')}
             className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
-            {t('landing.privacyPolicy')}
+            Privacy Policy
           </button>
           <button
-            onClick={() => navigate('/terms-of-service')}
+            onClick={() => navigate('/terms')}
             className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
-            {t('landing.termsOfService')}
-          </button>
-          <button
-            onClick={() => navigate('/document/getting-started')}
-            className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-          >
-            {t('landing.documentation')}
+            Terms of Service
           </button>
         </div>
       </footer>
-
-      {/* Floating WhatsApp Contact Button */}
-      <WhatsAppButton />
     </div>
   );
 }

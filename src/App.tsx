@@ -47,6 +47,7 @@ import AmcPayment from './pages/tenant/AmcPayment';
 import ExpensesPage from './pages/expense/ExpensesPage';
 import TransactionsPage from './pages/reports/TransactionsPage';
 import MemberLedger from './pages/reports/MemberLedger';
+import MemberPassbook from './pages/reports/MemberPassbook';
 import DueReport from './pages/reports/DueReport';
 import DocLayout from './pages/documentation/DocLayout';
 import GettingStartedDoc from './pages/documentation/GettingStartedDoc';
@@ -410,6 +411,8 @@ export default function App() {
             <Route path="/expenses" element={hasPermission('expenses') ? <ExpensesPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/transactions" element={hasPermission('transactions') ? <TransactionsPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="/reports/member-ledger" element={hasPermission('member-ledger') ? <MemberLedger /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/reports/member-passbook" element={<MemberPassbook />} />
+            <Route path="/members/:memberId/passbook" element={<MemberPassbook />} />
             <Route path="/reports/due-report" element={hasPermission('due-report') ? <DueReport /> : <Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/organization-info" element={<OrganizationInfoPage />} />
